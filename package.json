@@ -1,0 +1,27 @@
+{
+  "name": "toolvault",
+  "version": "0.1.0",
+  "description": "Tool Vault: An Integrated platform for AI agent tool management and security",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TeamSparkAI/toolvault.git"
+  },
+  "author": "TeamSpark, LLC <support@teamspark.ai>",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "keywords": [
+    "ai",
+    "agent",
+    "tools",
+    "security",
+    "platform"
+  ],
+  "bugs": {
+    "url": "https://github.com/TeamSparkAI/toolvault/issues"
+  },
+  "homepage": "https://github.com/TeamSparkAI/toolvault#readme",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {}
+} 
