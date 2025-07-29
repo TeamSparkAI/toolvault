@@ -89,10 +89,6 @@ Packaged App install
 
 ## Pre-Launch
 
-### Open Source
-
-Populate new Tool Vault repo with no history, trim docs, remove any unused projects
-
 ### Website
 
 Set up website so we have workbench and toolvault sections linking to separate pages (also ToolCatalog)
