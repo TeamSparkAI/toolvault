@@ -1,0 +1,3519 @@
+openapi: 3.1.0
+info:
+  title: Tool Vault API
+  version: 1.0.0
+  description: API for Tool Vault MCP gateway server (management, analystics, and proxy support)
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Tool Vault MCP Gateway
+
+tags:
+  - name: Gateway
+    description: Gateway management endpoints
+  - name: Servers
+    description: MCP server management endpoints
+  - name: Clients
+    description: Client management endpoints
+  - name: Messages
+    description: Message management
+  - name: Proxy
+    description: Proxy authentication and message filtering endpoints
+  - name: Policies
+    description: Policy management
+  - name: Alerts
+    description: Alert management
+  - name: Analytics
+    description: Analytics endpoints
+  - name: Client-Server Relationships
+    description: Client-server relationship management endpoints
+  - name: Retention
+    description: Retention management endpoints
+  - name: Bridge
+    description: Bridge management endpoints
+  - name: Compliance
+    description: Compliance management endpoints
+
+components:
+  schemas:
+    Meta:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+          enum: ["1.0"]
+        status:
+          type: integer
+          description: HTTP status code
+        message:
+          type: string
+          description: Status message
+
+    Error:
+      type: object
+      properties:
+        meta:
+          $ref: '#/components/schemas/Meta'
+
+    ServerInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+
+    ServerStatus:
+      type: object
+      properties:
+        serverInfo:
+          $ref: '#/components/schemas/ServerInfo'
+        lastSeen:
+          type: string
+          format: date-time
+          nullable: true
+
+    McpServerConfig:
+      oneOf:
+        - type: object
+          required: [type, command]
+          properties:
+            type:
+              type: string
+              enum: [stdio]
+            command:
+              type: string
+            args:
+              type: array
+              items:
+                type: string
+            env:
+              type: object
+              additionalProperties:
+                type: string
+            direct:
+              type: boolean
+        - type: object
+          required: [type, url]
+          properties:
+            type:
+              type: string
+              enum: [sse]
+            url:
+              type: string
+            headers:
+              type: object
+              additionalProperties:
+                type: string
+            direct:
+              type: boolean
+        - type: object
+          required: [type, url]
+          properties:
+            type:
+              type: string
+              enum: [streamable]
+            url:
+              type: string
+            headers:
+              type: object
+              additionalProperties:
+                type: string
+            direct:
+              type: boolean
+
+    McpServer:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        config:
+          $ref: '#/components/schemas/McpServerConfig'
+        enabled:
+          type: boolean
+        security:
+          type: string
+          enum: [network, container, wrapped, unmanaged]
+          nullable: true
+          description: Security type for the server
+        status:
+          type: object
+          properties:
+            serverInfo:
+              type: object
+              properties:
+                name:
+                  type: string
+                version:
+                  type: string
+            lastSeen:
+              type: string
+              nullable: true
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+        userId:
+          type: string
+        clientId:
+          type: string
+        sourceIP:
+          type: string
+        serverName:
+          type: string
+        sessionId:
+          type: string
+        messageId:
+          type: string
+        payloadMethod:
+          type: string
+        payloadToolName:
+          type: string
+        params:
+          type: object
+          nullable: true
+        result:
+          type: object
+          nullable: true
+        error:
+          type: object
+          nullable: true
+        requestAction:
+          type: string
+        rawParams:
+          type: object
+          nullable: true
+        responseAction:
+          type: string
+        rawResult:
+          type: object
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        timestampResult:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the message received a response
+
+    MessageResponse:
+      type: object
+      properties:
+        meta:
+          $ref: '#/components/schemas/Meta'
+        message:
+          $ref: '#/components/schemas/Message'
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        remaining:
+          type: integer
+        hasMore:
+          type: boolean
+        nextCursor:
+          type: integer
+          nullable: true
+        limit:
+          type: integer
+        sort:
+          type: string
+          enum: [asc, desc]
+
+    TimeSeriesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+                description: The timestamp for this data point
+              counts:
+                type: object
+                additionalProperties:
+                  type: number
+                description: Map of dimension values to their counts at this timestamp
+        query:
+          type: object
+          properties:
+            dimension:
+              type: string
+              description: The dimension being queried
+            timeUnit:
+              type: string
+              enum: [hour, day, week, month]
+              description: The time unit used for grouping
+            timeRange:
+              type: object
+              properties:
+                start:
+                  type: string
+                  format: date-time
+                  description: Start of the time range
+                end:
+                  type: string
+                  format: date-time
+                  description: End of the time range
+            filters:
+              type: object
+              properties:
+                serverName:
+                  type: string
+                serverId:
+                  type: integer
+                userId:
+                  type: string
+                clientId:
+                  type: integer
+                clientType:
+                  type: string
+                method:
+                  type: string
+                toolName:
+                  type: string
+                sourceIP:
+                  type: string
+
+    AggregateResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              value:
+                type: string
+                description: The value of the dimension
+              count:
+                type: integer
+                description: The count of messages for this value
+              success:
+                type: integer
+                description: The count of successful messages
+              error:
+                type: integer
+                description: The count of error messages
+        query:
+          type: object
+          properties:
+            dimension:
+              type: string
+              description: The dimension being queried
+            timeRange:
+              type: object
+              properties:
+                start:
+                  type: string
+                  format: date-time
+                  description: Start of the time range
+                end:
+                  type: string
+                  format: date-time
+                  description: End of the time range
+            filters:
+              type: object
+              properties:
+                serverName:
+                  type: string
+                userId:
+                  type: string
+                clientId:
+                  type: string
+                method:
+                  type: string
+                sourceIP:
+                  type: string
+
+    DimensionsResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Map of dimension names to arrays of their values
+        query:
+          type: object
+          properties:
+            dimensions:
+              type: array
+              items:
+                type: string
+                enum: [serverName, userId, clientId, method, sourceIP]
+              description: The dimensions that were queried
+            timeRange:
+              type: object
+              properties:
+                start:
+                  type: string
+                  format: date-time
+                  description: Start of the time range
+                end:
+                  type: string
+                  format: date-time
+                  description: End of the time range
+            filters:
+              type: object
+              properties:
+                serverName:
+                  type: string
+                userId:
+                  type: string
+                clientId:
+                  type: string
+                method:
+                  type: string
+                sourceIP:
+                  type: string
+
+    HostData:
+      type: object
+      required: [type, host, port]
+      properties:
+        type:
+          type: string
+          enum: [sse, streamable]
+        host:
+          type: string
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+
+    Client:
+      type: object
+      properties:
+        id:
+          type: string
+        token:
+          type: string
+        type:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        configPath:
+          type: string
+        autoUpdate:
+          type: boolean
+        enabled:
+          type: boolean
+        lastUpdated:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Policy:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        rules:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [allow, deny]
+              conditions:
+                type: object
+                properties:
+                  method:
+                    type: string
+                  serverName:
+                    type: string
+                  clientId:
+                    type: string
+                  userId:
+                    type: string
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Alert:
+      type: object
+      properties:
+        alertId:
+          type: integer
+          description: Unique identifier for the alert
+        messageId:
+          type: integer
+          description: ID of the message that triggered this alert
+        policyId:
+          type: integer
+          description: ID of the policy that triggered this alert
+        filterName:
+          type: string
+          description: Name of the filter that triggered this alert
+        origin:
+          type: string
+          enum: [client, server]
+          description: Origin of the message that triggered this alert
+        redactions:
+          type: object
+          nullable: true
+          description: Any redacted fields from the message
+        timestamp:
+          type: string
+          format: date-time
+          description: When the alert was triggered
+        createdAt:
+          type: string
+          format: date-time
+          description: When the alert was created
+        seenAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the alert was marked as seen
+        policyName:
+          type: string
+          description: Name of the policy that triggered this alert
+        policySeverity:
+          type: integer
+          description: Severity level of the policy
+        serverId:
+          type: integer
+          description: ID of the server that generated the message
+        clientId:
+          type: integer
+          description: ID of the client that generated the message
+        clientType:
+          type: string
+          description: Type of the client that generated the message
+      required:
+        - alertId
+        - messageId
+        - policyId
+        - filterName
+        - timestamp
+        - createdAt
+        - policyName
+        - policySeverity
+        - serverId
+        - clientId
+        - clientType
+
+    AlertFilter:
+      type: object
+      properties:
+        messageId:
+          type: integer
+          description: Filter by message ID
+        policyId:
+          type: integer
+          description: Filter by policy ID
+        filterName:
+          type: string
+          description: Filter by filter name
+        seen:
+          type: boolean
+          description: Filter by seen status
+        severity:
+          type: integer
+          description: Filter by policy severity
+        startTime:
+          type: string
+          format: date-time
+          description: Filter alerts created after this time
+        endTime:
+          type: string
+          format: date-time
+          description: Filter alerts created before this time
+        serverId:
+          type: integer
+          description: Filter by server ID
+        clientId:
+          type: integer
+          description: Filter by client ID
+        clientType:
+          type: string
+          description: Filter by client type
+
+    AlertTimeSeriesQuery:
+      type: object
+      properties:
+        dimension:
+          type: string
+          enum: [policyId, filterName, seen, severity, serverId, clientId, clientType]
+          description: The dimension to group by
+        timeUnit:
+          type: string
+          enum: [hour, day, week, month]
+          description: The time unit to group by
+        policyId:
+          type: integer
+          description: Filter by policy ID
+        filterName:
+          type: string
+          description: Filter by filter name
+        seen:
+          type: boolean
+          description: Filter by seen status
+        severity:
+          type: integer
+          description: Filter by policy severity
+        startTime:
+          type: string
+          format: date-time
+          description: Filter alerts created after this time
+        endTime:
+          type: string
+          format: date-time
+          description: Filter alerts created before this time
+        serverId:
+          type: integer
+          description: Filter by server ID
+        clientId:
+          type: integer
+          description: Filter by client ID
+        clientType:
+          type: string
+          description: Filter by client type
+
+    AlertAggregateQuery:
+      type: object
+      properties:
+        dimension:
+          type: string
+          enum: [policyId, filterName, seen, severity, serverId, clientId, clientType]
+          description: The dimension to group by
+        policyId:
+          type: integer
+          description: Filter by policy ID
+        filterName:
+          type: string
+          description: Filter by filter name
+        seen:
+          type: boolean
+          description: Filter by seen status
+        severity:
+          type: integer
+          description: Filter by policy severity
+        startTime:
+          type: string
+          format: date-time
+          description: Filter alerts created after this time
+        endTime:
+          type: string
+          format: date-time
+          description: Filter alerts created before this time
+        serverId:
+          type: integer
+          description: Filter by server ID
+        clientId:
+          type: integer
+          description: Filter by client ID
+        clientType:
+          type: string
+          description: Filter by client type
+
+    ClientServerData:
+      type: object
+      properties:
+        clientServerId:
+          type: integer
+          description: Unique identifier for the client-server relationship
+        clientId:
+          type: integer
+          description: ID of the client
+        serverId:
+          type: integer
+          description: ID of the server
+        clientServerName:
+          type: string
+          description: Name by which the client refers to this server
+        toolNames:
+          type: array
+          items:
+            type: string
+          description: Optional subset of tools to expose to this client
+        createdAt:
+          type: string
+          format: date-time
+          description: When the relationship was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the relationship was last updated
+      required:
+        - clientServerId
+        - clientId
+        - serverId
+        - clientServerName
+        - createdAt
+        - updatedAt
+
+    ClientServerRelationshipWithServer:
+      allOf:
+        - $ref: '#/components/schemas/ClientServerData'
+        - type: object
+          properties:
+            server:
+              $ref: '#/components/schemas/Server'
+              nullable: true
+
+    ClientServerRelationshipWithClient:
+      allOf:
+        - $ref: '#/components/schemas/ClientServerData'
+        - type: object
+          properties:
+            client:
+              $ref: '#/components/schemas/Client'
+              nullable: true
+
+    BridgeStatus:
+      type: object
+      properties:
+        running:
+          type: boolean
+        configuration:
+          type: object
+          properties:
+            host:
+              $ref: '#/components/schemas/ServerEndpointConfig'
+
+    ClientEndpointLogEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        message:
+          type: string
+        type:
+          type: string
+        clientName:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+
+    ServerEndpointConfig:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [sse, streamable]
+        host:
+          type: string
+        port:
+          type: integer
+
+    ClientComplianceData:
+      type: object
+      properties:
+        clientId:
+          type: integer
+          description: Unique identifier for the client
+        name:
+          type: string
+          description: Display name of the client
+        type:
+          type: string
+          enum: [anthropic, cursor, roocode, vscode, windsurf, generic]
+          description: Type of the client
+        enabled:
+          type: boolean
+          description: Whether the client is enabled
+        autoUpdate:
+          type: boolean
+          description: Whether the client has auto-update enabled
+        isLinked:
+          type: boolean
+          description: Whether the client has a configuration path set (linked/managed client)
+        lastScannedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the client was last scanned
+        hasPendingOperations:
+          type: boolean
+          description: Whether the client has pending sync operations
+        hasUnmanagedServers:
+          type: boolean
+          description: Whether the client has access to unmanaged servers
+        hasNonSecureServers:
+          type: boolean
+          description: Whether the client has access to non-secure servers
+
+    SystemComplianceData:
+      type: object
+      properties:
+        requireClientToken:
+          type: boolean
+          description: Whether only registered clients can access managed servers
+        strictServerAccess:
+          type: boolean
+          description: Whether clients can only access servers assigned to them
+
+    ComplianceData:
+      type: object
+      properties:
+        systemCompliance:
+          $ref: '#/components/schemas/SystemComplianceData'
+          description: System-level compliance settings
+        clientCompliance:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientComplianceData'
+          description: Client-level compliance data
+
+    ClientSettings:
+      type: object
+      properties:
+        logLevel:
+          type: string
+          enum: [error, warn, info, debug, trace]
+          description: The current log level for the client
+        # Future client settings can be added here
+        # theme: 'dark' | 'light';
+        # language: string;
+        # etc.
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              meta:
+                $ref: '#/components/schemas/Meta'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              meta:
+                $ref: '#/components/schemas/Meta'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              meta:
+                $ref: '#/components/schemas/Meta'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              meta:
+                $ref: '#/components/schemas/Meta'
+    ServerError:
+      description: Server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              meta:
+                $ref: '#/components/schemas/Meta'
+
+paths:
+  # MCP Server Management
+  /host:
+    get:
+      tags:
+        - Gateway
+      summary: Get MCP host configuration
+      responses:
+        '200':
+          description: Host configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostData'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Gateway
+      summary: Update MCP host configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HostData'
+      responses:
+        '200':
+          description: Host configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostData'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /servers:
+    get:
+      tags:
+        - Servers
+      summary: List MCP servers
+      parameters:
+        - name: managed
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter servers by managed status. If true, returns only managed servers (security != "unmanaged"). If false, returns only unmanaged servers (security = "unmanaged"). If not specified, returns all servers.
+      responses:
+        '200':
+          description: List of servers retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  servers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/McpServer'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Servers
+      summary: Create a new MCP server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, config]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                config:
+                  $ref: '#/components/schemas/McpServerConfig'
+                enabled:
+                  type: boolean
+                security:
+                  type: string
+                  enum: [network, container, wrapped]
+                  nullable: true
+                  description: Security type for the server
+      responses:
+        '201':
+          description: Server created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpServer'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /servers/{serverId}:
+    get:
+      tags:
+        - Servers
+      summary: Get MCP server details
+      parameters:
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Server details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  server:
+                    $ref: '#/components/schemas/McpServer'
+        '404':
+          description: Server not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Servers
+      summary: Update MCP server
+      parameters:
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                config:
+                  $ref: '#/components/schemas/McpServerConfig'
+                enabled:
+                  type: boolean
+                security:
+                  type: string
+                  enum: [network, container, wrapped]
+                  nullable: true
+                  description: Security type for the server
+      responses:
+        '200':
+          description: Server updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  server:
+                    $ref: '#/components/schemas/McpServer'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Server not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Servers
+      summary: Delete MCP server
+      parameters:
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Server deleted successfully
+        '404':
+          description: Server not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /clients:
+    get:
+      tags:
+        - Clients
+      summary: List clients
+      responses:
+        '200':
+          description: List of clients retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clients:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Client'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Clients
+      summary: Create a new client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type]
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                description:
+                  type: string
+                configPath:
+                  type: string
+                autoUpdate:
+                  type: boolean
+      responses:
+        '201':
+          description: Client created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /clients/{clientId}:
+    get:
+      tags:
+        - Clients
+      summary: Get client details
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Client details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  client:
+                    $ref: '#/components/schemas/Client'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Clients
+      summary: Update client
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type]
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                description:
+                  type: string
+                configPath:
+                  type: string
+                autoUpdate:
+                  type: boolean
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Client updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  client:
+                    $ref: '#/components/schemas/Client'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Clients
+      summary: Delete client
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Client deleted successfully
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /clients/token/{token}:
+    get:
+      tags:
+        - Clients
+      summary: Get client by token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$'
+            description: Base32 token in the format XXXX-XXXX-XXXX
+      responses:
+        '200':
+          description: Client details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  client:
+                    $ref: '#/components/schemas/Client'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /messages:
+    get:
+      tags:
+        - Messages
+      summary: Get messages
+      description: Retrieve messages with optional filtering by server and other criteria
+      parameters:
+        - name: serverName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter messages by server name
+        - name: serverId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter messages by server ID
+        - name: payloadMethod
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by payload method
+        - name: payloadToolName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by payload tool name
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by user ID
+        - name: clientId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter by client ID
+        - name: clientType
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by client type
+        - name: sourceIP
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by source IP
+        - name: sessionId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by session ID
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort order for messages
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Cursor for pagination
+      responses:
+        '200':
+          description: Messages retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      remaining:
+                        type: integer
+                      hasMore:
+                        type: boolean
+                      nextCursor:
+                        type: integer
+                        nullable: true
+                      limit:
+                        type: integer
+                      sort:
+                        type: string
+                        enum: [asc, desc]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /messages/{messageId}:
+    get:
+      tags:
+        - Messages
+      summary: Get message details
+      description: Retrieves detailed information about a specific message
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the message to retrieve
+      responses:
+        '200':
+          description: Message details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Proxy Gateway Endpoints
+  /proxy:
+    post:
+      tags:
+        - Proxy
+      summary: Get proxy configuration for MCP server
+      description: Validates server and client tokens and returns proxy configuration with JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user, args]
+              properties:
+                user:
+                  type: string
+                  description: User identifier
+                args:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 2
+                  description: |
+                    Array of arguments where:
+                    - First element: Server token (optionally prefixed with server name and slash)
+                    - Second element (optional): Client token
+      responses:
+        '200':
+          description: Proxy configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  token:
+                    type: string
+                    description: JWT token for proxy authentication
+                  config:
+                    type: object
+                    description: MCP server configuration for proxy
+        '400':
+          description: Invalid request or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /proxy/{serverName}/filterMessage:
+    post:
+      tags:
+        - Proxy
+      summary: Filter MCP message
+      description: Validates JWT and processes a JSON-RPC request or response message
+      parameters:
+        - name: serverName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Name of the MCP server
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - message
+              properties:
+                type:
+                  type: string
+                  enum: [request, response]
+                  description: Type of the message (request or response)
+                sessionId:
+                  type: string
+                  description: Session identifier
+                message:
+                  type: object
+                  properties:
+                    jsonrpc:
+                      type: string
+                      enum: ["2.0"]
+                      description: JSON-RPC version
+                    id:
+                      oneOf:
+                        - type: string
+                        - type: number
+                      description: JSON-RPC message ID
+                    method:
+                      type: string
+                      description: JSON-RPC method name
+                    params:
+                      type: object
+                      description: JSON-RPC parameters
+                    result:
+                      type: object
+                      description: JSON-RPC result (for response messages)
+                    error:
+                      type: object
+                      properties:
+                        code:
+                          type: integer
+                          description: Error code
+                        message:
+                          type: string
+                          description: Error message
+      responses:
+        '200':
+          description: Message processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  message:
+                    type: object
+                    description: Processed message
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /analytics/messages/timeSeries:
+    get:
+      tags:
+        - Analytics
+      summary: Get message time series
+      parameters:
+        - name: dimension
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [payloadMethod, serverName, clientId, payloadToolName, userId, clientType, sourceIP, sessionId]
+        - name: timeUnit
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [hour, day, week, month]
+        - name: serverName
+          in: query
+          schema:
+            type: string
+        - name: serverId
+          in: query
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+        - name: clientType
+          in: query
+          schema:
+            type: string
+        - name: payloadMethod
+          in: query
+          schema:
+            type: string
+        - name: payloadToolName
+          in: query
+          schema:
+            type: string
+        - name: sourceIP
+          in: query
+          schema:
+            type: string
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Time series retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  timeSeries:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            timestamp:
+                              type: string
+                              format: date-time
+                            counts:
+                              type: object
+                              additionalProperties:
+                                type: integer
+                      query:
+                        type: object
+                        properties:
+                          dimension:
+                            type: string
+                          timeUnit:
+                            type: string
+                          timeRange:
+                            type: object
+                            properties:
+                              start:
+                                type: string
+                                format: date-time
+                              end:
+                                type: string
+                                format: date-time
+                          filters:
+                            type: object
+                            properties:
+                              serverName:
+                                type: string
+                              serverId:
+                                type: integer
+                              userId:
+                                type: string
+                              clientId:
+                                type: integer
+                              clientType:
+                                type: string
+                              method:
+                                type: string
+                              toolName:
+                                type: string
+                              sourceIP:
+                                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /analytics/messages/aggregate:
+    get:
+      tags:
+        - Analytics
+      summary: Get message aggregates
+      parameters:
+        - name: dimension
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [payloadMethod, serverName, clientId, payloadToolName]
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Aggregates retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AggregateResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /policies:
+    get:
+      tags:
+        - Policies
+      summary: List policies
+      responses:
+        '200':
+          description: List of policies retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Policy'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Policies
+      summary: Create a new policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, rules]
+              properties:
+                name:
+                  type: string
+                rules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum: [allow, deny]
+                      conditions:
+                        type: object
+                        properties:
+                          method:
+                            type: string
+                          serverName:
+                            type: string
+                          clientId:
+                            type: string
+                          userId:
+                            type: string
+                enabled:
+                  type: boolean
+      responses:
+        '201':
+          description: Policy created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Policy'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /policies/{policyId}:
+    get:
+      tags:
+        - Policies
+      summary: Get policy details
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Policy details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy:
+                    $ref: '#/components/schemas/Policy'
+        '404':
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Policies
+      summary: Update policy
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, rules]
+              properties:
+                name:
+                  type: string
+                rules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum: [allow, deny]
+                      conditions:
+                        type: object
+                        properties:
+                          method:
+                            type: string
+                          serverName:
+                            type: string
+                          clientId:
+                            type: string
+                          userId:
+                            type: string
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Policy updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy:
+                    $ref: '#/components/schemas/Policy'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Policies
+      summary: Delete policy
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Policy deleted successfully
+        '404':
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /appSettings:
+    get:
+      tags:
+        - Gateway
+      summary: Get application settings
+      responses:
+        '200':
+          description: Application settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Gateway
+      summary: Update application settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Application settings updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /clientSettings:
+    get:
+      tags:
+        - Gateway
+      summary: Get client settings
+      description: Retrieve client-specific settings like log level
+      responses:
+        '200':
+          description: Client settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ClientSettings'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Alert Endpoints
+  /alerts:
+    get:
+      tags:
+        - Alerts
+      summary: List alerts
+      description: Retrieve a list of alerts with optional filtering and pagination
+      parameters:
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+          description: Sort order for alerts
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: Maximum number of alerts to return
+        - name: cursor
+          in: query
+          schema:
+            type: integer
+          description: Cursor for pagination
+        - name: messageId
+          in: query
+          schema:
+            type: integer
+          description: Filter by message ID
+        - name: policyId
+          in: query
+          schema:
+            type: integer
+          description: Filter by policy ID
+        - name: filterName
+          in: query
+          schema:
+            type: string
+          description: Filter by filter name
+        - name: seen
+          in: query
+          schema:
+            type: boolean
+          description: Filter by seen status
+        - name: severity
+          in: query
+          schema:
+            type: integer
+          description: Filter by policy severity
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter alerts created after this time
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter alerts created before this time
+        - name: serverId
+          in: query
+          schema:
+            type: integer
+          description: Filter by server ID
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+          description: Filter by client ID
+        - name: clientType
+          in: query
+          schema:
+            type: string
+          description: Filter by client type
+      responses:
+        '200':
+          description: Alerts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alert'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /alerts/{alertId}:
+    parameters:
+      - name: alertId
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: ID of the alert to retrieve
+    get:
+      tags:
+        - Alerts
+      summary: Get alert by ID
+      description: Retrieve a single alert by its ID
+      responses:
+        '200':
+          description: Alert details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '404':
+          description: Alert not found
+    patch:
+      tags:
+        - Alerts
+      summary: Update alert seen status
+      description: Mark an alert as seen or unseen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - seen
+              properties:
+                seen:
+                  type: boolean
+                  description: Whether to mark the alert as seen (true) or unseen (false)
+      responses:
+        '200':
+          description: Alert updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '404':
+          description: Alert not found
+
+  /alerts/mark-all:
+    post:
+      tags:
+        - Alerts
+      summary: Mark all alerts as seen or unseen
+      description: |
+        Marks all alerts (or alerts matching the provided filters) as either seen or unseen.
+        Supports the same filter parameters as the GET /alerts endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - seen
+              properties:
+                seen:
+                  type: boolean
+                  description: Whether to mark alerts as seen (true) or unseen (false)
+                messageId:
+                  type: integer
+                  description: Filter by message ID
+                policyId:
+                  type: integer
+                  description: Filter by policy ID
+                filterName:
+                  type: string
+                  description: Filter by filter name
+                severity:
+                  type: integer
+                  description: Filter by policy severity
+                startTime:
+                  type: string
+                  format: date-time
+                  description: Filter alerts created after this time
+                endTime:
+                  type: string
+                  format: date-time
+                  description: Filter alerts created before this time
+                serverId:
+                  type: integer
+                  description: Filter by server ID
+                clientId:
+                  type: integer
+                  description: Filter by client ID
+                clientType:
+                  type: string
+                  description: Filter by client type
+      responses:
+        '200':
+          description: Successfully marked alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Alert Analytics Endpoints
+  /analytics/alerts/timeSeries:
+    get:
+      tags:
+        - Analytics
+      summary: Get alert time series data
+      description: Retrieve time series data for alerts with optional filtering
+      parameters:
+        - name: dimension
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [policyId, filterName, seen, severity, serverId, clientId, clientType]
+          description: The dimension to group by
+        - name: timeUnit
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [hour, day, week, month]
+          description: The time unit to group by
+        - name: policyId
+          in: query
+          schema:
+            type: integer
+          description: Filter by policy ID
+        - name: filterName
+          in: query
+          schema:
+            type: string
+          description: Filter by filter name
+        - name: seen
+          in: query
+          schema:
+            type: boolean
+          description: Filter by seen status
+        - name: severity
+          in: query
+          schema:
+            type: integer
+          description: Filter by policy severity
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter alerts created after this time
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter alerts created before this time
+        - name: serverId
+          in: query
+          schema:
+            type: integer
+          description: Filter by server ID
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+          description: Filter by client ID
+        - name: clientType
+          in: query
+          schema:
+            type: string
+          description: Filter by client type
+      responses:
+        '200':
+          description: Time series data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeSeriesResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /analytics/alerts/aggregate:
+    get:
+      tags:
+        - Analytics
+      summary: Get alert aggregate data
+      description: Retrieve aggregate data for alerts with optional filtering
+      parameters:
+        - name: dimension
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [policyId, filterName, seen, severity, serverId, clientId, clientType]
+          description: The dimension to group by
+        - name: policyId
+          in: query
+          schema:
+            type: integer
+          description: Filter by policy ID
+        - name: filterName
+          in: query
+          schema:
+            type: string
+          description: Filter by filter name
+        - name: seen
+          in: query
+          schema:
+            type: boolean
+          description: Filter by seen status
+        - name: severity
+          in: query
+          schema:
+            type: integer
+          description: Filter by policy severity
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter alerts created after this time
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter alerts created before this time
+        - name: serverId
+          in: query
+          schema:
+            type: integer
+          description: Filter by server ID
+        - name: clientId
+          in: query
+          schema:
+            type: integer
+          description: Filter by client ID
+        - name: clientType
+          in: query
+          schema:
+            type: string
+          description: Filter by client type
+      responses:
+        '200':
+          description: Aggregate data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        value:
+                          type: string
+                        count:
+                          type: integer
+                  query:
+                    $ref: '#/components/schemas/AlertAggregateQuery'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /analytics/dimensions:
+    get:
+      tags:
+        - Analytics
+      summary: Get dimension values for analytics
+      description: Retrieves values for specified dimensions, supporting ID-based lookups, static values, and dynamic values from messages/alerts
+      parameters:
+        - name: dimension
+          in: query
+          required: true
+          description: Dimensions to retrieve
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                # Message dimensions
+                - serverId
+                - serverName
+                - userId
+                - clientId
+                - clientType
+                - payloadMethod
+                - payloadToolName
+                - sourceIP
+                - sessionId
+                # Alert dimensions
+                - policyId
+                - filterName
+                - seen
+                - severity
+        - name: timeRange
+          in: query
+          required: false
+          description: Time range for filtering (e.g. 24h, 7d)
+          schema:
+            type: string
+        # Message filters
+        - name: serverName
+          in: query
+          required: false
+          description: Filter by server name
+          schema:
+            type: string
+        - name: serverId
+          in: query
+          required: false
+          description: Filter by server ID
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          required: false
+          description: Filter by user ID
+          schema:
+            type: string
+        - name: clientId
+          in: query
+          required: false
+          description: Filter by client ID
+          schema:
+            type: integer
+        - name: clientType
+          in: query
+          required: false
+          description: Filter by client type
+          schema:
+            type: string
+            enum:
+              - cursor
+              - roocode
+              - windsurf
+              - claudecode
+              - vscode
+              - generic
+        - name: payloadMethod
+          in: query
+          required: false
+          description: Filter by payload method
+          schema:
+            type: string
+        - name: payloadToolName
+          in: query
+          required: false
+          description: Filter by payload tool name
+          schema:
+            type: string
+        # Alert filters
+        - name: policyId
+          in: query
+          required: false
+          description: Filter by policy ID
+          schema:
+            type: integer
+        - name: filterName
+          in: query
+          required: false
+          description: Filter by filter name
+          schema:
+            type: string
+        - name: seen
+          in: query
+          required: false
+          description: Filter by seen status
+          schema:
+            type: boolean
+        - name: severity
+          in: query
+          required: false
+          description: Filter by severity level
+          schema:
+            type: integer
+            enum: [1, 2, 3, 4, 5]
+      responses:
+        '200':
+          description: Successfully retrieved dimension values
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          value:
+                            type: string
+                            description: The dimension value
+                          label:
+                            type: string
+                            description: The human-readable label for the value
+                        required:
+                          - value
+                          - label
+                  query:
+                    type: object
+                    properties:
+                      dimensions:
+                        type: array
+                        items:
+                          type: string
+                      timeRange:
+                        type: object
+                        properties:
+                          start:
+                            type: string
+                            format: date-time
+                          end:
+                            type: string
+                            format: date-time
+                      filters:
+                        type: object
+                        properties:
+                          serverName:
+                            type: string
+                          serverId:
+                            type: integer
+                          userId:
+                            type: string
+                          clientId:
+                            type: integer
+                          clientType:
+                            type: string
+                          payloadMethod:
+                            type: string
+                          payloadToolName:
+                            type: string
+                          sourceIP:
+                            type: string
+                          sessionId:
+                            type: string
+                          policyId:
+                            type: integer
+                          filterName:
+                            type: string
+                          seen:
+                            type: boolean
+                          severity:
+                            type: integer
+                required:
+                  - data
+                  - query
+        '400':
+          description: Bad request - missing required parameters or invalid values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Client-Server Relationship Endpoints
+  /clients/{clientId}/servers:
+    get:
+      tags:
+        - Client-Server Relationships
+      summary: Get all client-server relationships for a client
+      description: Retrieve all server relationships for a specific client, including server details
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the client
+      responses:
+        '200':
+          description: Client-server relationships retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClientServerRelationshipWithServer'
+        '400':
+          description: Invalid client ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Client-Server Relationships
+      summary: Add multiple servers to a client
+      description: Create multiple client-server relationships by providing an array of server IDs. Existing relationships are skipped.
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: integer
+                  description: Single server ID
+                - type: array
+                  items:
+                    type: integer
+                  description: Array of server IDs
+            examples:
+              single:
+                summary: Add single server
+                value: 1
+              multiple:
+                summary: Add multiple servers
+                value: [1, 2, 3]
+      responses:
+        '200':
+          description: Client-server relationships created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClientServerData'
+                    description: Array of created relationships (existing relationships are skipped)
+        '400':
+          description: Invalid client ID or server IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /clients/{clientId}/sync:
+    post:
+      tags:
+        - Clients
+      summary: Sync client configuration
+      description: |
+        Scan, import, convert, and/or update client configuration. Each operation can be used independently or in combination:
+        - `scan`: If true, scans the client configuration file and returns a list of all servers found, including their type and whether they are managed or unmanaged. Does not modify any data.
+        - `import`: Import all servers from the client configuration.
+        - `convert`: Convert unmanaged servers to managed. To convert all unmanaged servers, use `{ convert: true }`. To convert a specific server, use `{ convert: true, serverIds: [serverId] }`.
+        - `convertWrapping`: If true, after converting unmanaged servers to managed, attempt to wrap them in a container if possible.
+        - `update`: Update the client to use hosted server (tsh serverName clientToken) for all configured servers.
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                configPath:
+                  type: string
+                  description: Optional override for client config file path
+                scan:
+                  type: boolean
+                  description: If true, scans the client configuration file and returns a list of all servers found, including their type and whether they are managed or unmanaged. Does not modify any data.
+                import:
+                  type: boolean
+                  description: Import all servers from client
+                convert:
+                  type: boolean
+                  description: Convert unmanaged servers to managed if possible
+                convertWrapping:
+                  type: boolean
+                  description: If true, after converting unmanaged servers to managed, attempt to wrap them in a container if possible.
+                update:
+                  type: boolean
+                  description: Update client to use hosted server (tsh serverName clientToken) for all configured servers
+                serverIds:
+                  type: array
+                  items:
+                    type: integer
+                  description: Optional array of server IDs to limit convert and update operations to specific servers only
+              required:
+                - scan
+      responses:
+        '200':
+          description: Client sync completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sync:
+                    type: object
+                    properties:
+                      clientId:
+                        type: integer
+                      syncOptions:
+                        type: object
+                        properties:
+                          configPath:
+                            type: string
+                          scan:
+                            type: boolean
+                          import:
+                            type: boolean
+                          convert:
+                            type: boolean
+                          convertWrapping:
+                            type: boolean
+                          update:
+                            type: boolean
+                          serverIds:
+                            type: array
+                            items:
+                              type: integer
+                            description: Array of server IDs that were processed (if specified in request)
+                      scanResults:
+                        type: object
+                        properties:
+                          servers:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                serverName:
+                                  type: string
+                                config:
+                                  type: object
+                                isManaged:
+                                  type: boolean
+                                managedServerName:
+                                  type: string
+                      importResults:
+                        type: object
+                        properties:
+                          servers:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                serverId:
+                                  type: integer
+                                serverName:
+                                  type: string
+                      convertResults:
+                        type: object
+                        properties:
+                          servers:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                serverId:
+                                  type: integer
+                                serverName:
+                                  type: string
+                                originalServerName:
+                                  type: string
+                      updateResults:
+                        type: object
+                        properties:
+                          servers:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                clientServerName:
+                                  type: string
+                                serverName:
+                                  type: string
+        '400':
+          description: Invalid client ID or request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /clients/{clientId}/servers/{serverId}:
+    get:
+      tags:
+        - Client-Server Relationships
+      summary: Get specific client-server relationship
+      description: Retrieve a specific client-server relationship
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the client
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the server
+      responses:
+        '200':
+          description: Client-server relationship retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationship:
+                    $ref: '#/components/schemas/ClientServerData'
+        '400':
+          description: Invalid client ID or server ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Client-server relationship not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Client-Server Relationships
+      summary: Create or update client-server relationship
+      description: Create a new client-server relationship or update an existing one
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the client
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientServerName:
+                  type: string
+                  description: Name by which the client refers to this server
+                toolNames:
+                  type: array
+                  items:
+                    type: string
+                  description: Optional subset of tools to expose to this client
+      responses:
+        '200':
+          description: Client-server relationship created or updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationship:
+                    $ref: '#/components/schemas/ClientServerData'
+        '400':
+          description: Invalid client ID or server ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Client-Server Relationships
+      summary: Delete client-server relationship
+      description: Remove a client-server relationship
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the client
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the server
+      responses:
+        '204':
+          description: Client-server relationship deleted successfully
+        '400':
+          description: Invalid client ID or server ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Client-server relationship not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /servers/{serverId}/clients:
+    get:
+      tags:
+        - Client-Server Relationships
+      summary: Get all client-server relationships for a server
+      description: Retrieve all client relationships for a specific server, including client details
+      parameters:
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the server
+      responses:
+        '200':
+          description: Server-client relationships retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClientServerRelationshipWithClient'
+        '400':
+          description: Invalid server ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Client-Server Relationships
+      summary: Add multiple clients to a server
+      description: Create multiple client-server relationships by providing an array of client IDs. Existing relationships are skipped. Clients with autoUpdate enabled will be synced.
+      parameters:
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: integer
+                  description: Single client ID
+                - type: array
+                  items:
+                    type: integer
+                  description: Array of client IDs
+            examples:
+              single:
+                summary: Add single client
+                value: 1
+              multiple:
+                summary: Add multiple clients
+                value: [1, 2, 3]
+      responses:
+        '200':
+          description: Client-server relationships created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClientServerData'
+                    description: Array of created relationships (existing relationships are skipped)
+        '400':
+          description: Invalid server ID or client IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Server not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /servers/{serverId}/clients/{clientId}:
+    get:
+      tags:
+        - Client-Server Relationships
+      summary: Get specific server-client relationship
+      description: Retrieve a specific server-client relationship
+      parameters:
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the server
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the client
+      responses:
+        '200':
+          description: Server-client relationship retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationship:
+                    $ref: '#/components/schemas/ClientServerData'
+        '400':
+          description: Invalid server ID or client ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Server-client relationship not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Client-Server Relationships
+      summary: Create or update server-client relationship
+      description: Create a new server-client relationship or update an existing one
+      parameters:
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the server
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientServerName:
+                  type: string
+                  description: Name by which the client refers to this server
+                toolNames:
+                  type: array
+                  items:
+                    type: string
+                  description: Optional subset of tools to expose to this client
+      responses:
+        '200':
+          description: Server-client relationship created or updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationship:
+                    $ref: '#/components/schemas/ClientServerData'
+        '400':
+          description: Invalid server ID or client ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Client-Server Relationships
+      summary: Delete server-client relationship
+      description: Remove a server-client relationship
+      parameters:
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the server
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the client
+      responses:
+        '204':
+          description: Server-client relationship deleted successfully
+        '400':
+          description: Invalid server ID or client ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Server-client relationship not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error' 
+
+  /retention/enforce:
+    get:
+      tags:
+        - Retention
+      summary: Get retention statistics
+      description: Get statistics about current retention state without performing cleanup
+      responses:
+        '200':
+          description: Retention statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stats:
+                    type: object
+                    properties:
+                      totalMessages:
+                        type: integer
+                        description: Total number of messages in the system
+                      totalAlerts:
+                        type: integer
+                        description: Total number of alerts in the system
+                      oldMessages:
+                        type: integer
+                        description: Number of messages older than retention period
+                      oldAlerts:
+                        type: integer
+                        description: Number of alerts older than retention period
+                      messagesWithAlerts:
+                        type: integer
+                        description: Number of old messages that have alerts (will be preserved)
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Retention
+      summary: Enforce retention policies
+      description: |
+        Manually trigger retention policy enforcement. This will:
+        1. Delete old alerts (respecting alert retention period)
+        2. Delete old messages that don't have any alerts (respecting message retention period)
+        
+        Messages with alerts are preserved until the alert retention period expires.
+      responses:
+        '200':
+          description: Retention policies enforced successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stats:
+                    type: object
+                    properties:
+                      messagesDeleted:
+                        type: integer
+                        description: Number of messages deleted
+                      alertsDeleted:
+                        type: integer
+                        description: Number of alerts deleted
+                      messagesPreserved:
+                        type: integer
+                        description: Number of messages preserved due to having alerts
+                      alertsPreserved:
+                        type: integer
+                        description: Number of alerts preserved
+                      errors:
+                        type: array
+                        items:
+                          type: string
+                        description: Any errors that occurred during retention enforcement
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error' 
+
+  /bridge/status:
+    get:
+      tags: [Bridge]
+      summary: Get bridge status
+      description: Returns whether the bridge is running and its configuration.
+      responses:
+        '200':
+          description: Bridge status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/BridgeStatus'
+        '500':
+          description: Internal server error
+  /bridge/start:
+    post:
+      tags: [Bridge]
+      summary: Start the bridge
+      responses:
+        '200':
+          description: Bridge started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '500':
+          description: Internal server error
+  /bridge/stop:
+    post:
+      tags: [Bridge]
+      summary: Stop the bridge
+      responses:
+        '200':
+          description: Bridge stopped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '500':
+          description: Internal server error
+  /bridge/clients:
+    get:
+      tags: [Bridge]
+      summary: List bridge client configurations
+      responses:
+        '200':
+          description: List of client configs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clients:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        '500':
+          description: Internal server error
+  /bridge/clients/{name}/logs:
+    get:
+      tags: [Bridge]
+      summary: Get log events for a specific client
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Log events for the client
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClientEndpointLogEntry'
+        '404':
+          description: Client not found
+        '500':
+          description: Internal server error
+
+  /compliance:
+    get:
+      tags:
+        - Compliance
+      summary: Get compliance data
+      description: |
+        Retrieves comprehensive compliance data including system settings and client compliance status.
+        
+        **System Compliance:**
+        - Client Token Required: Whether only registered clients can access managed servers
+        - Strict Server Access: Whether clients can only access servers assigned to them
+        
+        **Client Compliance:**
+        - Managed Client Configuration: Whether clients are linked and have been scanned
+        - Server Security: Whether clients have access to unmanaged or non-secure servers
+        - Regular Scanning: Whether clients have been scanned within 30 days
+        - Pending Operations: Whether clients have pending sync operations
+        
+        **Severity Levels:**
+        - Error: Critical issues (unlinked clients, never scanned, unmanaged/non-secure servers)
+        - Warning: Operational issues (not scanned within 30 days, pending operations)
+        - Compliant: No issues detected
+      responses:
+        '200':
+          description: Compliance data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  compliance:
+                    $ref: '#/components/schemas/ComplianceData'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

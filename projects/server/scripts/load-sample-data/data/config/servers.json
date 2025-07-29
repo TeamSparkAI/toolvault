@@ -1,0 +1,45 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "catalogId": "fetch:95ec80cc",
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "-q",
+        "mcp-server-fetch"
+      ]
+    },
+    "everything": {
+      "catalogId": "everything:82c71f2c",
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-everything"
+      ]
+    },
+    "filesystem": {
+      "catalogId": "filesystem:df30a77e",
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/bob/Documents/GitHub/teamspark-workbench/test_files"
+      ]
+    },
+    "sqlite": {
+      "catalogId": "sqlite:d190b596",
+      "type": "stdio",
+      "command": "/Users/bob/.local/bin/uv",
+      "args": [
+        "--directory",
+        "/Users/bob/Documents/GitHub/modelcontextprotocol/servers/src/sqlite",
+        "run",
+        "mcp-server-sqlite",
+        "--db-path",
+        "~/test.db"
+      ]
+    }
+  }
+}

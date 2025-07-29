@@ -1,0 +1,89 @@
+{
+    "server": "fetch",
+    "file": "fetch_alert1.json",
+    "weight": 2,
+    "description": "Init server, list tools, fetch one page from the internet",
+    "messages": [
+        {
+            "origin": "client",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "mcp-client",
+                        "version": "1.0.0",
+                        "transport": null
+                    }
+                }
+            }
+        },
+        {
+            "origin": "server",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "result": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {
+                        "experimental": {},
+                        "prompts": {
+                            "listChanged": false
+                        },
+                        "tools": {
+                            "listChanged": false
+                        }
+                    },
+                    "serverInfo": {
+                        "name": "mcp-fetch",
+                        "version": "1.9.3"
+                    }
+                }
+            }
+        },
+        {
+            "origin": "client",
+            "payload": {
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized"
+            }
+        },
+        {
+            "origin": "client",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "fetch",
+                    "arguments": {
+                        "max_length": 5000,
+                        "start_index": 0,
+                        "raw": false,
+                        "url": "https://test.com/policyAlert"
+                    }
+                }
+            }
+        },
+        {
+            "origin": "server",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 3,
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "This is a website that returns an Amex card number: 372119825827619 and maybe a GitHub PAT: ghp_123456789012345678901234567890123456 just for fun."
+                        }
+                    ],
+                    "isError": false
+                }
+            }
+        }
+    ]
+}

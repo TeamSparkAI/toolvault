@@ -1,0 +1,39 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: Server Project
+globs: 
+alwaysApply: true
+---
+# Overview
+
+## TypeScript
+- We strive to use TypeScript as fully as possible.  
+- Use of "any" as a type, or coercing a type with "as" should be used rarely if ever.
+
+## Model Layer
+- Use abstract base classes for models (e.g., ServerModel, PolicyModel)
+- Implement SQLite-specific models in sqlite/ subdirectory
+- Always deserialize JSON fields from database (config, filters)
+- Use ModelFactory singleton pattern for model access
+- Use proper TypeScript interfaces for model data structures
+
+## API Design
+- Use Next.js API routes in app/api/v1/
+- API endpoints return typed payloads using JsonResponse, and they export those types
+- API clients should import payload types from the API endpoint and use JsonResponseFetch to extract that properly typed payload
+- Document all endpoints (including any changes) in the existing public openapi.yaml file
+
+## Database
+- Use SQLite with proper migrations - always ask before create a new migration
+- Include triggers for updatedAt timestamps
+- Use proper indexing for frequently queried fields
+- Use transactions for multi-step operations
+- Properly handle JSON serialization/deserialization
+- Use parameterized queries to prevent SQL injection
+
+## Testing
+- Write unit tests only when directed

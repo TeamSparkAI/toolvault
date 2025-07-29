@@ -1,0 +1,31 @@
+[
+    {
+        "type": "ttv",
+        "name": "Tool Vault",
+        "scope": "project",
+        "description": "The TeamSpark MCP Tool Vault is a tool for mananging MCP servers and tools.",
+        "token": "0AFD-0JMA-1VH8-1TR7"
+    },
+    {
+        "type": "cursor",
+        "name": "Cursor",
+        "scope": "project",
+        "description": "Cursor is a tool for analyzing codebases and generating code.",
+        "token": "11BI-1N15-1CVH-1KU5"
+    },
+    {
+        "type": "claudecode",
+        "name": "Claude Code",
+        "scope": "project",
+        "description": "Claude Code is a tool for analyzing codebases and generating code.",
+        "token": "1Q5L-16GR-1C9C-0Q52"
+    },
+    {
+        "type": "generic",
+        "name": "Workbench",
+        "scope": "project",
+        "description": "Teamspark Workbench is a AI agent for solving hard problems.",
+        "token": "183S-0PGA-0T49-1P1U",
+        "configPath": "/Users/bob/Documents/Workspaces/test/tspark.json"
+    }
+]

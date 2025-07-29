@@ -1,0 +1,90 @@
+{
+    "server": "sqlite",
+    "file": "sqlite_alert1.json",
+    "weight": 1,
+    "description": "Init server, list tools, list tables, get contents of table",
+    "messages": [
+        {
+            "origin": "client",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "mcp-client",
+                        "version": "1.0.0",
+                        "transport": null
+                    }
+                }
+            }
+        },
+        {
+            "origin": "server",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "experimental": {},
+                        "prompts": {
+                            "listChanged": false
+                        },
+                        "resources": {
+                            "subscribe": false,
+                            "listChanged": false
+                        },
+                        "tools": {
+                            "listChanged": false
+                        }
+                    },
+                    "serverInfo": {
+                        "name": "sqlite",
+                        "version": "0.1.0"
+                    }
+                }
+            }
+        },
+        {
+            "origin": "client",
+            "payload": {
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized"
+            }
+        },
+        {
+            "origin": "client",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {
+                    "name": "read_query",
+                    "arguments": {
+                        "query": "SELECT * FROM host_info"
+                    }
+                }
+            }
+        },
+        {
+            "origin": "server",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 4,
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "[{'ipAddress': '10.0.0.1', 'uuid': '17e14e73-4f83-43bc-b564-35889d1fd658'}]"
+                        }
+                    ],
+                    "isError": false
+                }
+            }
+        }
+    ]
+}

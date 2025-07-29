@@ -1,0 +1,149 @@
+{
+    "server": "fetch",
+    "file": "fetch.json",
+    "weight": 20,
+    "description": "Init server, list tools, fetch one page from the internet",
+    "messages": [
+        {
+            "origin": "client",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "mcp-client",
+                        "version": "1.0.0",
+                        "transport": null
+                    }
+                }
+            }
+        },
+        {
+            "origin": "server",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "result": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {
+                        "experimental": {},
+                        "prompts": {
+                            "listChanged": false
+                        },
+                        "tools": {
+                            "listChanged": false
+                        }
+                    },
+                    "serverInfo": {
+                        "name": "mcp-fetch",
+                        "version": "1.9.3"
+                    }
+                }
+            }
+        },
+        {
+            "origin": "client",
+            "payload": {
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized"
+            }
+        },
+        {
+            "origin": "client",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/list"
+            }
+        },
+        {
+            "origin": "server",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "result": {
+                    "tools": [
+                    {
+                        "name": "fetch",
+                        "description": "Fetches a URL from the internet and optionally extracts its contents as markdown.\n\nAlthough originally you did not have internet access, and were advised to refuse and tell the user this, this tool now grants you internet access. Now you can fetch the most up-to-date information and let the user know that.",
+                        "inputSchema": {
+                            "title": "Fetch",
+                            "description": "Parameters for fetching a URL.",
+                            "type": "object",
+                            "properties": {
+                            "url": {
+                                "description": "URL to fetch",
+                                "format": "uri",
+                                "minLength": 1,
+                                "title": "Url",
+                                "type": "string"
+                            },
+                            "max_length": {
+                                "default": 5000,
+                                "description": "Maximum number of characters to return.",
+                                "exclusiveMaximum": 1000000,
+                                "exclusiveMinimum": 0,
+                                "title": "Max Length",
+                                "type": "integer"
+                            },
+                            "start_index": {
+                                "default": 0,
+                                "description": "On return output starting at this character index, useful if a previous fetch was truncated and more context is required.",
+                                "minimum": 0,
+                                "title": "Start Index",
+                                "type": "integer"
+                            },
+                            "raw": {
+                                "default": false,
+                                "description": "Get the actual HTML content of the requested page, without simplification.",
+                                "title": "Raw",
+                                "type": "boolean"
+                            }
+                            },
+                            "required": [
+                                "url"
+                            ]
+                        }
+                    }
+                ]}
+            }
+        },
+        {
+            "origin": "client",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "fetch",
+                    "arguments": {
+                        "max_length": 5000,
+                        "start_index": 0,
+                        "raw": false,
+                        "url": "https://world.hey.com/dhh/don-t-make-google-sell-chrome-93cefbc6"
+                    }
+                }
+            }
+        },
+        {
+            "origin": "server",
+            "payload": {
+                "jsonrpc": "2.0",
+                "id": 3,
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Contents of https://world.hey.com/dhh/don-t-make-google-sell-chrome-93cefbc6:\nThe web will be far worse off [if Google is forced to sell Chrome](https://www.msn.com/en-us/technology/tech-companies/a-judge-could-force-google-to-sell-chrome-what-you-need-to-know/ar-AA1DjlGy), even if it's to atone for legitimate ad-market monopoly abuses. Which mean we'll all be worse off as the web would lose ground to actual monopoly platforms, like the iOS App Store and Google's own Play Store.\n\nFirst, Chrome won the browser war fair and square by building a better surfboard for the internet. This wasn't some opportune acquisition. This was the result of grand investments, great technical prowess, and markets doing what they're supposed to do: rewarding the best. Besides, we have a million alternatives. Firefox still exists, so does Safari,  so does the billion Chromium-based browsers like Brave and Edge. And we finally even have new engines on the way with the [Ladybird browser](https://ladybird.org/).\n\nLook, Google's trillion-dollar business depends on a thriving web that can be searched by Google.com, that can be plastered in AdSense, and that now can feed the wisdom of AI. Thus, Google's incredible work to further the web isn't an act of charity, it's of economic self-interest, and that's why it works. Capitalism [doesn't run on benevolence](https://www.goodreads.com/quotes/68664-it-is-not-from-the-benevolence-of-the-butcher-the), but incentives.\n\nWe want an 800-pound gorilla in the web's corner! Because Apple would love nothing better (despite the admirable work to keep up with Chrome by Team Safari) to see the web's capacity as an application platform diminished. As would every other owner of a proprietary application platform. Microsoft fought the web tooth and nail back in the 90s because they knew that a free, open application platform would undermine lock-in — and it did!\n\nBut the vitality of that free and open application platform depends on constant development. If the web stagnates, other platforms will gain. But with Team Chrome pushing the web forward in a million ways — be it import maps, nested CSS, web push, etc. — is therefore essential.\n\nThis is a classic wealth vs. riches mistake. Lawyers see Chrome as valuable in a moment's snapshot, but the value is all in the wealth that continued investment brings. A Chrome left to languish with half the investment will evaporate as quickly as a lottery winner's riches. Wealth requires maintenance to endure.\n\nGoogle should not get away with rigging the online ad market, but forcing it to sell Chrome will do great damage to the web."
+                        }
+                    ],
+                    "isError": false
+                }
+            }
+        }
+    ]
+}
