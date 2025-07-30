@@ -73,7 +73,7 @@ try {
   console.log('✅ Next.js build completed');
   
   // Build esbuild bundle
-  execSync('npm run build:server:bundle --workspace=projects/server', { 
+  execSync('npm run build:prod --workspace=projects/server', { 
     stdio: 'inherit',
     cwd: path.join(__dirname, '..')
   });
@@ -115,15 +115,15 @@ fs.copyFileSync(serverExecutable, serverDest);
 fs.chmodSync(serverDest, 0o755); // Make executable
 console.log('✅ Server executable copied to dist/toolvault');
 
-// Copy static directory to dist/data
-console.log('📋 Copying static files to dist/data...');
-const staticSrc = path.join(__dirname, '..', 'projects', 'server', 'static');
-const staticDest = path.join(distDir, 'data');
-if (fs.existsSync(staticSrc)) {
-  fs.cpSync(staticSrc, staticDest, { recursive: true });
-  console.log('✅ Static files copied to dist/data');
+// Copy appData directory to dist/appData
+console.log('📋 Copying appData files to dist/appData...');
+const appDataSrc = path.join(__dirname, '..', 'projects', 'server', 'appData');
+const appDataDest = path.join(distDir, 'appData');
+if (fs.existsSync(appDataSrc)) {
+  fs.cpSync(appDataSrc, appDataDest, { recursive: true });
+  console.log('✅ appData files copied to dist/appData');
 } else {
-  console.error('❌ Static directory not found');
+  console.error('❌ appData directory not found');
   process.exit(1);
 }
 
@@ -136,20 +136,34 @@ if (fs.existsSync(publicSrc)) {
   console.log('✅ Public assets copied');
 }
 
+// Copy Dockerfile for container builds
+console.log('📋 Copying Dockerfile...');
+const dockerfileSrc = path.join(__dirname, '..', 'projects', 'docker', 'Dockerfile');
+const dockerfileDest = path.join(distDir, 'Dockerfile');
+if (fs.existsSync(dockerfileSrc)) {
+  fs.copyFileSync(dockerfileSrc, dockerfileDest);
+  console.log('✅ Dockerfile copied');
+} else {
+  console.error('❌ Dockerfile not found');
+  process.exit(1);
+}
+
 // Verify executables
 console.log('\n🔍 Verifying executables...');
 const tshExists = fs.existsSync(path.join(distDir, 'tsh'));
 const toolvaultExists = fs.existsSync(path.join(distDir, 'toolvault'));
 const nextExists = fs.existsSync(path.join(distDir, '.next'));
+const dockerfileExists = fs.existsSync(path.join(distDir, 'Dockerfile'));
 
-if (tshExists && toolvaultExists && nextExists) {
+if (tshExists && toolvaultExists && nextExists && dockerfileExists) {
   console.log('✅ All components created successfully');
   console.log(`📁 Distribution in: ${distDir}`);
   console.log('   - tsh (proxy)');
   console.log('   - toolvault (bundled server)');
   console.log('   - .next/ (Next.js build)');
   console.log('   - public/ (static assets)');
-  console.log('   - data/ (migrations, data)');
+  console.log('   - appData/ (migrations, data)');
+  console.log('   - Dockerfile (for container builds)');
 } else {
   console.error('❌ Failed to create all components');
   process.exit(1);

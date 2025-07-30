@@ -1,20 +1,20 @@
 {
   "name": "tsh-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Toolshed Next.js server for web UI and API",
   "private": true,
   "scripts": {
-    "build": "next build",
-    "build:server:bundle": "esbuild server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --external:next --external:fdir --external:http-status-codes --external:jsonc-parser --external:jsonwebtoken --external:loglevel --external:react --external:react-dom --external:recharts --external:sqlite --external:sqlite3 --external:swagger-ui-react --external:tailwindcss --external:winston --external:winston-daily-rotate-file --external:ws --external:yaml --main-fields=module,main --resolve-extensions=.js,.ts,.json",
+    "build:dev": "next build",
+    "build:prod": "esbuild server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --external:next --external:fdir --external:http-status-codes --external:jsonc-parser --external:jsonwebtoken --external:loglevel --external:react --external:react-dom --external:recharts --external:sqlite --external:sqlite3 --external:swagger-ui-react --external:tailwindcss --external:winston --external:winston-daily-rotate-file --external:ws --external:yaml --main-fields=module,main --resolve-extensions=.js,.ts,.json",
     "start:prod": "node dist/server.js",
-    "startdev": "npm run build && npm run start -- --port 3000",
-    "lint": "next lint",
+    "start:dev": "npm run build:dev && npx tsx server.ts -- --port 3000",
     "migrate": "tsx lib/models/sqlite/runMigration.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:e2e": "jest --config jest.e2e.config.js",
-    "load-sample-data": "tsx scripts/load-sample-data/load.ts"
+    "load-sample-data": "tsx scripts/load-sample-data/load.ts",
+    "clean": "tsx scripts/clean.ts"
   },
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.9",

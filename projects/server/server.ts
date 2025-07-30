@@ -7,8 +7,11 @@ import { BridgeManager } from '@/lib/bridge/BridgeManager';
 import { ModelFactory } from '@/lib/models';
 import { getApiConfigPath } from '../shared/paths';
 import { logger } from '@/lib/logging/server';
+import { dockerUtils } from '@/lib/utils/docker';
 import * as fs from 'fs';
 import * as path from 'path';
+import { uvxCacheDir } from './lib/utils/security';
+import { npxCacheDir } from './lib/utils/security';
 
 const dev = false; // process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -22,14 +25,14 @@ Usage: toolvault [options]
 
 Options:
   --port <number>     Specify port to run on (default: auto-detect)
-  --help, -h         Show this help message
+  --help, -h          Show this help message
 
 Environment Variables:
   TOOLVAULT_PORT     Specify port via environment variable
 
 Examples:
-  toolvault                    # Run on auto-detected port
-  toolvault --port 3000       # Run on port 3000
+  toolvault                      # Run on auto-detected port
+  toolvault --port 3000          # Run on port 3000
   TOOLVAULT_PORT=8080 toolvault  # Run on port 8080
 
 The server will automatically detect an available port if none is specified.
@@ -81,6 +84,21 @@ async function start() {
     
     // Initialize database through model factory
     await ModelFactory.getInstance().initialize();
+
+    // Ensure cache directories exist
+    if (!fs.existsSync(uvxCacheDir)) {
+      fs.mkdirSync(uvxCacheDir, { recursive: true });
+    }
+    if (!fs.existsSync(npxCacheDir)) {
+      fs.mkdirSync(npxCacheDir, { recursive: true });
+    }
+    
+    // Ensure Docker image is built before starting servers
+    logger.debug('Checking Docker image availability...');
+    const dockerImageBuilt = await dockerUtils.ensureProjectImageBuilt();
+    if (!dockerImageBuilt) {
+      logger.warn('Failed to build Docker image. Some MCP servers may not work properly.');
+    }
     
     // Prepare Next.js
     const app = next({ dev: false, hostname, port: port, dir: __dirname }); // Point to the directory containing the executable

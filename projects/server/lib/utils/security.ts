@@ -1,6 +1,12 @@
 // !!! This module is used from both front-end and back-end code, so there is no logging (we don't really have a logging solution for this scenario)
 
 import { McpServerConfig, ServerSecurity } from '@/lib/types/server';
+import { MCP_RUNNER_IMAGE } from '@/lib/config/containers';
+import { getAppDataPath } from '../../../shared/paths';
+import * as path from 'path';
+
+export const uvxCacheDir = path.join(getAppDataPath(), 'cache', 'uv');
+export const npxCacheDir = path.join(getAppDataPath(), 'cache', 'npm');
 
 // Note: When we "wrap" a uvx/npx command in a container, we do it like this:
 //
@@ -21,7 +27,7 @@ import { McpServerConfig, ServerSecurity } from '@/lib/types/server';
 //
 // The following methods can determine if a config is wrapped or unwrapped, and can wrap/unwrap a config (convert to and from the above container form)
 //
-export const runnerContainer = 'teamspark/mcp-runner';
+export const runnerContainer = MCP_RUNNER_IMAGE;
 
 export function getSecurityType(config: McpServerConfig, explicitSecurity?: ServerSecurity): ServerSecurity {
     // If security is explicitly set, use it
@@ -114,9 +120,9 @@ export function wrapSecurity(config: McpServerConfig): McpServerConfig {
 
             // Add volume mounts for the local cache (!!! VERY INSECURE TO GIVE RANDO npx/uvx CODE RW ACCESS TO MODULE CACHE)
             if (config.command === 'uvx') {
-                volumeMounts.push('-v', `~/.toolvault/cache/uv:/usr/local/uv`);
+                volumeMounts.push('-v', `${uvxCacheDir}:/usr/local/uv`);
             } else if (config.command === 'npx') {
-                volumeMounts.push('-v', `~/.toolvault/cache/npm:/home/.npm`);
+                volumeMounts.push('-v', `${npxCacheDir}:/home/.npm`);
             }
 
             // Process args for things that look like paths and resolve to paths (expanding ~, etc)

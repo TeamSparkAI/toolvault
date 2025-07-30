@@ -1,11 +1,29 @@
 # TeamSpark ToolShed
 
-## Container Issues
+## Misc
 
-Wrapped containers take ~15 seconds to start (npx/uvx doesn't have cache and has to download packages)
-- Proper solution is local proxy (see regcache.md)
-- Short-term non-shippable (insecure) method is we share local host cache with container (containers start in ~1 second now)
-  - Should create the local host paths if they don't exist (otherwise we won't mount them when wrapping the container)
+Run clean, npm install -g toolvault, start
+- Verify container build on startup
+- Verify cache directories created on startup
+- Run, import, verify clients using tsh, proper functioning, messages routed through gateway
+
+Verify onboarding demo works from fresh install
+
+Implement real help page
+- Concepts (dashboard, clients, servers, policies, messages, alerts, compliance) - overview with links back to each page
+- Support email address, sales email address
+- Link to Github page (issues) for bugs or feature requests
+- Link to website (more info - http://teamspark.ai)
+
+====
+
+Client import/sync API should propagate common errors (config file not found, invalid JSON, no mcpServers or whatever attr the client uses, failed to write file)
+
+When loading catalog via API, if underlying servers.json not loaded (maybe failed startup load), try again
+
+Add Windows support for auto-volume creation / validation on wrapped (run as container) server
+
+Add Windows/Linux support for client discovery
 
 ## Manually adding a client
 
@@ -27,6 +45,41 @@ This will require a new client-server syncState
 - When a client-server is in pendingDisabled, disabled, pendingEnabled, what operations can be done
   - Server can presumably always be removed or deleted, so how does that work from each new state?
 
+====================================================================================================
+
+## Packaging and Distribution (document in README.md)
+
+To run from source:
+- Pre-requisites: Node and Docker
+- Get source repo
+- npm build (verify command)
+- npm install tsh globally
+- Run server
+
+NPM-based install
+- npm install -g toolvault install tsh and toolvault
+- Recommend pm2 for management (auto-run "as service")?
+
+====================================================================================================
+
+## Pre-Launch
+
+### Website
+
+Set up website so we have workbench and toolvault sections linking to separate pages (also ToolCatalog)
+
+Discord?  With link from help, reference in README.md.
+  
+====================================================================================================
+
+## Post v1.0
+
+## Container Issues
+
+Wrapped containers take ~15 seconds to start without cache (npx/uvx in container doesn't have cache and has to download packages)
+- Proper solution is local proxy (see regcache.md)
+- Short-term (questionable security) method is we share local host cache with container (containers start in ~1 second when cached)
+
 ## API Auth
 
 Web app
@@ -36,72 +89,27 @@ Web app
 Local app (Electron)
 - We don't need login security (Electron can use IPC to get a bearer token from itself and use that for all API calls)
 
-## Misc
+### Packaged App install
 
-Implement real help page
+tsh as exec via @yao-pkg/pkg (actively maintained fork of pkg)
 
-Filter messages on error state?
+Tool Vault as Electron app
+- Providing the same functionality as the current Web UX, and the current HTTP API backend
+- Would be long-running and provide the API endpoints (both proxy and general).
+  - It becomes the "service" (different on different OS), would have tray icon, etc
+- We could still provide the web UX as an option (possibly for remote access, will need for server mode later)
+- Both the Electron app and the web UX (if enabled) will talk to the HTTP API with bearer auth
+  - The Electron app will use IPC to get / refresh the bearer token (a "no login" experience, since the app trusts itself)
+  - The Web app would use some kind of login to get it's token, and some kind of token refresh
+- We will share as much UX code as possible, and abstract the code so that it doens't know if it's in Electron or the browser
 
-Client import/sync API should propagate common errors (config file not found, invalid JSON, no mcpServers or whatever attr the client uses, failed to write file)
-
-When loading catalog via API, if underlying servers.json not loaded (maybe failed startup load), try again
-
-Add Windows support for auto-volume creation / validation on wrapped (run as container) server
-
-Add Windows/Linux support for client discovery
-
-## Testing
-
-- Added test tooling with sample test for React component, API endpoint, TS util, and e2e (done)
-- Do we want to stand up test db, populate, and test against it?  (We're using db mocks for now)
-
-====================================================================================================
-
-## Packaging and Distribution
-
-To run from source:
-- Pre-requisites: Node and Docker
-- Get source repo
-- Build tsh and install globally
-- Build Docker container: teamspark/mcp-runner
-- Build and run server (Node app)
-
-NPM-based install (good enough for Claude Code)
-- Install via published npm package: npm install -g toolvault 
-  - Installs both tsh and toolvault commands
-  - For both, fully built apps checked in (that's what gets run)
-  - toolvault creates teamspark/mpc-runner container on startup
-- Recommend pm2 for management (auto-run "as service")?
-
-Packaged App install
-- tsh as exec via @yao-pkg/pkg (actively maintained fork of pkg)
-- Tool Vault as Electron app
-  - Providing the same functionality as the current Web UX, and the current HTTP API backend
-  - Would be long-running and provide the API endpoints (both proxy and general).
-    - It becomes the "service" (different on different OS), would have tray icon, etc
-  - We could still provide the web UX as an option (possibly for remote access, will need for server mode later)
-  - Both the Electron app and the web UX (if enabled) will talk to the HTTP API with bearer auth
-    - The Electron app will use IPC to get / refresh the bearer token (a "no login" experience, since the app trusts itself)
-    - The Web app would use some kind of login to get it's token, and some kind of token refresh
-  - We will share as much UX code as possible, and abstract the code so that it doens't know if it's in Electron or the browser
-
-====================================================================================================
-
-## Pre-Launch
-
-### Website
-
-Set up website so we have workbench and toolvault sections linking to separate pages (also ToolCatalog)
-  
-====================================================================================================
-
-## Post v1.0
+Installer to install both
 
 ### Policy application
 
-Implement single scan (multi-regex) for perf
+Implement single scan (multi-regex) for perf (currently 750+ msgs/second on laptop with full policy set, perf improvement may not be high priority)
 
-Should we support an option to replace entire field?  Entire response?  Replace message with error message?  Overlaps could be a lot more complex
+Should we support an option to replace entire field?  Entire response?  Replace message with error message?  Overlaps could be a lot more complex.
 
 ### Retention
 
@@ -138,3 +146,13 @@ Add Docker MCP directory as library source: integrate (with tag) or choose betwe
 ### Import
 
 Allow policy, client, server import (maybe export) via JSON
+
+### Messages
+
+Filter messages on error state (add dimension, filtering)
+
+Full text search on message payload (brute force to start)
+
+### Testing
+
+More unit tests and integration tests
