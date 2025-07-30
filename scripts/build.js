@@ -65,25 +65,18 @@ console.log('✅ Proxy executable copied');
 // Build server project - Next.js and esbuild bundle
 console.log('🔧 Building server project...');
 try {
-  // Build Next.js first
-  execSync('npm run build --workspace=projects/server', { 
-    stdio: 'inherit',
-    cwd: path.join(__dirname, '..')
-  });
-  console.log('✅ Next.js build completed');
-  
-  // Build esbuild bundle
+  // Build Next.js and esbuild bundle
   execSync('npm run build:prod --workspace=projects/server', { 
     stdio: 'inherit',
     cwd: path.join(__dirname, '..')
   });
-  console.log('✅ Server bundle completed');
+  console.log('✅ Server build completed');
 } catch (error) {
   console.error('❌ Server build failed:', error.message);
   process.exit(1);
 }
 
-// Copy standalone/.next directory to dist/.next
+// Copy Next.js standalone build to dist/.next
 console.log('📋 Copying Next.js build...');
 const nextSrc = path.join(__dirname, '..', 'projects', 'server', '.next', 'standalone', '.next');
 const nextDest = path.join(distDir, '.next');

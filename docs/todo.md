@@ -2,11 +2,6 @@
 
 ## Misc
 
-Run clean, npm install -g toolvault, start
-- Verify container build on startup
-- Verify cache directories created on startup
-- Run, import, verify clients using tsh, proper functioning, messages routed through gateway
-
 Verify onboarding demo works from fresh install
 
 Implement real help page

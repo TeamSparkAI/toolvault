@@ -278,12 +278,12 @@ export class DockerUtils {
             let contextPath: string;
             
             // First try dev location (relative to projects directory)
-            const devDockerfilePath = path.join(process.cwd(), '../docker/Dockerfile');
-            const devContextPath = path.join(process.cwd(), '../');
+            const devDockerfilePath = path.join(__dirname, '..', '..', '..', 'docker', 'Dockerfile');
+            const devContextPath = path.join(__dirname, '..', '..', '..');
             
             // Then try dist location (relative to dist directory)
-            const distDockerfilePath = path.join(process.cwd(), 'Dockerfile');
-            const distContextPath = path.join(process.cwd(), '.');
+            const distDockerfilePath = path.join(__dirname, 'Dockerfile');
+            const distContextPath = path.join(__dirname, '.');
             
             // Check which location exists
             if (fs.existsSync(distDockerfilePath)) {

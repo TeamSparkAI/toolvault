@@ -16,9 +16,8 @@ import { logger } from '@/lib/logging/server';
  */
 export function findStaticDir(subDir: string): string {
   const possiblePaths = [
-    join(process.cwd(), 'appData', subDir),               // Production: relative to dist root
-    join(__dirname, '..', '..', '..', 'appData', subDir), // Development: relative to source
-    join(__dirname, 'appData', subDir),                   // Fallback: relative to bundled module
+    join(__dirname, 'appData', subDir),             // Production: relative to dist root
+    join(__dirname, '..', '..', 'appData', subDir), // Development: relative to server root
   ];
   
   for (const path of possiblePaths) {
