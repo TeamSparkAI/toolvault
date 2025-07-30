@@ -1,285 +1,369 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
 
-interface FAQ {
-  question: string;
-  answer: string;
-}
-
-interface Guide {
+interface Concept {
   title: string;
   description: string;
-  steps: string[];
+  path: string;
+  icon: React.ReactNode;
+  details: string[];
 }
 
-const faqs: FAQ[] = [
+interface QuickStartStep {
+  number: number;
+  title: string;
+  description: string;
+  path: string;
+  linkText: string;
+  isComplete?: boolean;
+}
+
+const quickStartSteps: QuickStartStep[] = [
   {
-    question: 'How do I add a new server?',
-    answer: 'To add a new server, navigate to the Servers page and click the "Add Server" button. Fill in the required information in the form and click "Save". The server will be added to your list of managed servers.'
+    number: 1,
+    title: 'Discover & Import Clients',
+    description: 'Use the Client Discovery page to discover and import new clients that connect to your system, converting their servers to be managed by ToolVault.',
+    path: '/clients/discover',
+    linkText: 'Go to Client Discovery'
   },
   {
-    question: 'What are policies and how do they work?',
-    answer: 'Policies are rules that define how your servers should behave and what actions should be taken when certain conditions are met. You can create policies in the Policies page, specifying conditions, severity levels, and actions to take when the policy is triggered.'
+    number: 2,
+    title: 'Review Imported Clients',
+    description: 'Review imported clients, including their configurations and the servers they are connected to.',
+    path: '/clients',
+    linkText: 'Review Clients'
   },
   {
-    question: 'How do I set up email notifications?',
-    answer: 'Go to the Settings page and enable email notifications in the Notifications section. Enter your email address and save the settings. You will receive notifications for important events and alerts.'
+    number: 3,
+    title: 'Validate Managed Servers',
+    description: 'Review your managed servers. Configure settings, validate connections, and test tools.',
+    path: '/servers',
+    linkText: 'Validate Servers'
   },
   {
-    question: 'What do the different alert severity levels mean?',
-    answer: 'Alert severity levels indicate the importance of an alert: Critical (highest priority), High, Medium, and Low. Critical alerts require immediate attention, while lower severity alerts can be addressed during regular maintenance.'
+    number: 4,
+    title: 'Test Your Agents',
+    description: 'Ensure your agents work correctly by testing them. Review messages they generate in ToolVault to confirm they are using managed servers.',
+    path: '/messages',
+    linkText: 'Review Messages'
   },
   {
-    question: 'How do I manage client connections?',
-    answer: 'Client connections can be managed from the Clients page. You can view all connected clients, their status, and last seen time. You can also disconnect clients or modify their permissions as needed.'
+    number: 5,
+    title: 'Review and Tune Security Policies',
+    description: 'Review your security policies, then tune them to your needs.',
+    path: '/policies',
+    linkText: 'Review Policies'
+  },
+  {
+    number: 5,
+    title: 'Monitor & Maintain',
+    description: 'Use the dashboard to monitor your system for unhandled alerts and compliance issues, as well as to review message traffic and alerts.',
+    path: '/dashboard',
+    linkText: 'View Dashboard',
+    isComplete: true
   }
 ];
 
-const guides: Guide[] = [
+const concepts: Concept[] = [
   {
-    title: 'Getting Started',
-    description: 'Learn the basics of setting up and using the application.',
-    steps: [
-      'Install the application on your server',
-      'Configure your server settings',
-      'Add your first server to manage',
-      'Set up basic monitoring policies',
-      'Configure notifications'
+    title: 'Dashboard',
+    description: 'Overview of your system status and key metrics',
+    path: '/dashboard',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    ),
+    details: [
+      'View system health and performance metrics',
+      'Monitor active alerts and compliance issues',
+      'See recent activity and system status',
+      'Quick access to key functions'
     ]
   },
   {
-    title: 'Server Management',
-    description: 'Learn how to effectively manage your servers.',
-    steps: [
-      'Add new servers to the system',
-      'Configure server-specific settings',
-      'Set up monitoring and alerts',
-      'Manage server access and permissions',
-      'Monitor server performance and health'
+    title: 'Server Catalog',
+    description: 'Browse and discover available MCP servers',
+    path: '/catalog',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+      </svg>
+    ),
+    details: [
+      'Discover available MCP servers',
+      'View server descriptions and capabilities',
+      'Add servers to your managed list',
+      'Browse by category or search'
     ]
   },
   {
-    title: 'Policy Configuration',
-    description: 'Learn how to create and manage policies.',
-    steps: [
-      'Create a new policy',
-      'Define policy conditions',
-      'Set severity levels',
-      'Configure actions and notifications',
-      'Test and deploy policies'
+    title: 'Servers',
+    description: 'Manage your MCP servers and their configurations',
+    path: '/servers',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+      </svg>
+    ),
+    details: [
+      'View all your managed MCP servers',
+      'Configure server settings and parameters',
+      'Monitor server status and test tools',
+      'Manage server connections and clients'
     ]
   },
   {
-    title: 'Alert Management',
-    description: 'Learn how to handle and respond to alerts.',
-    steps: [
-      'Monitor active alerts',
+    title: 'Clients',
+    description: 'Manage client connections and their access to servers',
+    path: '/clients',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    ),
+    details: [
+      'View all connected clients',
+      'Configure client-specific settings',
+      'Monitor and manager servers used by each client',
+      'Review message and alerts for a client'
+    ]
+  },
+  {
+    title: 'Policies',
+    description: 'Define rules and policies for server behavior and security',
+    path: '/policies',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      </svg>
+    ),
+    details: [
+      'Review current policies and their status',
+      'Create security policies',
+      'Inspect securuty policy details',
+      'Review alerts generated by a policy'
+    ]
+  },
+  {
+    title: 'Compliance',
+    description: 'Review and manage compliance with policies and regulations',
+    path: '/compliance',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2h-2M8 4a2 2 0 002 2h2a2 2 0 002-2M8 4a2 2 0 012-2h2a2 2 0 012 2M8 9h6M8 12h6M8 15h6" />
+      </svg>
+    ),
+    details: [
+      'Review compliance guidelines and policies',
+      'Monitor compliance issues',
+      'Review and address system compliance issues',
+      'Review and address client compliance issues'
+    ]
+  },
+  {
+    title: 'Alerts',
+    description: 'Monitor and respond to system alerts and notifications',
+    path: '/alerts',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+      </svg>
+    ),
+    details: [
+      'View active alerts and notifications',
       'Acknowledge and resolve alerts',
-      'Configure alert notifications',
-      'Set up alert escalation rules',
-      'Review alert history and trends'
+      'Search and filter alerts',
+      'Track alert history and trends'
+    ]
+  },
+  {
+    title: 'Messages',
+    description: 'Review and analyze message traffic between clients and servers',
+    path: '/messages',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+      </svg>
+    ),
+    details: [
+      'View message traffic and logs',
+      'Analyze communication patterns',
+      'Search and filter messages',
+      'Monitor for suspicious activity'
     ]
   }
 ];
 
 export default function HelpPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
-
-  const filteredFaqs = faqs.filter(
-    (faq) =>
-      faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="mb-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Search</h2>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search for help topics..."
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
+    <div className="max-w-7xl mx-auto space-y-8">
+      {/* Quick Start */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-2xl font-semibold text-gray-900 mb-6">Quick Start Guide</h2>
+        <p className="text-gray-600 mb-6">
+          Get started with ToolVault by discovering and importing clients, converting their servers to be managed by ToolVault, and validating your setup.  It's quicker and easier than it sounds!
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {quickStartSteps.map((step, index) => (
+            <div key={index} className="flex items-start space-x-3">
+              <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
+                step.isComplete ? 'bg-green-100' : 'bg-blue-100'
+              }`}>
+                {step.isComplete ? (
+                  <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <span className={`text-sm font-medium ${step.isComplete ? 'text-green-600' : 'text-blue-600'}`}>
+                    {step.number}
+                  </span>
+                )}
               </div>
-            </div>
-
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Frequently Asked Questions</h2>
-              <div className="space-y-4">
-                {filteredFaqs.map((faq, index) => (
-                  <div key={index} className="border-b border-gray-200 pb-4 last:border-0">
-                    <h3 className="text-base font-medium text-gray-900 mb-2">{faq.question}</h3>
-                    <p className="text-gray-600">{faq.answer}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Guides</h2>
-            <div className="space-y-6">
-              {guides.map((guide, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-blue-500 cursor-pointer"
-                  onClick={() => setSelectedGuide(guide)}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{step.title}</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  {step.description}
+                </p>
+                <Link
+                  href={step.path}
+                  className="inline-flex items-center mt-2 text-sm text-blue-600 hover:text-blue-800"
                 >
-                  <h3 className="text-base font-medium text-gray-900 mb-2">{guide.title}</h3>
-                  <p className="text-gray-600 mb-4">{guide.description}</p>
-                  <div className="flex items-center text-blue-600">
-                    <span>View Guide</span>
-                    <svg
-                      className="ml-2 h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              ))}
+                  {step.linkText}
+                  <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow p-6 space-y-6">
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Contact Support</h2>
-              <p className="text-gray-600 mb-4">
-                Need additional help? Our support team is here to assist you.
-              </p>
-              <a
-                href="mailto:support@example.com"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                Contact Support
-              </a>
-            </div>
-
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Resources</h2>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#"
-                    className="text-blue-600 hover:text-blue-800 flex items-center"
-                  >
-                    <svg
-                      className="mr-2 h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                      />
-                    </svg>
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-blue-600 hover:text-blue-800 flex items-center"
-                  >
-                    <svg
-                      className="mr-2 h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                    Video Tutorials
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="text-blue-600 hover:text-blue-800 flex items-center"
-                  >
-                    <svg
-                      className="mr-2 h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                    Release Notes
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      {selectedGuide && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-xl font-medium text-gray-900">{selectedGuide.title}</h2>
-                <button
-                  onClick={() => setSelectedGuide(null)}
-                  className="text-gray-400 hover:text-gray-500"
-                >
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
+      {/* Help & Documentation */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-2xl font-semibold text-gray-900 mb-6">Key Concepts and Features</h2>
+        <p className="text-lg text-gray-600">
+          Learn about the key concepts and features of ToolVault. Each section below explains a major component 
+          and provides a direct link to access it.
+        </p>
+      </div>
+
+      {/* Concepts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {concepts.map((concept, index) => (
+          <div key={index} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0 text-blue-600">
+                {concept.icon}
               </div>
-              <p className="text-gray-600 mb-6">{selectedGuide.description}</p>
-              <div className="space-y-4">
-                {selectedGuide.steps.map((step, index) => (
-                  <div key={index} className="flex items-start">
-                    <div className="flex-shrink-0 h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center">
-                      <span className="text-blue-600 text-sm font-medium">{index + 1}</span>
-                    </div>
-                    <p className="ml-3 text-gray-600">{step}</p>
-                  </div>
-                ))}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-xl font-semibold text-gray-900">{concept.title}</h2>
+                  <Link
+                    href={concept.path}
+                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 transition-colors"
+                  >
+                    Go to {concept.title}
+                    <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+                <p className="text-gray-600 mb-4">{concept.description}</p>
+                <ul className="space-y-2">
+                  {concept.details.map((detail, detailIndex) => (
+                    <li key={detailIndex} className="flex items-start">
+                      <svg className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-sm text-gray-600">{detail}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
+        ))}
+      </div>
+
+      {/* Support & Resources */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Contact Support */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-6">Contact Us</h2>
+          <p className="text-gray-600 mb-4">
+            Need help with ToolVault? Our team is here to assist you.
+          </p>
+          <div className="flex space-x-3">
+            <a
+              href="mailto:support@teamspark.ai"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            >
+              <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Contact Support
+            </a>
+            <a
+              href="mailto:sales@teamspark.ai"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            >
+              <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              Sales Inquiries
+            </a>
+          </div>
         </div>
-      )}
+
+        {/* Resources */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-6">Resources</h2>
+          <ul className="space-y-3">
+            <li>
+              <a
+                href="https://github.com/TeamSparkAI/toolvault/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 flex items-center"
+              >
+                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                Request Features or Report Bugs
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://github.com/TeamSparkAI/toolvault"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 flex items-center"
+              >
+                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                GitHub Repository
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://teamspark.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 flex items-center"
+              >
+                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
+                </svg>
+                TeamSpark Website
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 } 

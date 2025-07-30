@@ -10,6 +10,8 @@ import { NewAlertsSummary } from '@/app/components/alerts/NewAlertsSummary';
 import { useDimensions } from '@/app/hooks/useDimensions';
 import { useRouter } from 'next/navigation';
 import { log } from '@/lib/logging/console';
+import { useAlerts } from '@/app/contexts/AlertsContext';
+import { useCompliance } from '@/app/contexts/ComplianceContext';
 
 interface DashboardStats {
   servers: {
@@ -53,6 +55,77 @@ export default function DashboardPage() {
     dimensions: ['serverName', 'policyId']
   });
   const router = useRouter();
+  const { unseenAlerts } = useAlerts();
+  const { complianceCount } = useCompliance();
+
+  // Alerts Status Component
+  const AlertsStatus = () => {
+    const totalUnseen = Object.values(unseenAlerts.bySeverity).reduce((sum, count) => sum + count, 0);
+    
+    if (totalUnseen === 0) {
+      return (
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <span className="text-sm font-medium text-gray-900">No unresolved alerts</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    return null; // NewAlertsSummary will handle the case when there are alerts
+  };
+
+  // Compliance Status Component
+  const ComplianceStatus = () => {
+    if (complianceCount === 0) {
+      return (
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <span className="text-sm font-medium text-gray-900">No compliance issues</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <span className="text-sm font-medium text-gray-900">
+                {complianceCount} compliance issue{complianceCount !== 1 ? 's' : ''}
+              </span>
+            </div>
+          </div>
+          <a
+            href="/compliance"
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
+            View Details
+          </a>
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     // Set the header title
@@ -201,6 +274,12 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <NewAlertsSummary showSeparator={false} showReviewLink={true} />
+
+      {/* Alerts Status */}
+      <AlertsStatus />
+
+      {/* Compliance Status */}
+      <ComplianceStatus />
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

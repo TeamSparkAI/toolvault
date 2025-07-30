@@ -7,8 +7,8 @@ export abstract class AppSettingsModel {
 
     protected static readonly CATEGORY = 'app';
     protected static readonly DEFAULT_CONFIG: AppSettingsData = {
-        requireClientToken: false,
-        strictServerAccess: false,
+        requireClientToken: true,
+        strictServerAccess: true,
         messageRetentionDays: 90,
         alertRetentionDays: 90
     };

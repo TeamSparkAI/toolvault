@@ -1,16 +1,8 @@
 # TeamSpark ToolShed
 
-## Misc
-
 Verify onboarding demo works from fresh install
 
-Implement real help page
-- Concepts (dashboard, clients, servers, policies, messages, alerts, compliance) - overview with links back to each page
-- Support email address, sales email address
-- Link to Github page (issues) for bugs or feature requests
-- Link to website (more info - http://teamspark.ai)
-
-====
+## Misc
 
 Client import/sync API should propagate common errors (config file not found, invalid JSON, no mcpServers or whatever attr the client uses, failed to write file)
 
