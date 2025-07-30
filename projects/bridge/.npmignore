@@ -1,0 +1,39 @@
+# Source files
+src/
+test/
+
+# Development files
+.git/
+.gitignore
+.env
+.env.*
+*.log
+coverage/
+.nyc_output/
+
+# CLI build artifacts
+dist/cli/src/
+dist/cli/auth.proto
+dist/cli/proto/
+dist/cli/pagent.exe
+dist/cli/build/
+dist/cli/lib/
+
+# Config files
+tsconfig.json
+tsconfig.sdk.json
+jest.config.js
+.eslintrc
+.prettierrc
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Misc
+.DS_Store
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log* 

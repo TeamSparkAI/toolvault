@@ -6,6 +6,7 @@ import { mkdir } from 'fs/promises';
 import { DB_CONFIG } from './config';
 import { getAppDataPath } from '../../../../shared/paths';
 import { logger } from '@/lib/logging/server';
+import { findStaticDir } from '@/lib/utils/static';
 
 interface Migration {
   version: string;
@@ -14,7 +15,7 @@ interface Migration {
 }
 
 async function getMigrations(): Promise<Migration[]> {
-  const migrationsDir = join(__dirname, 'migrations');
+  const migrationsDir = findStaticDir('migrations');
   
   const files = await readdir(migrationsDir);
   const sqlFiles = files.filter(f => f.endsWith('.sql')).sort();

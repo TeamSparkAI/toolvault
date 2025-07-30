@@ -201,8 +201,36 @@ async function getClientEndpointConfig(): Promise<ClientEndpointConfig> {
 async function start() {
     // Get first command line param as server name
     args = process.argv.slice(2);
+    
+    // Check for --help argument
+    if (args.includes('--help') || args.includes('-h')) {
+        console.log(`
+ToolVault Proxy (tsh)
+
+Usage: tsh <server-token> [options]
+
+Arguments:
+  <server-token>     Server token to connect to
+
+Options:
+  --help, -h         Show this help message
+
+Examples:
+  tsh <server-token>     # Connect to server with token
+  tsh --help            # Show this help message
+
+The proxy connects to the ToolVault server using the provided token.
+`);
+        process.exit(0);
+    }
+    
     if (args.length === 0) {
         logger.error('Server token is required as first argument');
+        console.log(`
+Usage: tsh <server-token>
+
+Run 'tsh --help' for more information.
+`);
         process.exit(1);
     }
 

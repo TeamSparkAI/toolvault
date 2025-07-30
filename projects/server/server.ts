@@ -1,15 +1,41 @@
+#!/usr/bin/env node
+
 import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';
 import { BridgeManager } from '@/lib/bridge/BridgeManager';
-import { ModelFactory } from './lib/models';
+import { ModelFactory } from '@/lib/models';
 import { getApiConfigPath } from '../shared/paths';
-import { logger } from './lib/logging/server';
+import { logger } from '@/lib/logging/server';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const dev = false; // process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
+
+// Check for --help argument
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  console.log(`
+ToolVault Server
+
+Usage: toolvault [options]
+
+Options:
+  --port <number>     Specify port to run on (default: auto-detect)
+  --help, -h         Show this help message
+
+Environment Variables:
+  TOOLVAULT_PORT     Specify port via environment variable
+
+Examples:
+  toolvault                    # Run on auto-detected port
+  toolvault --port 3000       # Run on port 3000
+  TOOLVAULT_PORT=8080 toolvault  # Run on port 8080
+
+The server will automatically detect an available port if none is specified.
+`);
+  process.exit(0);
+}
 
 // Parse port from command line args or environment variable
 function parsePort(): number | undefined {
@@ -57,7 +83,7 @@ async function start() {
     await ModelFactory.getInstance().initialize();
     
     // Prepare Next.js
-    const app = next({ dev, hostname, port });
+    const app = next({ dev: false, hostname, port: port, dir: __dirname }); // Point to the directory containing the executable
     const handle = app.getRequestHandler();
     await app.prepare();
     

@@ -14,7 +14,7 @@ export abstract class HostModel {
     protected static readonly CATEGORY = 'host';
     protected static readonly DEFAULT_CONFIG: HostData = {
         type: 'sse',
-        port: 4000
+        port: 0
     };
 
     /**

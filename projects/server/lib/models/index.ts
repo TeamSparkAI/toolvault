@@ -21,6 +21,7 @@ import { ClientServerModel } from './clientServer';
 import path from 'path';
 import fs from 'fs/promises';
 import { logger } from '@/lib/logging/server';
+import { findStaticDir } from '@/lib/utils/static';
 
 // Use a global variable to ensure singleton persistence across module contexts
 declare global {
@@ -176,7 +177,8 @@ export class ModelFactory {
      */
     private async onDatabaseCreated() {
         const policyModel = await this.getPolicyModel();
-        const policiesPath = path.join(__dirname, 'data/policies.json');
+        const dataDir = findStaticDir('data');
+        const policiesPath = path.join(dataDir, 'policies.json');
         const json = await fs.readFile(policiesPath, 'utf-8');
         const policies = JSON.parse(json);
         for (const policy of policies) {

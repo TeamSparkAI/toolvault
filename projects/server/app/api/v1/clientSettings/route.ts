@@ -20,7 +20,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // Future settings can be added here
     };
 
-    logger.info('Returning client settings:', settings);
+    logger.debug('Returning client settings:', settings);
     return JsonResponse.payloadResponse('data', settings);
   } catch (error) {
     logger.error('Failed to fetch client settings:', error);

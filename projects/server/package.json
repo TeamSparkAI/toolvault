@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "start": "npx tsx server.ts",
+    "build:server:bundle": "esbuild server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --external:next --external:fdir --external:http-status-codes --external:jsonc-parser --external:jsonwebtoken --external:loglevel --external:react --external:react-dom --external:recharts --external:sqlite --external:sqlite3 --external:swagger-ui-react --external:tailwindcss --external:winston --external:winston-daily-rotate-file --external:ws --external:yaml --main-fields=module,main --resolve-extensions=.js,.ts,.json",
+    "start:prod": "node dist/server.js",
     "startdev": "npm run build && npm run start -- --port 3000",
     "lint": "next lint",
     "migrate": "tsx lib/models/sqlite/runMigration.ts",
@@ -16,30 +17,12 @@
     "load-sample-data": "tsx scripts/load-sample-data/load.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/loglevel": "^1.5.4",
     "@types/sqlite3": "^3.1.11",
     "@types/winston": "^2.4.4",
     "@types/ws": "^8.18.1",
-    "fdir": "^6.4.6",
-    "http-status-codes": "^2.3.0",
-    "jsonc-parser": "^3.3.1",
-    "jsonwebtoken": "^9.0.2",
-    "loglevel": "^1.9.2",
-    "mcp-link": "^1.2.21",
-    "next": "^14.1.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "recharts": "^2.15.3",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
-    "swagger-ui-react": "^5.22.0",
-    "tailwindcss": "^3.4.1",
-    "winston": "^3.17.0",
-    "winston-daily-rotate-file": "^5.0.0",
-    "ws": "^8.18.2",
-    "yaml": "^2.4.0"
+    "esbuild": "^0.20.0"
   },
   "devDependencies": {
     "@octokit/rest": "^22.0.0",
@@ -57,9 +40,8 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "json5": "^2.2.3",
-    "node-fetch": "^3.3.2",
-    "node-loader": "^2.1.0",
     "ts-jest": "^29.1.2",
+    "tsx": "^4.7.1",
     "typescript": "^5.3.3"
   },
   "resolutions": {

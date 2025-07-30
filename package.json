@@ -1,9 +1,16 @@
 {
   "name": "toolvault",
-  "version": "0.1.0",
+  "version": "0.1.11",
   "description": "Tool Vault: An Integrated platform for AI agent tool management and security",
   "main": "index.js",
   "types": "index.d.ts",
+  "bin": {
+    "tsh": "./dist/tsh",
+    "toolvault": "./dist/toolvault"
+  },
+  "workspaces": [
+    "projects/*"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/TeamSparkAI/toolvault.git"
@@ -21,7 +28,34 @@
     "url": "https://github.com/TeamSparkAI/toolvault/issues"
   },
   "homepage": "https://github.com/TeamSparkAI/toolvault#readme",
-  "dependencies": {},
-  "devDependencies": {},
-  "scripts": {}
-} 
+  "scripts": {
+    "build": "node scripts/build.js",
+    "build:proxy": "npm run build --workspace=projects/proxy",
+    "build:server": "npm run build --workspace=projects/server"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "fdir": "^6.4.6",
+    "http-status-codes": "^2.3.0",
+    "jsonc-parser": "^3.3.1",
+    "jsonwebtoken": "^9.0.2",
+    "loglevel": "^1.9.2",
+    "mcp-link": "file:projects/bridge",
+    "next": "^14.2.29",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.15.3",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
+    "swagger-ui-react": "^5.22.0",
+    "tailwindcss": "^3.4.1",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0",
+            "ws": "^8.18.2",
+        "yaml": "^2.4.0",
+        "sharp": "^0.33.0"
+  },
+  "files": [
+    "dist/"
+  ]
+}

@@ -1,0 +1,24 @@
+# Exclude source code and build artifacts
+projects/
+scripts/
+docs/
+
+# Exclude development files
+*.log
+*.tsbuildinfo
+.env*
+.DS_Store
+
+# Exclude test files
+**/*.test.*
+**/*.spec.*
+
+# Exclude configuration files that aren't needed in the package
+.eslintrc*
+.prettierrc*
+jest.config.*
+tailwind.config.*
+tsconfig.*.json
+
+# Exclude any remaining node_modules
+**/node_modules/ 
