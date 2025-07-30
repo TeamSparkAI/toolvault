@@ -5,6 +5,7 @@ import { ModelFactory } from './index';
 import { McpServerConfig } from '@/lib/types/server';
 import { ServerData, ServerFilter, ServerListResult, ServerPagination } from './types/server';
 import { logger } from '../logging/server';
+import { BridgeManager } from '../bridge/BridgeManager';
 
 export abstract class ServerModel {
     abstract findById(serverId: number): Promise<ServerData | null>;
@@ -18,8 +19,11 @@ export abstract class ServerModel {
     async getMcpServerConfigForProxy(serverToken: string, bearerToken: string): Promise<McpServerConfig> {
         const hostModel = await ModelFactory.getInstance().getHostModel();
         const mcpHost = await hostModel.get();
+        
+        const bridgeManager = BridgeManager.getInstance();
+        const actualPort = bridgeManager.getActualPort();
 
-        const url = `http://${mcpHost.host ?? 'localhost'}:${mcpHost.port}/${serverToken}/${mcpHost.type === 'sse' ? 'sse' : 'mcp'}`;
+        const url = `http://${mcpHost.host ?? 'localhost'}:${actualPort ?? mcpHost.port}/${serverToken}/${mcpHost.type === 'sse' ? 'sse' : 'mcp'}`;
 
         return {
             type: mcpHost.type,

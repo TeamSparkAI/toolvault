@@ -85,6 +85,10 @@ export class BridgeManager {
     return global.bridgeManagerInstance;
   }
 
+  public getActualPort(): number | null {
+    return this.actualPort;
+  }
+
   private async createClientEndpoint(server: { name: string; config: any }): Promise<ClientEndpointConfig> {
     switch (server.config.type) {
       case 'stdio':
