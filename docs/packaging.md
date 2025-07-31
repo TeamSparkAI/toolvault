@@ -1,34 +1,36 @@
-# Packaging Plan
+# Packaging System
 
 ## Overview
 
-This document outlines the plan for creating a global npm package that installs both `tsh` (proxy) and `toolvault` (server) commands when installed globally.
+This document describes our current packaging and build system for the ToolVault project. We use a workspace-based monorepo structure with automated build orchestration.
 
 ## Current State
 
 ### Project Structure
 ```
 toolvault/
-├── package.json (workspace root with bin configuration)
-├── dist/
-│   ├── tsh (built proxy executable)
-│   ├── toolvault (bundled server executable)
-│   ├── standalone/ (Next.js build)
+├── package.json (workspace root)
+├── dist/ (build output directory)
+│   ├── docker/ (Docker files and scripts)
+│   ├── server/ (bundled server application)
 │   ├── public/ (static assets)
-│   ├── migrations/ (database migrations)
-│   └── data/ (data files)
+│   └── migrations/ (database migrations)
 ├── projects/
-│   ├── proxy/ (builds tsh command)
-│   ├── server/ (Next.js application with esbuild bundling)
-│   └── bridge/ (mcp-link project)
+│   ├── server/ (Next.js application)
+│   ├── bridge/ (MCP bridge library)
+│   ├── proxy/ (proxy service)
+│   ├── docker/ (Docker containers and scripts)
+│   └── shared/ (shared utilities)
+├── docs/ (documentation)
 └── scripts/
     └── build.js (build orchestration)
 ```
 
 ### Current Build Processes
-- **Proxy**: Uses `@vercel/ncc` to create a single executable `tsh`
-- **Server**: Next.js application with esbuild bundling for single-file server executable
-- **Bridge**: Local mcp-link project with TypeScript compilation
+- **Server**: Next.js application with production build and static export
+- **Bridge**: TypeScript library for MCP bridge functionality
+- **Docker**: Custom runner containers with proxy detection
+- **Proxy**: Standalone proxy service for package caching
 - **Root**: Workspace orchestration with unified distribution
 
 ## Current Implementation
@@ -40,20 +42,15 @@ The root `package.json` is configured as a workspace-based monorepo:
 ```json
 {
   "name": "toolvault",
-  "version": "0.1.0",
+  "version": "0.1.17",
   "description": "Tool Vault: An Integrated platform for AI agent tool management and security",
-  "bin": {
-    "tsh": "./dist/tsh",
-    "toolvault": "./dist/toolvault"
-  },
   "workspaces": [
     "projects/*"
   ],
   "scripts": {
     "build": "node scripts/build.js",
-    "build:proxy": "npm run build --workspace=projects/proxy",
     "build:server": "npm run build --workspace=projects/server",
-    "prepublishOnly": "npm run build"
+    "dev": "npm run dev --workspace=projects/server"
   }
 }
 ```
@@ -62,295 +59,237 @@ The root `package.json` is configured as a workspace-based monorepo:
 
 #### Build Orchestration (`scripts/build.js`)
 1. **Clean dist directory** - Remove existing build artifacts
-2. **Build proxy project** - Creates `dist/tsh` executable
-3. **Build server project** - Next.js build + esbuild bundling
-4. **Copy server executable** - Creates `dist/toolvault` from bundled server
-5. **Copy Next.js standalone** - Copies `.next/standalone` to `dist/standalone`
-6. **Copy static assets** - Public files, migrations, data files
-7. **Set permissions** - Make executables runnable
-8. **Verify build** - Check all components exist
+2. **Build server project** - Next.js production build
+3. **Copy Docker files** - Copy Docker containers and scripts to `dist/docker/`
+4. **Copy static assets** - Public files, migrations, data files
+5. **Verify build** - Check all components exist
 
 #### Server Build Process
 - **Next.js build**: `npm run build` creates optimized production build
-- **esbuild bundling**: `npm run build:server:bundle` creates single-file server
-- **External dependencies**: Native modules and large dependencies kept external
-- **Production mode**: Always runs in production mode for optimal performance
+- **Static export**: Server runs as a Next.js application with API routes
+- **Database**: SQLite database with migrations
+- **Docker integration**: Custom runner containers for secure package execution
 
-### 3. Command Structure
+### 3. Application Structure
 
-#### Global Commands
-- `tsh` - The proxy command (from proxy project)
-- `toolvault` - The server command (bundled server executable)
+#### Web Application
+- **Next.js server**: Runs on configured port (default 3000)
+- **API routes**: RESTful API for MCP server management
+- **Web UI**: React-based interface for server administration
+- **Database**: SQLite with automatic migrations
 
-#### Usage After Installation
+#### Docker Integration
+- **Runner containers**: Custom containers for `npx` and `uvx` execution
+- **Proxy containers**: Containerized package caching proxies
+- **Security**: Isolated execution with proxy detection and fallback
+
+#### Usage
 ```bash
-# Global installation
-npm install -g toolvault
+# Development
+npm run dev
 
-# Usage
-tsh --help
-toolvault --port 3000
+# Production build
+npm run build
+
+# Start server
+npm start
 ```
 
 ### 4. Key Technical Details
 
 #### Server Architecture
-- **Unified process**: Single Node.js process manages both Next.js app and MCP bridge
-- **esbuild bundling**: All custom code bundled into single `dist/server.js` file
-- **External dependencies**: Next.js, React, native modules kept external
-- **Production build**: Uses pre-compiled Next.js assets, no on-demand compilation
+- **Next.js application**: Full-stack web application with API routes
+- **MCP bridge integration**: Uses local bridge library for MCP protocol
+- **Database**: SQLite with automatic migrations and schema management
+- **Docker integration**: Custom containers for secure package execution
 
-#### Proxy Architecture
-- **ncc bundling**: All dependencies bundled into single executable
-- **Standalone**: No external dependencies required
-- **Cross-platform**: Works on Windows, macOS, Linux
+#### Docker Architecture
+- **Runner containers**: `teamspark/npx-runner` and `teamspark/uvx-runner`
+- **Proxy containers**: Verdaccio (npm) and proxpi (Python) for package caching
+- **Security**: Isolated execution with no direct cache access
+- **Fallback**: Automatic fallback to public registries if proxies unavailable
 
 #### Bridge Integration
-- **Local workspace**: mcp-link project included as `projects/bridge`
-- **SDK imports**: Fixed module resolution issues with `.js` extensions
-- **Workspace linking**: Uses `file:../bridge` dependency reference
+- **Local workspace**: MCP bridge library in `projects/bridge`
+- **TypeScript**: Full TypeScript support with proper module resolution
+- **Protocol support**: Complete MCP protocol implementation
 
 ### 5. Distribution Structure
 
-#### Final Package Contents
+#### Final Build Contents
 ```
-toolvault-1.0.0.tgz
-├── package.json
-├── README.md
-├── LICENSE.md
-├── dist/
-│   ├── tsh (proxy executable)
-│   ├── toolvault (server executable)
-│   ├── standalone/ (Next.js build)
-│   ├── public/ (static assets)
-│   ├── migrations/ (database migrations)
-│   └── data/ (data files)
-└── docs/
+dist/
+├── server/ (Next.js build)
+├── docker/ (Docker containers and scripts)
+├── public/ (static assets)
+├── migrations/ (database migrations)
+└── data/ (data files)
 ```
 
 #### Runtime Dependencies
-- **Server**: Requires Node.js 20+ and external dependencies (Next.js, React, etc.)
-- **Proxy**: Standalone executable, no external dependencies
+- **Server**: Requires Node.js 20+ and Docker
 - **Database**: SQLite database with migrations
+- **Docker**: Required for containerized execution
 
 ### 6. Build Dependencies
 
 #### Server Dependencies
-- **esbuild**: For bundling TypeScript into single JavaScript file
 - **Next.js**: For web application framework
 - **React**: For UI components
-- **mcp-link**: Local workspace project for MCP bridge functionality
+- **TypeScript**: For type safety and compilation
+- **SQLite**: For database storage
 
-#### Proxy Dependencies
-- **@vercel/ncc**: For bundling into single executable
-- **TypeScript**: For compilation
+#### Docker Dependencies
+- **Docker**: For containerized execution
+- **Custom containers**: Runner and proxy containers
 
-#### Removed Dependencies
-- **tsx**: No longer needed (using bundled JavaScript)
-- **tsc-alias**: No longer needed (esbuild handles path resolution)
-- **@vercel/ncc**: Removed from server (using esbuild instead)
-- **node-loader**: No longer needed (not using webpack)
-- **nan**: Removed (not actually used)
-- **node-fetch**: Removed (using built-in fetch)
+#### Bridge Dependencies
+- **TypeScript**: For MCP protocol implementation
+- **Node.js**: For runtime environment
 
-### 7. Publishing Strategy
+### 7. Deployment Strategy
 
-#### Package Name
-- Publish as `toolvault` to npm registry
-- Use semantic versioning for releases
+#### Application Type
+- **Web application**: Next.js server with web UI
+- **Containerized execution**: Docker-based package execution
+- **Database**: SQLite with automatic migrations
 
-#### Installation
-```bash
-npm install -g toolvault
-```
+#### Deployment Options
+- **Local development**: `npm run dev`
+- **Production build**: `npm run build`
+- **Docker deployment**: Containerized application
+- **Cloud deployment**: Deployable to various cloud platforms
 
-#### Commands Available
-- `tsh` - Proxy command
-- `toolvault` - Server command
+#### Runtime Requirements
+- **Node.js 20+**: For server execution
+- **Docker**: For containerized package execution
+- **SQLite**: For data storage
 
-### 8. NPM Publishing Workflow
+### 8. Build and Deployment Workflow
 
-#### What Gets Published
-Only the root package gets published to npm, containing:
-- Built executables in `dist/` directory
-- Root `package.json` with `bin` configuration
-- README and documentation files
-- License and other metadata files
-
-**Sub-projects are NOT published individually** - they are only used for development and building.
-
-#### Publishing Process
-
-##### 1. Build Phase (Automatic)
+#### Build Process
 ```bash
 npm run build
 ```
-- Triggered by `prepublishOnly` script
-- Builds both proxy and server projects
-- Copies executables to `dist/`
-- Ensures everything is ready for distribution
+- Builds Next.js application
+- Copies Docker files and scripts
+- Copies static assets and migrations
+- Verifies all components exist
 
-##### 2. Package Contents
-```
-toolvault-1.0.0.tgz
-├── package.json
-├── README.md
-├── LICENSE.md
-├── dist/
-│   ├── tsh (executable)
-│   ├── toolvault (executable)
-│   ├── standalone/ (Next.js build)
-│   ├── public/ (static assets)
-│   ├── migrations/ (database migrations)
-│   └── data/ (data files)
-└── docs/ (optional)
-```
-
-##### 3. Publishing Commands
+#### Development Workflow
 ```bash
-# Development workflow
-npm run build          # Build both projects
-npm test              # Run tests
-npm publish           # Publish to npm
-
-# Or with version bump
-npm version patch     # Bump version
-npm publish          # Publish new version
+npm run dev          # Start development server
+npm run build        # Build for production
+npm start           # Start production server
 ```
 
-#### Version Management Strategy
+#### Docker Integration
+- **Runner containers**: Built automatically on server startup
+- **Proxy containers**: Started automatically on server startup
+- **Security**: Isolated execution with proxy detection
 
-##### Synchronized Versions
-- All projects share the same version number
-- Root package version drives everything
-- Update all `package.json` files together
-
-```bash
-# Update all versions
-npm version patch --workspaces
-npm publish
-```
-
-#### Publishing Checklist
+#### Deployment Checklist
 - [ ] All tests pass
 - [ ] Build completes successfully
-- [ ] Executables work on target platforms
-- [ ] Version numbers are consistent
+- [ ] Docker containers build correctly
+- [ ] Database migrations run successfully
 - [ ] Documentation is updated
-- [ ] Changelog is updated
-- [ ] npm login is complete
-- [ ] Package name is available
-
-#### Pre-publish Validation
-```bash
-# Test the package locally
-npm pack              # Create tarball without publishing
-npm install -g ./toolvault-1.0.0.tgz  # Test global install
-tsh --help           # Test proxy command
-toolvault --help     # Test server command
-npm uninstall -g toolvault  # Clean up
-```
-
-#### Post-publish Verification
-```bash
-npm install -g toolvault@latest
-tsh --version
-toolvault --version
-```
+- [ ] Environment variables are configured
 
 ## Implementation Stages
 
 ### ✅ Stage 1: Basic Package Structure
-- [x] Create root `package.json` with `bin` field
+- [x] Create root `package.json` with workspace configuration
 - [x] Configure workspaces for `projects/*`
 - [x] Add build scripts
 - [x] Test basic structure
 
-### ✅ Stage 2: Proxy Implementation
-- [x] Add `@vercel/ncc` to proxy dependencies
-- [x] Configure proxy build script
-- [x] Test bundled proxy executable
-- [x] Verify `tsh --help` works
+### ✅ Stage 2: Server Implementation
+- [x] Next.js application with API routes
+- [x] Database integration with SQLite
+- [x] MCP bridge integration
+- [x] Web UI for server administration
 
-### ✅ Stage 3: Server Implementation
-- [x] Migrate from TypeScript compilation to esbuild bundling
-- [x] Fix module resolution issues with mcp-link
-- [x] Integrate local bridge project
-- [x] Configure production mode
-- [x] Test bundled server executable
-- [x] Verify `toolvault --help` works
+### ✅ Stage 3: Docker Integration
+- [x] Custom runner containers for secure execution
+- [x] Proxy containers for package caching
+- [x] Security isolation and fallback mechanisms
+- [x] Cross-platform compatibility
 
 ### ✅ Stage 4: Build Orchestration
-- [x] Update build script for esbuild-based approach
-- [x] Simplify file copying logic
-- [x] Update verification process
-- [x] Test complete build process
+- [x] Automated build process
+- [x] Docker file copying and verification
+- [x] Static asset management
+- [x] Complete deployment workflow
 
-### ✅ Stage 5: Global Installation Testing
-- [x] Test `npm link` functionality
-- [x] Verify both commands work globally
-- [x] Test from different directories
-- [x] Final validation
+### ✅ Stage 5: Production Deployment
+- [x] Production build optimization
+- [x] Database migration system
+- [x] Environment configuration
+- [x] Security hardening
 
 ## Final Implementation
 
-The implementation uses a modern esbuild-based approach:
+The implementation uses a modern Next.js-based approach with Docker integration:
 
-1. **Proxy (`tsh`)**: Bundled with `@vercel/ncc` into a single executable
-2. **Server (`toolvault`)**: Bundled with esbuild into a single executable with external dependencies
-3. **Bridge**: Local workspace project with fixed module resolution
+1. **Server**: Next.js application with API routes and web UI
+2. **Docker**: Custom runner containers for secure package execution
+3. **Bridge**: Local workspace project for MCP protocol implementation
 
 ### Key Files:
-- `package.json`: Root configuration with `bin` field
-- `dist/tsh`: Bundled proxy executable
-- `dist/toolvault`: Bundled server executable
+- `package.json`: Root configuration with workspace setup
+- `dist/server/`: Next.js production build
+- `dist/docker/`: Docker containers and scripts
 - `scripts/build.js`: Build orchestration script
 
-### Commands:
-- `tsh --help`: Works globally via bundled executable
-- `toolvault --help`: Works globally via bundled executable
+### Application:
+- **Web UI**: React-based interface for server administration
+- **API Routes**: RESTful API for MCP server management
+- **Docker Integration**: Secure containerized package execution
 
-The solution is self-contained and provides optimal performance with pre-compiled assets.
+The solution provides secure, isolated package execution with modern web interface and comprehensive Docker integration.
 
 ### 9. Future Enhancements
 
 #### Potential Improvements
-- Add command-line help and documentation
-- Implement auto-update functionality
-- Add configuration management
-- Support for different installation modes (global vs local)
-- Docker containerization
+- Enhanced Docker container management
+- Advanced proxy caching strategies
 - Performance monitoring and metrics
+- Multi-tenant support
+- Advanced security features
+- Cloud deployment automation
 
 #### Documentation
-- Update README with installation instructions
-- Add command-line help for both tools
-- Create user guides for each command
-- API documentation for server endpoints
+- Comprehensive API documentation
+- Docker deployment guides
+- Security best practices
+- Performance optimization guides
+- Troubleshooting documentation
 
 ## Implementation Notes
 
 ### Build Dependencies
-- `esbuild` for server bundling
-- `@vercel/ncc` for proxy bundling
+- `Next.js` for web application framework
+- `TypeScript` for type safety
+- `Docker` for containerized execution
 - Build orchestration script for coordination
 
 ### Testing Strategy
 - Unit tests for individual projects
-- Integration tests for global installation
+- Integration tests for Docker containers
 - Cross-platform testing
 - User acceptance testing
 
 ### Release Process
 1. Update versions in all projects
 2. Run full build and test suite
-3. Publish to npm registry
-4. Verify global installation works
+3. Deploy to target environment
+4. Verify Docker containers work correctly
 5. Update documentation
 
 ## References
 
 - [npm workspaces documentation](https://docs.npmjs.com/cli/v7/using-npm/workspaces)
-- [npm bin field documentation](https://docs.npmjs.com/cli/v7/configuring-npm/package-json#bin)
-- [esbuild documentation](https://esbuild.github.io/)
-- [@vercel/ncc documentation](https://github.com/vercel/ncc)
+- [Next.js documentation](https://nextjs.org/docs)
+- [Docker documentation](https://docs.docker.com/)
+- [TypeScript documentation](https://www.typescriptlang.org/docs/)
