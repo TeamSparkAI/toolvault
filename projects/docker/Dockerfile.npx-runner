@@ -1,0 +1,30 @@
+# NPM Runner Container
+# This container is specifically for running npx commands with npm proxy support
+FROM node:20-slim
+
+# Set environment variables for non-interactive installs
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install utilities
+WORKDIR /tmp
+RUN apt-get update && apt-get install -y curl unzip && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set up home directory and environment
+RUN mkdir -p /home && chmod 755 /home
+ENV HOME=/home
+
+# Set a working directory for your projects inside the container
+WORKDIR /app
+
+# Copy the npm wrapper script
+COPY run_npm.sh /usr/local/bin/run_npm.sh
+RUN chmod +x /usr/local/bin/run_npm.sh
+
+# Set the wrapper script as the ENTRYPOINT
+ENTRYPOINT ["/usr/local/bin/run_npm.sh"]
+
+# No default command - must be supplied
+#
+# Instructions for the user:
+# To run npx: docker run --rm -it <your-image-name> npx <package-name> [args]

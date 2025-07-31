@@ -95,9 +95,16 @@ async function start() {
     
     // Ensure Docker image is built before starting servers
     logger.debug('Checking Docker image availability...');
-    const dockerImageBuilt = await dockerUtils.ensureProjectImageBuilt();
+    const dockerImageBuilt = await dockerUtils.ensureRunnerContainersBuilt();
     if (!dockerImageBuilt) {
       logger.warn('Failed to build Docker image. Some MCP servers may not work properly.');
+    }
+
+    // Ensure proxy containers are running
+    logger.debug('Checking proxy containers...');
+    const proxyContainersRunning = await dockerUtils.ensureProxyContainersRunning();
+    if (!proxyContainersRunning) {
+      logger.warn('Failed to start proxy containers. Some MCP servers may not work properly.');
     }
     
     // Prepare Next.js

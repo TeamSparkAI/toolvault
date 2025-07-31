@@ -1,11 +1,11 @@
 import { homedir } from 'os';
 import { pathExists } from '../utils/fs';
-import { runnerContainer } from '../utils/security';
 import { ModelFactory } from './index';
 import { McpServerConfig } from '@/lib/types/server';
 import { ServerData, ServerFilter, ServerListResult, ServerPagination } from './types/server';
 import { logger } from '../logging/server';
 import { BridgeManager } from '../bridge/BridgeManager';
+import { NPX_RUNNER_IMAGE, UVX_RUNNER_IMAGE } from '../config/containers';
 
 export abstract class ServerModel {
     abstract findById(serverId: number): Promise<ServerData | null>;
@@ -19,7 +19,7 @@ export abstract class ServerModel {
     async getMcpServerConfigForProxy(serverToken: string, bearerToken: string): Promise<McpServerConfig> {
         const hostModel = await ModelFactory.getInstance().getHostModel();
         const mcpHost = await hostModel.get();
-        
+
         const bridgeManager = BridgeManager.getInstance();
         const actualPort = bridgeManager.getActualPort();
 
@@ -61,7 +61,7 @@ export abstract class ServerModel {
                 // Find the runner container argument
                 let runnerIndex = -1;
                 for (let i = 3; i < config.args.length; i++) {
-                    if (config.args[i] === runnerContainer) {
+                    if (config.args[i] === NPX_RUNNER_IMAGE || config.args[i] === UVX_RUNNER_IMAGE) {
                         runnerIndex = i;
                         break;
                     }

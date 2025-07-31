@@ -7,17 +7,46 @@
  */
 
 /**
- * The default MCP runner container image name
- * This container is used to run MCP servers in a sandboxed environment
- */
-export const MCP_RUNNER_CONTAINER = 'teamspark/mcp-runner';
-
-/**
  * Default tag for the MCP runner container
  */
 export const MCP_RUNNER_TAG = 'latest';
 
+
 /**
- * Full image name for the MCP runner container
+ * NPM runner container for running npx commands
  */
-export const MCP_RUNNER_IMAGE = `${MCP_RUNNER_CONTAINER}:${MCP_RUNNER_TAG}`; 
+export const NPX_RUNNER_CONTAINER = 'teamspark/npx-runner';
+
+/**
+ * Python runner container for running uvx commands
+ */
+export const UVX_RUNNER_CONTAINER = 'teamspark/uvx-runner';
+
+/**
+ * Default tag for runner containers
+ */
+export const RUNNER_TAG = 'latest';
+
+/**
+ * Full image names for runner containers
+ */
+export const NPX_RUNNER_IMAGE = `${NPX_RUNNER_CONTAINER}:${RUNNER_TAG}`;
+export const UVX_RUNNER_IMAGE = `${UVX_RUNNER_CONTAINER}:${RUNNER_TAG}`;
+
+/**
+ * Proxy container names and configuration
+ */
+export const NPX_PROXY_CONTAINER = 'teamspark-npx-proxy';
+export const UVX_PROXY_CONTAINER = 'teamspark-uvx-proxy';
+
+/**
+ * Proxy container images
+ */
+export const NPX_PROXY_IMAGE = 'verdaccio/verdaccio:latest';
+export const UVX_PROXY_IMAGE = 'epicwink/proxpi';
+
+/**
+ * Proxy ports
+ */
+export const NPX_PROXY_PORT = 4873;
+export const UVX_PROXY_PORT = 4874;

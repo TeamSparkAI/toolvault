@@ -31,7 +31,7 @@ export class ClientEndpointStdio extends ClientEndpoint {
         if (stdioClient.stderr) {  
             stdioClient.stderr.on('data', (data: Buffer) => {
                 const logEntry = data.toString().trim();
-                logger.error('[mcp-link] stderr:', logEntry);
+                logger.debug('[mcp-link] stderr:', logEntry);
                 this.logEvent(logEntry);
             });
         }

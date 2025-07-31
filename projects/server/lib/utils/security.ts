@@ -1,7 +1,7 @@
 // !!! This module is used from both front-end and back-end code, so there is no logging (we don't really have a logging solution for this scenario)
 
 import { McpServerConfig, ServerSecurity } from '@/lib/types/server';
-import { MCP_RUNNER_IMAGE } from '@/lib/config/containers';
+import { NPX_RUNNER_IMAGE, UVX_RUNNER_IMAGE } from '@/lib/config/containers';
 import { getAppDataPath } from '../../../shared/paths';
 import * as path from 'path';
 
@@ -27,7 +27,9 @@ export const npxCacheDir = path.join(getAppDataPath(), 'cache', 'npm');
 //
 // The following methods can determine if a config is wrapped or unwrapped, and can wrap/unwrap a config (convert to and from the above container form)
 //
-export const runnerContainer = MCP_RUNNER_IMAGE;
+
+export const npmRunnerContainer = NPX_RUNNER_IMAGE;
+export const uvxRunnerContainer = UVX_RUNNER_IMAGE;
 
 export function getSecurityType(config: McpServerConfig, explicitSecurity?: ServerSecurity): ServerSecurity {
     // If security is explicitly set, use it
@@ -44,10 +46,10 @@ export function getSecurityType(config: McpServerConfig, explicitSecurity?: Serv
         const command = config.command || '';
         if (command.includes('docker') || command.includes('podman')) {
             if (config.args && config.args.length >= 5 && config.args[0] === 'run' && config.args[1] === '--rm' && config.args[2] === '-i') {
-                // Find the runner container argument (it could be after environment variables)
+                // Find the runner container argument (it could be after environment variables, volume mounts, or --add-host)
                 let runnerIndex = -1;
                 for (let i = 3; i < config.args.length; i++) {
-                    if (config.args[i] === runnerContainer) {
+                    if (config.args[i] === npmRunnerContainer || config.args[i] === uvxRunnerContainer) {
                         runnerIndex = i;
                         break;
                     }
@@ -56,7 +58,7 @@ export function getSecurityType(config: McpServerConfig, explicitSecurity?: Serv
                 if (runnerIndex !== -1 && runnerIndex + 1 < config.args.length) {
                     const commandArg = config.args[runnerIndex + 1];
                     if (commandArg === 'npx' || commandArg === 'uvx') {
-                        // Check that all arguments between -i and runner container are valid env var pairs or identity volume mounts
+                        // Check that all arguments between -i and runner container are valid env var pairs, volume mounts, or --add-host
                         for (let i = 3; i < runnerIndex; i++) {
                             if (i + 1 >= runnerIndex) {
                                 // Ran out of args without getting a pair, so this is not a wrapped config
@@ -72,6 +74,9 @@ export function getSecurityType(config: McpServerConfig, explicitSecurity?: Serv
                                 i++; // Skip the next argument since we processed it
                             } else if (config.args[i] === '-v') {
                                 // We have a volume mount
+                                i++; // Skip the next argument since we processed it
+                            } else if (config.args[i] === '--add-host') {
+                                // We have a host mapping
                                 i++; // Skip the next argument since we processed it
                             }
                         }
@@ -106,7 +111,13 @@ function isPathLike(arg: string): boolean {
 export function wrapSecurity(config: McpServerConfig): McpServerConfig {
     if (config.type === 'stdio') {
         if (config.command === 'uvx' || config.command === 'npx') {
+            const runnerContainer = config.command === 'uvx' ? uvxRunnerContainer : npmRunnerContainer;
             const baseArgs = ['run', '--rm', '-i'];
+            
+            // Add host resolution for Linux to enable host.docker.internal
+            if (process.platform === 'linux') {
+                baseArgs.push('--add-host', 'host.docker.internal:172.17.0.1');
+            }
             
             // Add environment variables as -e arguments
             const envArgs: string[] = [];
@@ -117,13 +128,6 @@ export function wrapSecurity(config: McpServerConfig): McpServerConfig {
             }
 
             const volumeMounts: string[] = [];
-
-            // Add volume mounts for the local cache (!!! VERY INSECURE TO GIVE RANDO npx/uvx CODE RW ACCESS TO MODULE CACHE)
-            if (config.command === 'uvx') {
-                volumeMounts.push('-v', `${uvxCacheDir}:/usr/local/uv`);
-            } else if (config.command === 'npx') {
-                volumeMounts.push('-v', `${npxCacheDir}:/home/.npm`);
-            }
 
             // Process args for things that look like paths and resolve to paths (expanding ~, etc)
             for (let i = 0; i < config.args.length; i++) {
@@ -156,7 +160,7 @@ export function unwrapSecurity(config: McpServerConfig): McpServerConfig {
             // Find the runner container argument
             let runnerIndex = -1;
             for (let i = 3; i < config.args.length; i++) {
-                if (config.args[i] === runnerContainer) {
+                if (config.args[i] === npmRunnerContainer || config.args[i] === uvxRunnerContainer) {
                     runnerIndex = i;
                     break;
                 }
@@ -182,9 +186,12 @@ export function unwrapSecurity(config: McpServerConfig): McpServerConfig {
                                 env[key] = value;
                             }
                             i++; // Skip the next argument since we processed it
-                        } else if (config.args[i].startsWith('-v')) {
+                        } else if (config.args[i] === '-v') {
                             // We have a potential volume mount - Note: there could be cases of non-identity volume mounts (Windows?) where
                             // we'd need to find the argument that matches the container path and replace it with the host path.
+                            i++; // Skip the next argument since we processed it
+                        } else if (config.args[i] === '--add-host') {
+                            // We have a host mapping - skip the host mapping argument
                             i++; // Skip the next argument since we processed it
                         }
                     }

@@ -4,7 +4,16 @@ import { exec } from 'child_process';
 import path from 'path';
 import * as fs from 'fs';
 import { logger } from '../logging/server';
-import { MCP_RUNNER_IMAGE } from '../config/containers';
+import { 
+    NPX_RUNNER_IMAGE, 
+    UVX_RUNNER_IMAGE,
+    NPX_PROXY_CONTAINER,
+    UVX_PROXY_CONTAINER,
+    NPX_PROXY_IMAGE,
+    UVX_PROXY_IMAGE,
+    NPX_PROXY_PORT,
+    UVX_PROXY_PORT
+} from '../config/containers';
 
 const execAsync = promisify(exec);
 
@@ -224,10 +233,10 @@ export class DockerUtils {
         if (all) {
             args.push('-a');
         }
-        args.push('--format', 'table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.CreatedAt}}');
+        args.push('--format', '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.CreatedAt}}');
 
         const output = await this.executeDockerCommand(args);
-        const lines = output.trim().split('\n').slice(1); // Skip header
+        const lines = output.trim().split('\n');
 
         return lines.map(line => {
             const [id, name, image, status, ports, created] = line.split('\t');
@@ -252,9 +261,9 @@ export class DockerUtils {
     }
 
     /**
-     * Build the project's Docker image if it doesn't exist
+     * Ensure runner containers are built
      */
-    async ensureProjectImageBuilt(imageTag = MCP_RUNNER_IMAGE): Promise<boolean> {
+    async ensureRunnerContainersBuilt(): Promise<boolean> {
         try {
             // Check if Docker is available
             if (!(await this.isDockerInstalled())) {
@@ -262,54 +271,160 @@ export class DockerUtils {
                 return false;
             }
 
-            // Check if image already exists
-            const imageExists = await this.imageExists(imageTag);
-            logger.debug(`Image ${imageTag} exists: ${imageExists}`);
-            if (imageExists) {
-                logger.info(`Docker image ${imageTag} already exists`);
+            // Check if images already exist
+            const npxExists = await this.imageExists(NPX_RUNNER_IMAGE);
+            const uvxExists = await this.imageExists(UVX_RUNNER_IMAGE);
+
+            if (npxExists && uvxExists) {
+                logger.info('Runner containers already exist');
                 return true;
             }
 
-            // Build the image
-            logger.info(`Building Docker image ${imageTag}...`);
-            
-            // Try to find Dockerfile in both dev and dist locations
-            let dockerfilePath: string;
+            // Try to find docker directory in multiple locations
+            let dockerDir: string;
             let contextPath: string;
             
-            // First try dev location (relative to projects directory)
-            const devDockerfilePath = path.join(__dirname, '..', '..', '..', 'docker', 'Dockerfile');
-            const devContextPath = path.join(__dirname, '..', '..', '..');
+            // Try dev location first (projects/docker/)
+            const devDockerDir = path.join(__dirname, '..', '..', '..', 'docker');
+            const devDockerfilePath = path.join(devDockerDir, 'Dockerfile.npx-runner');
             
-            // Then try dist location (relative to dist directory)
-            const distDockerfilePath = path.join(__dirname, 'Dockerfile');
-            const distContextPath = path.join(__dirname, '.');
+            // Try prod location (current directory)
+            const prodDockerDir = path.join(__dirname, 'docker');
+            const prodDockerfilePath = path.join(prodDockerDir, 'Dockerfile.npx-runner');
             
-            // Check which location exists
-            if (fs.existsSync(distDockerfilePath)) {
-                dockerfilePath = distDockerfilePath;
-                contextPath = distContextPath;
-                logger.debug('Using dist Dockerfile location');
-            } else if (fs.existsSync(devDockerfilePath)) {
-                dockerfilePath = devDockerfilePath;
-                contextPath = devContextPath;
-                logger.debug('Using dev Dockerfile location');
+            if (fs.existsSync(devDockerfilePath)) {
+                // Dev environment: files are in projects/docker/
+                dockerDir = devDockerDir;
+                contextPath = devDockerDir;
+            } else if (fs.existsSync(prodDockerfilePath)) {
+                // Prod environment: files are in current directory
+                dockerDir = prodDockerDir;
+                contextPath = __dirname;
             } else {
-                // This error is really for production, so we'll just show the dist path
-                throw new Error(`Dockerfile not found in ${distDockerfilePath}`);
+                throw new Error(`Dockerfile.npx-runner not found in either ${devDockerfilePath} or ${prodDockerfilePath}`);
             }
 
-            await this.buildImage({
-                dockerfile: dockerfilePath,
-                context: contextPath,
-                tag: imageTag,
-                noCache: false
-            });
+            // Build npx runner if needed
+            if (!npxExists) {
+                logger.info('Building npx runner container...');
+                const npxDockerfilePath = path.join(dockerDir, 'Dockerfile.npx-runner');
+                
+                if (!fs.existsSync(npxDockerfilePath)) {
+                    throw new Error(`npx runner Dockerfile not found at ${npxDockerfilePath}`);
+                }
 
-            logger.info(`Successfully built Docker image ${imageTag}`);
+                // Copy script files to build context if needed
+                const scriptPath = path.join(dockerDir, 'scripts', 'run_npm.sh');
+                const contextScriptPath = path.join(contextPath, 'run_npm.sh');
+                
+                if (fs.existsSync(scriptPath)) {
+                    // Copy script to context directory
+                    fs.copyFileSync(scriptPath, contextScriptPath);
+                }
+
+                await this.buildImage({
+                    dockerfile: npxDockerfilePath,
+                    context: contextPath,
+                    tag: NPX_RUNNER_IMAGE,
+                    noCache: false
+                });
+
+                // Clean up copied file
+                if (fs.existsSync(contextScriptPath)) {
+                    fs.unlinkSync(contextScriptPath);
+                }
+            }
+
+            // Build python runner if needed
+            if (!uvxExists) {
+                logger.info('Building uvx runner container...');
+                const uvxDockerfilePath = path.join(dockerDir, 'Dockerfile.uvx-runner');
+                
+                if (!fs.existsSync(uvxDockerfilePath)) {
+                    throw new Error(`Python runner Dockerfile not found at ${uvxDockerfilePath}`);
+                }
+
+                await this.buildImage({
+                    dockerfile: uvxDockerfilePath,
+                    context: contextPath,
+                    tag: UVX_RUNNER_IMAGE,
+                    noCache: false
+                });
+            }
+
+            logger.info('Successfully built runner containers');
             return true;
         } catch (error) {
-            logger.error('Failed to build Docker image:', error);
+            logger.error('Failed to build runner containers:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Ensure proxy containers are running
+     */
+    async ensureProxyContainersRunning(): Promise<boolean> {
+        try {
+            // Check if Docker is available
+            if (!(await this.isDockerInstalled())) {
+                logger.warn('Docker is not installed or not available');
+                return false;
+            }
+
+            // Check if containers are already running
+            const containers = await this.listContainers(true);
+            const npxProxyRunning = containers.some(c => 
+                c.name === NPX_PROXY_CONTAINER && c.status.includes('Up')
+            );
+            const uvxProxyRunning = containers.some(c => 
+                c.name === UVX_PROXY_CONTAINER && c.status.includes('Up')
+            );
+
+            if (npxProxyRunning && uvxProxyRunning) {
+                logger.info('Proxy containers already running');
+                return true;
+            }
+
+            // Start npx proxy if not running
+            if (!npxProxyRunning) {
+                logger.info('Starting npx proxy container...');
+                try {
+                    await this.runContainer({
+                        image: NPX_PROXY_IMAGE,
+                        containerName: NPX_PROXY_CONTAINER,
+                        ports: { [`${NPX_PROXY_PORT}`]: `${NPX_PROXY_PORT}` },
+                        detach: true,
+                        rm: false
+                    });
+                    logger.info('npx proxy container started successfully');
+                } catch (error) {
+                    logger.error('Failed to start npx proxy container:', error);
+                    return false;
+                }
+            }
+
+            // Start uvx proxy if not running
+            if (!uvxProxyRunning) {
+                logger.info('Starting uvx proxy container...');
+                try {
+                    await this.runContainer({
+                        image: UVX_PROXY_IMAGE,
+                        containerName: UVX_PROXY_CONTAINER,
+                        ports: { [`${UVX_PROXY_PORT}`]: '5000' },
+                        detach: true,
+                        rm: false
+                    });
+                    logger.info('uvx proxy container started successfully');
+                } catch (error) {
+                    logger.error('Failed to start uvx proxy container:', error);
+                    return false;
+                }
+            }
+
+            logger.info('Successfully started proxy containers');
+            return true;
+        } catch (error) {
+            logger.error('Failed to start proxy containers:', error);
             return false;
         }
     }
@@ -320,8 +435,7 @@ export class DockerUtils {
     private async executeDockerCommand(args: string[]): Promise<string> {
         return new Promise((resolve, reject) => {
             const options: SpawnOptions = {
-                stdio: ['pipe', 'pipe', 'pipe'],
-                shell: true
+                stdio: ['pipe', 'pipe', 'pipe']
             };
 
             const process = spawn('docker', args, options);
@@ -391,6 +505,7 @@ export const dockerUtils = DockerUtils.getInstance();
 
 // Export convenience functions
 export const isDockerInstalled = () => dockerUtils.isDockerInstalled();
-export const ensureProjectImageBuilt = (imageTag = MCP_RUNNER_IMAGE) => dockerUtils.ensureProjectImageBuilt(imageTag);
+export const ensureRunnerContainersBuilt = () => dockerUtils.ensureRunnerContainersBuilt();
+export const ensureProxyContainersRunning = () => dockerUtils.ensureProxyContainersRunning();
 export const buildImage = (options: DockerBuildOptions) => dockerUtils.buildImage(options);
 export const runContainer = (options: DockerRunOptions) => dockerUtils.runContainer(options); 

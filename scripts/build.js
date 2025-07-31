@@ -129,15 +129,49 @@ if (fs.existsSync(publicSrc)) {
   console.log('✅ Public assets copied');
 }
 
-// Copy Dockerfile for container builds
-console.log('📋 Copying Dockerfile...');
-const dockerfileSrc = path.join(__dirname, '..', 'projects', 'docker', 'Dockerfile');
-const dockerfileDest = path.join(distDir, 'Dockerfile');
-if (fs.existsSync(dockerfileSrc)) {
-  fs.copyFileSync(dockerfileSrc, dockerfileDest);
-  console.log('✅ Dockerfile copied');
+
+
+// Copy runner Dockerfiles and scripts
+console.log('📋 Copying runner Dockerfiles and scripts...');
+const dockerDir = path.join(__dirname, '..', 'projects', 'docker');
+const distDockerDir = path.join(distDir, 'docker');
+
+// Create docker directory in dist
+if (!fs.existsSync(distDockerDir)) {
+  fs.mkdirSync(distDockerDir, { recursive: true });
+}
+
+// Copy Dockerfiles
+const npxDockerfileSrc = path.join(dockerDir, 'Dockerfile.npx-runner');
+const npxDockerfileDest = path.join(distDockerDir, 'Dockerfile.npx-runner');
+const uvxDockerfileSrc = path.join(dockerDir, 'Dockerfile.uvx-runner');
+const uvxDockerfileDest = path.join(distDockerDir, 'Dockerfile.uvx-runner');
+
+if (fs.existsSync(npxDockerfileSrc)) {
+  fs.copyFileSync(npxDockerfileSrc, npxDockerfileDest);
+  console.log('✅ npx-runner Dockerfile copied');
 } else {
-  console.error('❌ Dockerfile not found');
+  console.error('❌ npx-runner Dockerfile not found');
+  process.exit(1);
+}
+
+if (fs.existsSync(uvxDockerfileSrc)) {
+  fs.copyFileSync(uvxDockerfileSrc, uvxDockerfileDest);
+  console.log('✅ uvx-runner Dockerfile copied');
+} else {
+  console.error('❌ uvx-runner Dockerfile not found');
+  process.exit(1);
+}
+
+// Copy scripts
+const scriptsSrc = path.join(dockerDir, 'scripts');
+const scriptsDest = path.join(distDockerDir, 'scripts');
+
+if (fs.existsSync(scriptsSrc)) {
+  fs.cpSync(scriptsSrc, scriptsDest, { recursive: true });
+  console.log('✅ Runner scripts copied');
+} else {
+  console.error('❌ Runner scripts not found');
   process.exit(1);
 }
 
@@ -146,9 +180,11 @@ console.log('\n🔍 Verifying executables...');
 const tshExists = fs.existsSync(path.join(distDir, 'tsh'));
 const toolvaultExists = fs.existsSync(path.join(distDir, 'toolvault'));
 const nextExists = fs.existsSync(path.join(distDir, '.next'));
-const dockerfileExists = fs.existsSync(path.join(distDir, 'Dockerfile'));
+const npxDockerfileExists = fs.existsSync(path.join(distDir, 'docker', 'Dockerfile.npx-runner'));
+const uvxDockerfileExists = fs.existsSync(path.join(distDir, 'docker', 'Dockerfile.uvx-runner'));
+const scriptsExist = fs.existsSync(path.join(distDir, 'docker', 'scripts', 'run_npm.sh'));
 
-if (tshExists && toolvaultExists && nextExists && dockerfileExists) {
+if (tshExists && toolvaultExists && nextExists && npxDockerfileExists && uvxDockerfileExists && scriptsExist) {
   console.log('✅ All components created successfully');
   console.log(`📁 Distribution in: ${distDir}`);
   console.log('   - tsh (proxy)');
@@ -156,7 +192,7 @@ if (tshExists && toolvaultExists && nextExists && dockerfileExists) {
   console.log('   - .next/ (Next.js build)');
   console.log('   - public/ (static assets)');
   console.log('   - appData/ (migrations, data)');
-  console.log('   - Dockerfile (for container builds)');
+  console.log('   - docker/ (runner containers and scripts)');
 } else {
   console.error('❌ Failed to create all components');
   process.exit(1);

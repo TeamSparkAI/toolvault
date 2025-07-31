@@ -1,0 +1,40 @@
+# Python Runner Container
+# This container is specifically for running uvx commands with Python proxy support
+FROM python:3.11-slim
+
+# Set environment variables for non-interactive installs
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install utilities
+WORKDIR /tmp
+RUN apt-get update && apt-get install -y curl unzip && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install uv (for uvx)
+COPY --from=ghcr.io/astral-sh/uv:0.5.5 /uv /uvx /bin/
+
+# Add uv to the PATH for all users
+ENV PATH="/root/.cargo/bin:/usr/local/uv/bin:${PATH}"
+
+# Set up uv environment variables
+ENV UV_CACHE_DIR=/usr/local/uv
+ENV UV_PYTHON_INSTALL_DIR=/usr/local/uv/python
+
+# Set up home directory and environment
+RUN mkdir -p /home && chmod 755 /home
+ENV HOME=/home
+
+# Set a working directory for your projects inside the container
+WORKDIR /app
+
+# Copy the uvx wrapper script
+COPY scripts/run_uvx.sh /usr/local/bin/run_uvx.sh
+RUN chmod +x /usr/local/bin/run_uvx.sh
+
+# Set the wrapper script as the ENTRYPOINT
+ENTRYPOINT ["/usr/local/bin/run_uvx.sh"]
+
+# No default command - must be supplied
+#
+# Instructions for the user:
+# To run uvx: docker run --rm -it <your-image-name> uvx <package-name> [args]
