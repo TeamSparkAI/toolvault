@@ -18,7 +18,7 @@ ENV HOME=/home
 WORKDIR /app
 
 # Copy the npm wrapper script
-COPY run_npm.sh /usr/local/bin/run_npm.sh
+COPY scripts/run_npm.sh /usr/local/bin/run_npm.sh
 RUN chmod +x /usr/local/bin/run_npm.sh
 
 # Set the wrapper script as the ENTRYPOINT

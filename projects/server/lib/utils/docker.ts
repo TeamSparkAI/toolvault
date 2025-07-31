@@ -288,7 +288,7 @@ export class DockerUtils {
             const devDockerDir = path.join(__dirname, '..', '..', '..', 'docker');
             const devDockerfilePath = path.join(devDockerDir, 'Dockerfile.npx-runner');
             
-            // Try prod location (current directory)
+            // Try prod location (dist/docker/)
             const prodDockerDir = path.join(__dirname, 'docker');
             const prodDockerfilePath = path.join(prodDockerDir, 'Dockerfile.npx-runner');
             
@@ -297,9 +297,9 @@ export class DockerUtils {
                 dockerDir = devDockerDir;
                 contextPath = devDockerDir;
             } else if (fs.existsSync(prodDockerfilePath)) {
-                // Prod environment: files are in current directory
+                // Prod environment: files are in dist/docker/, context is dist/
                 dockerDir = prodDockerDir;
-                contextPath = __dirname;
+                contextPath = path.dirname(prodDockerDir);
             } else {
                 throw new Error(`Dockerfile.npx-runner not found in either ${devDockerfilePath} or ${prodDockerfilePath}`);
             }
@@ -313,26 +313,12 @@ export class DockerUtils {
                     throw new Error(`npx runner Dockerfile not found at ${npxDockerfilePath}`);
                 }
 
-                // Copy script files to build context if needed
-                const scriptPath = path.join(dockerDir, 'scripts', 'run_npm.sh');
-                const contextScriptPath = path.join(contextPath, 'run_npm.sh');
-                
-                if (fs.existsSync(scriptPath)) {
-                    // Copy script to context directory
-                    fs.copyFileSync(scriptPath, contextScriptPath);
-                }
-
                 await this.buildImage({
                     dockerfile: npxDockerfilePath,
                     context: contextPath,
                     tag: NPX_RUNNER_IMAGE,
                     noCache: false
                 });
-
-                // Clean up copied file
-                if (fs.existsSync(contextScriptPath)) {
-                    fs.unlinkSync(contextScriptPath);
-                }
             }
 
             // Build python runner if needed

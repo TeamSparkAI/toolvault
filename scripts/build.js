@@ -163,15 +163,31 @@ if (fs.existsSync(uvxDockerfileSrc)) {
   process.exit(1);
 }
 
-// Copy scripts
-const scriptsSrc = path.join(dockerDir, 'scripts');
-const scriptsDest = path.join(distDockerDir, 'scripts');
+// Copy scripts to dist/scripts/ (build context for Docker)
+const runNpmScriptSrc = path.join(dockerDir, 'scripts', 'run_npm.sh');
+const runNpmScriptDest = path.join(distDir, 'scripts', 'run_npm.sh');
+const runUvxScriptSrc = path.join(dockerDir, 'scripts', 'run_uvx.sh');
+const runUvxScriptDest = path.join(distDir, 'scripts', 'run_uvx.sh');
 
-if (fs.existsSync(scriptsSrc)) {
-  fs.cpSync(scriptsSrc, scriptsDest, { recursive: true });
-  console.log('✅ Runner scripts copied');
+// Create scripts directory in dist
+const distScriptsDir = path.join(distDir, 'scripts');
+if (!fs.existsSync(distScriptsDir)) {
+  fs.mkdirSync(distScriptsDir, { recursive: true });
+}
+
+if (fs.existsSync(runNpmScriptSrc)) {
+  fs.copyFileSync(runNpmScriptSrc, runNpmScriptDest);
+  console.log('✅ run_npm.sh copied');
 } else {
-  console.error('❌ Runner scripts not found');
+  console.error('❌ run_npm.sh not found');
+  process.exit(1);
+}
+
+if (fs.existsSync(runUvxScriptSrc)) {
+  fs.copyFileSync(runUvxScriptSrc, runUvxScriptDest);
+  console.log('✅ run_uvx.sh copied');
+} else {
+  console.error('❌ run_uvx.sh not found');
   process.exit(1);
 }
 
@@ -182,7 +198,9 @@ const toolvaultExists = fs.existsSync(path.join(distDir, 'toolvault'));
 const nextExists = fs.existsSync(path.join(distDir, '.next'));
 const npxDockerfileExists = fs.existsSync(path.join(distDir, 'docker', 'Dockerfile.npx-runner'));
 const uvxDockerfileExists = fs.existsSync(path.join(distDir, 'docker', 'Dockerfile.uvx-runner'));
-const scriptsExist = fs.existsSync(path.join(distDir, 'docker', 'scripts', 'run_npm.sh'));
+const npmScriptExists = fs.existsSync(path.join(distDir, 'scripts', 'run_npm.sh'));
+const uvxScriptExists = fs.existsSync(path.join(distDir, 'scripts', 'run_uvx.sh'));
+const scriptsExist = npmScriptExists && uvxScriptExists;
 
 if (tshExists && toolvaultExists && nextExists && npxDockerfileExists && uvxDockerfileExists && scriptsExist) {
   console.log('✅ All components created successfully');
@@ -195,6 +213,13 @@ if (tshExists && toolvaultExists && nextExists && npxDockerfileExists && uvxDock
   console.log('   - docker/ (runner containers and scripts)');
 } else {
   console.error('❌ Failed to create all components');
+  if (!tshExists) console.error('   - Missing: tsh executable');
+  if (!toolvaultExists) console.error('   - Missing: toolvault executable');
+  if (!nextExists) console.error('   - Missing: .next directory');
+  if (!npxDockerfileExists) console.error('   - Missing: npx-runner Dockerfile');
+  if (!uvxDockerfileExists) console.error('   - Missing: uvx-runner Dockerfile');
+  if (!npmScriptExists) console.error('   - Missing: run_npm.sh script');
+  if (!uvxScriptExists) console.error('   - Missing: run_uvx.sh script');
   process.exit(1);
 }
 
