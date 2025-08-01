@@ -1,7 +1,5 @@
 # TeamSpark ToolShed
 
-Verify onboarding demo works from fresh install
-
 ## Misc
 
 Client import/sync API should propagate common errors (config file not found, invalid JSON, no mcpServers or whatever attr the client uses, failed to write file)
@@ -49,23 +47,7 @@ NPM-based install
 
 ====================================================================================================
 
-## Pre-Launch
-
-### Website
-
-Set up website so we have workbench and toolvault sections linking to separate pages (also ToolCatalog)
-
-Discord?  With link from help, reference in README.md.
-  
-====================================================================================================
-
 ## Post v1.0
-
-## Container Issues
-
-Wrapped containers take ~15 seconds to start without cache (npx/uvx in container doesn't have cache and has to download packages)
-- Proper solution is local proxy (see regcache.md)
-- Short-term (questionable security) method is we share local host cache with container (containers start in ~1 second when cached)
 
 ## API Auth
 
