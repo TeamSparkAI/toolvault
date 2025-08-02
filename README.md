@@ -1,6 +1,6 @@
-# TeamSpark ToolVault
+# TeamSpark MCP ToolVault
 
-**ToolVault**: An integrated platform for AI agent tool management and security.
+**An integrated platform for AI agent tool management and security**
 
 ![ToolVault Dashboard](public/ss_dashboard.png)
 
