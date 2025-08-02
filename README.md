@@ -36,6 +36,10 @@ Run
 toolvault --port 3000
 ```
 
+## Issues
+
+Found a bug or have a feature request? Please use [GitHub Issues](https://github.com/teamspark-ai/toolvault/issues) to report bugs or request new features.
+
 ## License
 
 This repository is licensed under the Business Software License.
