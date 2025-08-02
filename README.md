@@ -14,7 +14,7 @@ Apply security policies to the traffic flowing between agents and MCP servers to
 
 Manage all of your MCP servers centrally, review message traffic, and monitor policy alerts.
 
-For more product information, documentation, videos, and resources, see the [ToolVault product page](https://toolvault.ai/toolvault) on our website.
+For more product information, documentation, videos, and resources, see the [ToolVault product page](https://teamspark.ai/toolvault) on our website.
 
 ## Installation Requirements
 
