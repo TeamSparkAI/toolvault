@@ -6,6 +6,7 @@ import { ServerData, ServerFilter, ServerListResult, ServerPagination } from './
 import { logger } from '../logging/server';
 import { BridgeManager } from '../bridge/BridgeManager';
 import { NPX_RUNNER_IMAGE, UVX_RUNNER_IMAGE } from '../config/containers';
+import { isWindowsPath } from '../utils/security';
 
 export abstract class ServerModel {
     abstract findById(serverId: number): Promise<ServerData | null>;
@@ -43,9 +44,8 @@ export abstract class ServerModel {
     // likely non-paths as paths on the system).  We generate the wrapped config from UX code where we don't have access to
     // the file system to validate the paths, so instead we do it on server create/update (which both call this helper method).
     //
-    // !!! In a future state where we support Windows paths, and we find a volumne mount with non-existent host path,
-    //     we'll need to get the container path, find the corresponding arg, and replace it with the host path (instead
-    //     of just removing the identity volume mount as we do for Mac/Linux here).
+    // For Windows paths, if we find a volumne mount with non-existent host path, we get the container path, find the corresponding
+    // arg, and replace it with the host path (instead of just removing the identity volume mount as we do for Mac/Linux).
     //
     // See: lib/utils/security.ts for more details on the wrapping/unwrapping design and mechanics.
     //
@@ -89,6 +89,15 @@ export abstract class ServerModel {
                                         logger.debug("[unwrap] removing volume mount with non-existent host path", hostPath);
                                         config.args[i] = '';
                                         config.args[i + 1] = '';
+                                        if (isWindowsPath(hostPath)) {
+                                            // We need to find the arg that matches the container path, and replace it with the host path
+                                            for (let j = 0; j < config.args.length; j++) {
+                                                if (config.args[j] === containerPath) {
+                                                    config.args[j] = hostPath;
+                                                    break;
+                                                }
+                                            }
+                                        }
                                     } else if (hostPath != expandedHostPath || containerPath.startsWith('~')) {
                                         config.args[i + 1] = expandedHostPath + ':' + (containerPath.startsWith('~') ? containerPath.replace('~', '/home') : containerPath);
                                     }

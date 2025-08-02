@@ -6,10 +6,6 @@ Client import/sync API should propagate common errors (config file not found, in
 
 When loading catalog via API, if underlying servers.json not loaded (maybe failed startup load), try again
 
-Add Windows support for auto-volume creation / validation on wrapped (run as container) server
-
-Add Windows/Linux support for client discovery
-
 ## Manually adding a client
 
 Consider manually adding client with configPath and how we support import/sync similar to discovery process

@@ -16,14 +16,15 @@ export const npxCacheDir = path.join(getAppDataPath(), 'cache', 'npm');
 // For volume mounts on Linux we require absolute paths and we use an identity mount, where the host path and container path are the same (and the 
 // same as the argument passed to the MCP server running in the container).
 //
-// !!! Windows Support
+// Windows Support
 // 
-//     Need to support drive letter paths (C:\some\path\to\file.txt) and UNC paths (\\server\share\path\to\file.txt)
+//   Need to support drive letter paths (C:\some\path\to\file.txt) and UNC paths (\\server\share\path\to\file.txt)
 //
-//     We might have npx someServer C:\some\path\to\file.txt, but when we containerize that, we can't use the identity volume mount,
-//     we'd need to do something like -v C:\some\path\to\file.txt:/data/file.txt and change the path argument to /data/file.txt
+//   If we have "npx someServer C:\some\path\to\file.txt", when we containerize that, we can't use the identity volume mount.
+//   Instead we need to derive a container path and change the argument to refer to the container path, so our mount would look 
+//   like: "-v C:\some\path\to\file.txt:/some/path/to/file.txt" and the argument is updated to refer to the container path.
 //
-//     We also need to update lib/models/server.ts validateVolumeMounts to handle Windows paths (to undo them using the above model when the host path doesn't exist)
+//   Also, lib/models/server.ts validateVolumeMounts handles Windows paths (undoing them using the above model when the host path doesn't exist)
 //
 // The following methods can determine if a config is wrapped or unwrapped, and can wrap/unwrap a config (convert to and from the above container form)
 //
@@ -108,6 +109,20 @@ function isPathLike(arg: string): boolean {
     return arg.startsWith('/') || arg.startsWith('~');
 }
 
+export function isWindowsPath(arg: string): boolean {
+    return arg.startsWith('C:') || arg.startsWith('\\');
+}
+
+function getLinuxPathFromWindowsPath(windowsPath: string): string {
+    // Convert C:\some\path\to\file.txt to /some/path/to/file.txt or \\server\share\path\to\file.txt to /server/share/path/to/file.txt
+    if (windowsPath.startsWith('C:')) {
+        return windowsPath.replace(/^[A-Z]:/, '').replace(/\\/g, '/');
+    } else if (windowsPath.startsWith('\\')) {
+        return windowsPath.replace(/^\\/, '').replace(/\\/g, '/');
+    }
+    return windowsPath;
+}
+
 export function wrapSecurity(config: McpServerConfig): McpServerConfig {
     if (config.type === 'stdio') {
         if (config.command === 'uvx' || config.command === 'npx') {
@@ -135,9 +150,22 @@ export function wrapSecurity(config: McpServerConfig): McpServerConfig {
                 // We are going to require absolute paths that point to existing files or directories, which we will turn in to identity volume mounts
                 // in the format -v /full/path/to/file:/full/path/to/file
                 if (isPathLike(arg)) {
-                    // !!! We'd really like to check to see if this path exists, but we're in sync UX code currently.
-                    // !!! On Windows, we'd need to contrive a container path (a Linux path for the container) and replace the arg with that.
-                    volumeMounts.push('-v', `${arg}:${arg}`);
+                    // Note: We'd really like to check to see if this path exists, but we're in sync UX code currently, so the server save code will 
+                    //       need to check path validity and remove the volume mount if path doesn't exist.
+                    //
+                    if (isWindowsPath(arg)) {
+                        // On Windows, when we make a volume mount from an arg, the host path will be the arg (the windows path), and the container 
+                        // path will need to be a valid linux path derived from that path.  Then we need to change the arg to use the container path.
+                        //
+                        // For example, if the host path is C:\some\path\to\file.txt, the container path will need to be /some/path/to/file.txt
+                        // and the arg will need to be changed to that.
+                        //
+                        const linuxPath = getLinuxPathFromWindowsPath(arg);
+                        config.args[i] = linuxPath;
+                        volumeMounts.push('-v', `${arg}:${linuxPath}`);
+                    } else {
+                        volumeMounts.push('-v', `${arg}:${arg}`);
+                    }
                 }
             }
 
@@ -187,8 +215,23 @@ export function unwrapSecurity(config: McpServerConfig): McpServerConfig {
                             }
                             i++; // Skip the next argument since we processed it
                         } else if (config.args[i] === '-v') {
-                            // We have a potential volume mount - Note: there could be cases of non-identity volume mounts (Windows?) where
-                            // we'd need to find the argument that matches the container path and replace it with the host path.
+                            // We have a potential volume mount - If this is a Windows volume mount, we need to find the arg that matches
+                            // the container path, and replace it with the host path (since these are not "identity" volume mounts like in Mac/Linux).
+                            const volumeMount = config.args[i + 1];
+                            const separatorIndex = volumeMount.indexOf(':');
+                            if (separatorIndex !== -1) {
+                                const hostPath = volumeMount.substring(0, separatorIndex);
+                                const containerPath = volumeMount.substring(separatorIndex + 1);
+                                if (isWindowsPath(hostPath)) {
+                                    // Find the arg that matches the container path, if any, and replace it with the host path
+                                    for (let j = 0; j < args.length; j++) {
+                                        if (args[j] === containerPath) {
+                                            args[j] = hostPath;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
                             i++; // Skip the next argument since we processed it
                         } else if (config.args[i] === '--add-host') {
                             // We have a host mapping - skip the host mapping argument

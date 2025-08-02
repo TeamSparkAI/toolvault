@@ -43,22 +43,68 @@ const topLevelDirExcludesMacOs = [
     'Public'         // shared files
 ];
 
+const topLevelDirExcludesWindows = [
+    'AppData',       // application data
+    'Contacts',      // 
+    'Desktop',       // 
+    'Downloads',     // 
+    'Favorites',     // 
+    'Links',         // 
+    'Music',         // media files
+    'OneDrive',      // cloud storage
+    'Pictures',      // media files
+    'Saved Games',   // 
+    'Searches',      // 
+    'Videos'         // media files
+];
+
+const topLevelDirExcludesLinux = [
+    'Desktop',       // 
+    'Downloads',     // 
+    'Music',         // media files
+    'Pictures',      // media files
+    'Public',        // shared files
+    'Templates',     // 
+    'Videos'         // media files
+];
+
 // For optimization we want to skip directories unlikely to contain projects
 function skippedDirtectories(filePath: string, dirPath: string): boolean {
     const homeDir = os.homedir();
     if (dirPath.startsWith(homeDir)) {
         const homePath = dirPath.substring(homeDir.length);
-        const firstPathSegment = homePath.split('/')[1];
+        // Use path.sep to handle platform-specific path separators automatically
+        const pathSegments = homePath.split(path.sep);
+        const firstPathSegment = pathSegments[1];
         if (firstPathSegment.startsWith('.')) {
-            logger.debug('Skipping home dir:', dirPath);
+            logger.debug('Skipping hidden directory:', dirPath);
             return true;
         }
-        if (topLevelDirExcludesMacOs.includes(firstPathSegment)) {
-            logger.debug('Skipping home dir:', dirPath);
+
+        // !!! May want to add support for skipping hidden top-level directories on Windows if that turns out to be a problem
+        
+        // Use appropriate exclusion list based on platform
+        let exclusionList: string[];
+        switch (process.platform) {
+            case 'darwin':
+                exclusionList = topLevelDirExcludesMacOs;
+                break;
+            case 'win32':
+                exclusionList = topLevelDirExcludesWindows;
+                break;
+            default: // linux and other unix-like systems
+                exclusionList = topLevelDirExcludesLinux;
+                break;
+        }
+        
+        if (exclusionList.includes(firstPathSegment)) {
+            logger.debug('Skipping excluded directory:', dirPath);
             return true;
         }
     }
-    return filePath.includes('node_modules') || filePath.includes('.git');
+    // Check if any path segment exactly matches these directory names, and if so, skip the directory
+    const pathSegments = filePath.split(path.sep);
+    return pathSegments.some(segment => segment === 'node_modules' || segment === '.git');
 }
 
 async function getExistingClients(): Promise<Set<string>> {

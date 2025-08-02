@@ -85,6 +85,12 @@ https://docs.roocode.com/advanced-usage/available-tools/use-mcp-tool#server-conf
 
 Global Configuration
 - Managed through the Roo Code extension settings in VS Code. These apply across all projects unless overridden
+  - variously reported to be either cline_mcp_settings.json or mcp_settings.json
+  - AI says (unverified):
+    - The mcp_settings.json file is located within your VS Code user storage for Roo
+      - macOS: ~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json
+      - Windows: %APPDATA%\Code\User\globalStorage\rooveterinaryinc.roo-cline\settings\mcp_settings.json
+      - Linux: ~/.config/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json 
 Project-level Configuration
 - Defined in a .roo/mcp.json file within your project's root directory
 
