@@ -38,7 +38,7 @@ toolvault --port 3000
 
 ## Issues
 
-Found a bug or have a feature request? Please use [GitHub Issues](https://github.com/teamspark-ai/toolvault/issues) to report bugs or request new features.
+Found a bug or have a feature request? Please use [GitHub Issues](https://github.com/TeamSparkAI/toolvault/issues) to report bugs or request new features.
 
 ## License
 
