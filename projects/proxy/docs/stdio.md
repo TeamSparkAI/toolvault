@@ -1,4 +1,4 @@
-# Toolshed Proxy
+# ToolVault Proxy
 
 ## Proxied Stdio MCP Servers
 

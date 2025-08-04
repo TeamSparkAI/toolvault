@@ -278,7 +278,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex items-center gap-3">
             <Image src="/icon.png" alt="TeamSpark" width={48} height={48} />
             <div className="text-xl font-semibold">
-              TeamSpark<br />MCP Tool Vault
+              TeamSpark<br />MCP ToolVault
             </div>
           </div>
         </div>

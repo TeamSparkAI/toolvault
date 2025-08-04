@@ -1,4 +1,4 @@
-# Tool Vault Market
+# ToolVault Market
 
 ## Similar, related, or adjacent projects
 

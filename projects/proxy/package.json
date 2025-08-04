@@ -1,7 +1,7 @@
 {
   "name": "tsh-proxy",
   "version": "1.0.0",
-  "description": "Toolshed MCP proxy server",
+  "description": "ToolVault MCP proxy server",
   "main": "dist/index.js",
   "bin": {
     "tsh": "dist/index.js"

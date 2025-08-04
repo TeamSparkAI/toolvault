@@ -1,6 +1,6 @@
-# Tool Vault Docker 
+# ToolVault Docker 
 
-The Dockerfile in this project is for running npx or uvx MCP servers in a generic container
+The Dockerfiles in this project are for running npx or uvx MCP servers in generic containers
 
 To build it:
 

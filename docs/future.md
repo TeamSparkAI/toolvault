@@ -1,4 +1,4 @@
-# Tool Vault Futures
+# ToolVault Futures
 
 Remap tools
 - Meta tools combines tools from multiple servers (all, selected tools)

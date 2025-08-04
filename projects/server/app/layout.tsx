@@ -13,8 +13,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Tool Vault',
-  description: 'TeamSpark MCP Tool Vault - MCP Server management and monitoring application',
+  title: 'ToolVault',
+  description: 'TeamSpark MCP ToolVault - MCP Server management and monitoring application',
   icons: {
     icon: '/icon.png',
   },

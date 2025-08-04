@@ -84,7 +84,7 @@ const STATIC_DIMENSIONS = {
     { value: 'windsurf', label: 'Windsurf' },
     { value: 'claudecode', label: 'Claude Code' },
     { value: 'vscode', label: 'VS Code' },
-    { value: 'ttv', label: 'Tool Vault' },
+    { value: 'ttv', label: 'ToolVault' },
     { value: 'generic', label: 'Generic' }
   ]
 } as const;

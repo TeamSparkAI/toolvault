@@ -1,4 +1,4 @@
-# ToolShed Architecture
+# ToolVault Architecture
 
 ## Shim -> Gateway
 

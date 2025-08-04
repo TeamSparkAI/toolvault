@@ -1,7 +1,7 @@
 {
   "name": "toolvault",
-  "version": "0.1.23",
-  "description": "Tool Vault: An Integrated platform for AI agent tool management and security",
+  "version": "1.0.0",
+  "description": "ToolVault: An Integrated platform for AI agent tool management and security",
   "main": "index.js",
   "types": "index.d.ts",
   "bin": {
@@ -20,9 +20,11 @@
   "keywords": [
     "ai",
     "agent",
+    "mcp",
     "tools",
     "security",
-    "platform"
+    "toolvault",
+    "teamspark"
   ],
   "bugs": {
     "url": "https://github.com/TeamSparkAI/toolvault/issues"

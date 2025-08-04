@@ -122,7 +122,7 @@ export class ValidationService {
       }
 
       // 5. Client token provided and is test client, skip remaining checks
-      // The test client is the Tool Vault client with ID 1
+      // The test client is the ToolVault client with ID 1
       if (client.clientId === 1) {
         return {
           success: true,

@@ -16,15 +16,15 @@ export function ClientDetailsTab({ client }: ClientDetailsTabProps) {
   if (client.type === 'ttv') {
     return (
       <div className="bg-white shadow rounded-lg p-8 text-center">
-        <h2 className="text-xl font-semibold mb-4">Tool Vault Internal Client</h2>
+        <h2 className="text-xl font-semibold mb-4">ToolVault Internal Client</h2>
         <p className="text-gray-700 mb-2">
-          This is the <strong>internal test client</strong> used to ping or test tools within <strong>Tool Vault</strong>.
+          This is the <strong>internal test client</strong> used to ping or test tools within <strong>ToolVault</strong>.
         </p>
         <p className="text-gray-700 mb-2">
           It <strong>cannot be edited, deleted, or disabled</strong>.
         </p>
         <p className="text-gray-700 mb-2">
-          It does not have server relationships because it can be used with <strong>all servers</strong> (but only from within Tool Vault).
+          It does not have server relationships because it can be used with <strong>all servers</strong> (but only from within ToolVault).
         </p>
       </div>
     );

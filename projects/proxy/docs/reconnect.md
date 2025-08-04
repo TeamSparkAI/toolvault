@@ -1,4 +1,4 @@
-# Toolshed Proxy
+# ToolVault Proxy
 
 tl;dr - We want to seamlessly handle any issues with config changes, connection loss, etc and present a long-running, stable stdio server to the client
 
@@ -54,7 +54,7 @@ We could try to be more clever about replacing the gateway (bridge) clients (ins
 - But that only solves the managed server update, the Tool Value or gateway reconfig and/or stop/start will still have the same issue (it doesn't fail until later)
 
 I don't see any good way to make our in-place reconnect/reconfigure work with Streamable.  Alternatives:
-- Only support SSE for gateway in Tool Vault
+- Only support SSE for gateway in ToolVault
   - It works fine, it's local machine so long-lived persistent connections are fine, and we fixed the broken connection management in our SSE implementation
 - Create our own client and server protocol that does what we need (but that might look an awful lot like SSE, so what value would we be adding?)
 

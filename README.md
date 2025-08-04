@@ -1,5 +1,10 @@
 # TeamSpark MCP ToolVault
 
+[![npm version](https://img.shields.io/npm/v/toolvault.svg)](https://www.npmjs.com/package/toolvault)
+[![License](https://img.shields.io/badge/License-Business%20Software%20License-blue.svg)](https://github.com/TeamSparkAI/toolvault/blob/main/LICENSE.md)
+[![GitHub stars](https://img.shields.io/github/stars/TeamSparkAI/toolvault.svg)](https://github.com/TeamSparkAI/toolvault/stargazers)
+[![Discord](https://img.shields.io/discord/1401626396584968234?label=Discord&logo=discord)](https://discord.gg/Z2dh4ATXnB)
+
 **An integrated platform for AI agent tool management and security**
 
 ![ToolVault Dashboard](public/ss_dashboard.png)
@@ -36,9 +41,9 @@ Run
 toolvault --port 3000
 ```
 
-## Issues
+## Contact Us
 
-Found a bug or have a feature request? Please use [GitHub Issues](https://github.com/TeamSparkAI/toolvault/issues) to report bugs or request new features.
+Need help? Found a bug or have a feature request? Please join our [Discord server](https://discord.gg/Z2dh4ATXnB).
 
 ## License
 

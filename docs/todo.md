@@ -1,4 +1,4 @@
-# TeamSpark ToolShed
+# TeamSpark ToolVault
 
 ## Misc
 
@@ -45,6 +45,10 @@ NPM-based install
 
 ## Post v1.0
 
+Command line --audit mode - do a scan of all tool use a produce a text and/or json report
+
+Backup on scan - create tmp file for each modified config file on first rewrite so user could undo a client onboarding if needed
+
 ## API Auth
 
 Web app
@@ -58,7 +62,7 @@ Local app (Electron)
 
 tsh as exec via @yao-pkg/pkg (actively maintained fork of pkg)
 
-Tool Vault as Electron app
+ToolVault as Electron app
 - Providing the same functionality as the current Web UX, and the current HTTP API backend
 - Would be long-running and provide the API endpoints (both proxy and general).
   - It becomes the "service" (different on different OS), would have tray icon, etc

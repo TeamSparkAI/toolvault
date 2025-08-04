@@ -28,7 +28,7 @@ export class SqliteClientModel extends ClientModel {
 
     async create(data: Omit<ClientData, 'clientId' | 'token' | 'createdAt' | 'updatedAt'> & { token?: string }): Promise<ClientData> {
         if (data.type === 'ttv') {
-            throw new Error('Cannot create another Tool Vault (ttv) client. This client is created by migration and must be unique.');
+            throw new Error('Cannot create another ToolVault (ttv) client. This client is created by migration and must be unique.');
         }
         const token = data.token || generateBase32Id();
         const scope = data.scope || 'project';
@@ -88,7 +88,7 @@ export class SqliteClientModel extends ClientModel {
 
     async delete(clientId: number): Promise<void> {
         if (clientId === 1) {
-            throw new Error('Cannot delete the internal Tool Vault (ttv) client.');
+            throw new Error('Cannot delete the internal ToolVault (ttv) client.');
         }
         await this.db.execute('DELETE FROM clients WHERE clientId = ?', [clientId]);
     }

@@ -47,8 +47,8 @@ VALUES (
   1,
   'ttv',
   'global',
-  'Tool Vault',
-  'The TeamSpark MCP Tool Vault internal test client',
+  'ToolVault',
+  'The TeamSpark MCP ToolVault internal test client',
   '0AFD-0JMA-1VH8-1TR7'
 );
 

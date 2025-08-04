@@ -1,7 +1,7 @@
 {
-  "name": "tsh-server",
-  "version": "1.0.1",
-  "description": "Toolshed Next.js server for web UI and API",
+  "name": "toolvault-server",
+  "version": "0.9.0",
+  "description": "ToolVault server for web UI, API, and gateway host",
   "private": true,
   "scripts": {
     "build:next": "next build",

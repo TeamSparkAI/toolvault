@@ -43,7 +43,7 @@ The root `package.json` is configured as a workspace-based monorepo:
 {
   "name": "toolvault",
   "version": "0.1.17",
-  "description": "Tool Vault: An Integrated platform for AI agent tool management and security",
+  "description": "ToolVault: An Integrated platform for AI agent tool management and security",
   "workspaces": [
     "projects/*"
   ],

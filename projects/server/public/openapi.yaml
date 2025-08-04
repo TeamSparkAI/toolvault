@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
-  title: Tool Vault API
+  title: ToolVault API
   version: 1.0.0
-  description: API for Tool Vault MCP gateway server (management, analystics, and proxy support)
+  description: API for ToolVault MCP gateway server (management, analystics, and proxy support)
 
 servers:
   - url: http://localhost:3000/api/v1
-    description: Tool Vault MCP Gateway
+    description: ToolVault MCP Gateway
 
 tags:
   - name: Gateway

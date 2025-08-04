@@ -1,9 +1,9 @@
 [
     {
         "type": "ttv",
-        "name": "Tool Vault",
+        "name": "ToolVault",
         "scope": "project",
-        "description": "The TeamSpark MCP Tool Vault is a tool for mananging MCP servers and tools.",
+        "description": "The TeamSpark MCP ToolVault is a tool for mananging MCP servers and tools.",
         "token": "0AFD-0JMA-1VH8-1TR7"
     },
     {

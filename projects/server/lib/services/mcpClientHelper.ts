@@ -75,7 +75,7 @@ export class HostedMcpClientHelper extends NetworkMcpClientHelper {
   protected async ensureClient(): Promise<McpClient> {
     if (!this.client) {
       log.debug('Getting internal client token');
-      const internalClientId = 1; // We happen to know that the built-in Tool Vault client has id 1
+      const internalClientId = 1; // We happen to know that the built-in ToolVault client has id 1
       const clientResponse = await fetch(`/api/v1/clients/${internalClientId}`);
       const clientResponseJson = await clientResponse.json();
       const clientResult = new JsonResponseFetch<ClientData>(clientResponseJson, 'client');
