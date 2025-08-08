@@ -1,5 +1,83 @@
 # TeamSpark ToolVault
 
+Add the ability to inspect original MCP configs, revert if desired
+- On sync we create a backup (in place) of each file we modify, only if that backup doesn't exist (we don't want to backup our own previous mods).
+- Use tbk extension (appended to existing filename, including extension: eg: mcp.json.tbk)
+- Track all such backups (db, JSON file in app data?) - orig file, backup file, timestamp, client type?
+- Implement an --inspect command line option that lists the config files and backups
+- Implement a --revert command line option that restores original config and removes backups (only if both files exist)
+- Implement a --clean command that removes all app data (to be run before uninstall)
+- Make sure --revert and --clean are run in the correct sequence if both provided
+- Add docs for these options to help command
+
+## Deploy
+
+Build
+  npm run build
+Push 1.0.1 as @next 
+  npm publish --tag next
+Uninstall
+  npm uninstall -g toolvault
+  ./reset (clean)
+  Remove Library/Application Support/ToolVault
+Prepare
+  Copy tomas_mcp.json to Claude project
+  Copy unmanaged server to toolvault/.cursor/mcp.json
+Install @next
+  npm install -g toolvault@next
+Test
+  Import with tomas clients
+  Import toolvault/cursor (unmanaged), test server (ping/tools)
+Clean up todo.md
+Push to main
+Promote to @latest
+  npm dist-tag add package-name@version latest
+  npm dist-tag rm package-name@version next
+Uninstall/reinstall (plain) - validate 1.0.1 install
+
+## ENV var and home dir expansion
+
+Need a way to inject local env vars in args/env/cwd
+- Formatted as $ENV_VAR or ${ENV_VAR}
+- Also support home dir expansion (leading ~)
+
+Support functions implemented, need to deploy/test (clientEndpointStdio and MCP client code)
+- Apply to args, env var values, cwd
+
+Done
+- Validate this won't interfere with wrapped servers (container env, volume mounts, etc)
+- Validate expansion of home dir and env in all fields
+  - Unmanaged server (ping/test)
+  - Managed server
+
+## Preflight noise
+
+We are seeing some behavior from stdio MCP servers where they emit various content to stdout before they start talking JSONRPC.  The
+StdioClientTransport throws an error on this, but it seems that most clients survive it just fine (they or their MCP clients don't even
+listen for error events).  We currently we log an error and return a JSONRPC error. It might be better to just track the state of whether
+we've seen a JSONRPC message yet, and if not, anything that doesn't parse as JSON gets sent to the log instead.  
+
+Done: validate
+
+## CWD support for stdio
+
+We have encountered MCP servers that rely on running code (typically via node) relative to their own path (or the workspace path)
+- They do not have a cwd param specifying the dir they need to run in (they just assume the project/workspace dir)
+- For example, referencing an MCP server that is part of the project itself: node mcp-servers/our-server.js
+
+Add cwd to stdio config throughout (structs, UX, etc)
+When scanning MCP configs, add cwd to list of fields we bring in and can overwrite
+- When encountering cwd with relative path, we will need to fix when converting to managed (convert to abs path, home path if possible)
+- When importing a stdio server without a cwd, set it to the project directory (assuming we can determine that from the config file location)
+  - Only for non-global conversions
+  - Only for non npx-uvx servers (?)
+- When deploying server (via bridge client endpoint), expand cwd (~ or env var refs), pass cwd to stdio transport
+- Look at how this works when creating the client transport in the UX for test also
+
+Done: Test to verify that server is actually run in cwd when
+- Managed server
+- Unmanaged server
+
 ## Misc
 
 Client import/sync API should propagate common errors (config file not found, invalid JSON, no mcpServers or whatever attr the client uses, failed to write file)
@@ -111,6 +189,7 @@ Allow for docker or podman by config (user can just alias docker to podman, shou
 ### Library
 
 Add Docker MCP directory as library source: integrate (with tag) or choose between catalog sources?
+- https://github.com/docker/mcp-registry/tree/main/servers
 
 ### Import
 

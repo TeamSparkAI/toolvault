@@ -42,6 +42,7 @@ function getBridgeStdioTransport(args: string[]) {
     });
 }
 
+// !!! We didn't bring the CLI (src/index.ts) into the bridge package, so we can't use it here.
 async function runBridgeServer(args: string[]): Promise<ChildProcess> {
     const server = spawn('tsx', [join(__dirname, '../src/index.js'), ...args]);
     await sleep(serverStartWaitMs); // Wait for the server to start

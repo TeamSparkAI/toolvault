@@ -1,8 +1,7 @@
 import { ErrorCode, JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
-import { startBridge, ServerEndpointConfig, ClientEndpointConfig, BaseMessageProcessor } from 'mcp-link';
-import { ServerEndpoint } from 'mcp-link/dist/serverEndpoints/serverEndpoint';
+import { startBridge, ServerEndpointConfig, ClientEndpointConfig, BaseMessageProcessor, ServerEndpoint } from 'toolvault-bridge';
 import logger from './logger';
-import { getApiConfigPath } from '../../shared/paths';
+import { getApiConfigPath } from '../../shared/utils/paths';
 import * as fs from 'fs';
 import { userInfo } from 'os';
 
@@ -180,14 +179,6 @@ async function getClientEndpointConfig(): Promise<ClientEndpointConfig> {
                 mode: 'streamable',
                 endpoint: clientConfig['url'],
                 endpointHeaders: clientConfig['headers']
-            }
-            break;
-        case 'stdio-container':
-            config = {
-                mode: 'stdio-container',
-                containerImage: clientConfig['image'],
-                env: clientConfig['env'],
-                containerVolumes: clientConfig['volumes']
             }
             break;
         default:

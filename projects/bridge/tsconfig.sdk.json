@@ -9,7 +9,6 @@
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
     "outDir": "./dist",
-    "rootDir": "src",
     "sourceMap": true,
     "typeRoots": [
       "./node_modules/@types"
@@ -17,12 +16,8 @@
     "declaration": true
   },
   "include": [
-    "src/api.ts",
-    "src/types/**/*",
-    "src/serverEndpoints/**/*",
-    "src/clientEndpoints/**/*",
-    "src/clientProxies/**/*",
-    "src/serverTransports/**/*"
+    "src/**/*",
+    "../shared/**/*"
   ],
   "exclude": [
     "node_modules",

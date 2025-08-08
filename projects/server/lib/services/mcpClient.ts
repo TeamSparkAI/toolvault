@@ -5,6 +5,11 @@ import { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types";
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport';
 import { log } from '@/lib/logging/console';
 
+// !!! This code is called from client and server side.  When connecting to an unmanaged server, if it's SSE or Streambale, client code can use
+//     a client-side McpClient to connect to those servers.  For stdio servers, the client will call an internal API endpoint that can used this
+//     same code to instantiate and run a stdio MCP server.  This is a little messy - we'd rather have clean client-only and server-only code
+//     for these use cases.
+
 export interface McpClient {
     serverVersion: { name: string; version: string } | null;
     serverTools: Tool[];
@@ -59,6 +64,7 @@ export abstract class McpClientBase {
     }
 
     async connect(): Promise<boolean> {
+        log.debug('[MCP CLIENT] Connect');
         if (this.connected) {
             log.debug('[MCP CLIENT] Already connected, skipping connect');
             return true;
@@ -77,6 +83,7 @@ export abstract class McpClientBase {
                 log.error(message);
             };
 
+            log.debug('[MCP CLIENT] Connect with transport');
             await this.mcp.connect(this.transport);
             this.connected = true;
 

@@ -1,7 +1,7 @@
 import winston from 'winston';
 import path from 'path';
 import { parseLogLevel, LogLevel } from './utils';
-import { getAppDataPath } from '../../../shared/paths';
+import { getAppDataPath } from '../../../shared/utils/paths';
 import * as fs from 'fs';
 import DailyRotateFile from 'winston-daily-rotate-file';
 

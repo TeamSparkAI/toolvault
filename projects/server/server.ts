@@ -5,7 +5,7 @@ import { parse } from 'url';
 import next from 'next';
 import { BridgeManager } from '@/lib/bridge/BridgeManager';
 import { ModelFactory } from '@/lib/models';
-import { getApiConfigPath } from '../shared/paths';
+import { getApiConfigPath } from '../shared/utils/paths';
 import { logger } from '@/lib/logging/server';
 import { dockerUtils } from '@/lib/utils/docker';
 import * as fs from 'fs';

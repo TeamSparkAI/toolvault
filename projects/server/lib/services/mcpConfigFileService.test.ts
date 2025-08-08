@@ -550,5 +550,43 @@ describe('McpConfigFileService', () => {
       expect(savedConfig.mcpServers['test-server'].command).toBe('tsh');
       expect(savedConfig.mcpServers['test-server'].url).toBeUndefined();
     });
+
+    it('should handle stdio server with cwd field', async () => {
+      const mockContent = JSON.stringify({
+        mcpServers: {
+          'test-server': {
+            type: 'stdio',
+            command: 'tsh',
+            args: ['server-name', 'token'],
+            cwd: '/home/user/project'
+          }
+        }
+      });
+      mockFs.readFile.mockResolvedValue(mockContent);
+      mockFs.writeFile.mockResolvedValue(undefined);
+
+      const service = new McpConfigFileService({
+        filePath: '/test/path/mcp.json'
+      });
+
+      await service.load();
+
+      const newConfig: McpServerConfig = {
+        type: 'stdio',
+        command: 'tsh',
+        args: ['server-name', 'token'],
+        cwd: '/new/path'
+      };
+
+      service.updateServer('test-server', newConfig);
+      await service.save();
+
+      const savedContent = mockFs.writeFile.mock.calls[0][1] as string;
+      const savedConfig = JSON.parse(savedContent);
+      
+      expect(savedConfig.mcpServers['test-server'].type).toBe('stdio');
+      expect(savedConfig.mcpServers['test-server'].command).toBe('tsh');
+      expect(savedConfig.mcpServers['test-server'].cwd).toBe('/new/path');
+    });
   });
 }); 

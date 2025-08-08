@@ -400,7 +400,7 @@ export function ServerEditForm({
 
       <div className="border-t border-gray-200">
         <dl>
-          <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Type</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0 flex items-center justify-between">
               <select
@@ -423,7 +423,7 @@ export function ServerEditForm({
 
           {editedServer.config.type === 'stdio' ? (
             <>
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+              <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Command</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
                   <input
@@ -439,7 +439,7 @@ export function ServerEditForm({
                 </dd>
               </div>
 
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+              <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Arguments</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
                   <div>
@@ -489,7 +489,7 @@ export function ServerEditForm({
                 </dd>
               </div>
 
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+              <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Environment</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
                   <div>
@@ -568,10 +568,29 @@ export function ServerEditForm({
                   </div>
                 </dd>
               </div>
+
+              <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+                <dt className="text-sm font-medium text-gray-500">Directory (cwd)</dt>
+                <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
+                  <input
+                    type="text"
+                    value={(editedServer.config as any).cwd || ''}
+                    onChange={(e) => setEditedServer({
+                      ...editedServer,
+                      config: { ...editedServer.config, cwd: e.target.value } as McpServerConfig
+                    })}
+                    className="w-full p-2 border rounded"
+                    placeholder="Enter working directory (e.g., ~/myapp, $HOME/project)"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Optional. Supports path expansion: ~ for home directory, $VAR for environment variables.
+                  </p>
+                </dd>
+              </div>
             </>
           ) : (
             <>
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+              <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">URL</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
                   <input
@@ -587,7 +606,7 @@ export function ServerEditForm({
                 </dd>
               </div>
 
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+              <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Headers</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
                   <div>
@@ -658,7 +677,7 @@ export function ServerEditForm({
           {/* Security */}
           {editedServer.config.type === 'stdio' && (
             (isSecurityWrappable(editedServer.config) || editedServer.security === 'wrapped' || (editedServer.security === 'container' && isSecurityUnwrappable(editedServer.config))) && (
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+              <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Security</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
                   <div className="space-y-2">

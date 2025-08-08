@@ -1,10 +1,9 @@
-import { ServerEndpoint, startBridge, ServerEndpointConfig, ClientEndpointConfig, AuthorizedMessageProcessor } from 'mcp-link';
+import { ServerEndpoint, startBridge, ServerEndpointConfig, ClientEndpointConfig, AuthorizedMessageProcessor, ClientEndpointLogEntry } from 'toolvault-bridge';
 import { ModelFactory } from '../models';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
 import { MessageFilterService } from '../services/messageFilter';
 import { JsonRpcMessageWrapper } from '../jsonrpc';
 import { ProxyJwtPayload, verifyProxyToken } from '../proxyJwt';
-import { ClientEndpointLogEntry } from 'mcp-link/dist/clientEndpoints/clientEndpoint';
 import { ValidationService } from '../services/validationService';
 import { ServerData } from '../models/types/server';
 import { logger } from '../logging/server';
@@ -98,6 +97,7 @@ export class BridgeManager {
           command: server.config.command,
           args: server.config.args,
           env: server.config.env,
+          cwd: server.config.cwd,
         };
       case 'sse':
         return {

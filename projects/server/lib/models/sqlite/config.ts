@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { getAppDataPath } from '../../../../shared/paths';
+import { getAppDataPath } from '../../../../shared/utils/paths';
 
 export const DB_CONFIG = {
   // Database file path in app data directory

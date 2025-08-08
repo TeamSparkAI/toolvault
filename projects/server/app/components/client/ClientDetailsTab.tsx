@@ -35,7 +35,7 @@ export function ClientDetailsTab({ client }: ClientDetailsTabProps) {
       <div className="border-t border-gray-200">
         <dl>
           {client.token && (
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+            <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Token</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 flex items-center gap-4">
                 <span className="font-mono select-all">{showToken ? client.token : obfuscatedToken}</span>
@@ -48,11 +48,11 @@ export function ClientDetailsTab({ client }: ClientDetailsTabProps) {
               </dd>
             </div>
           )}
-          <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Type</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">{client.type}</dd>
           </div>
-          <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Config Path</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
               {client.configPath ? (
@@ -64,19 +64,19 @@ export function ClientDetailsTab({ client }: ClientDetailsTabProps) {
               )}
             </dd>
           </div>
-          <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Auto Update</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">{client.autoUpdate ? 'Yes' : 'No'}</dd>
           </div>
           {(client.configPath || client.lastScanned || client.lastUpdated) && (
             <>
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+              <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Last Scanned</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
                   {client.lastScanned ? new Date(client.lastScanned).toLocaleString() : 'Never'}
                 </dd>
               </div>
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+              <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
                   {client.lastUpdated ? new Date(client.lastUpdated).toLocaleString() : 'Never'}

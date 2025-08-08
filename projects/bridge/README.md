@@ -124,7 +124,7 @@ npm install mcp-link --save
 ### Usage
 
 ```typescript
-import { startBridge } from 'mcp-link';
+import { startBridge } from 'toolvault-bridge';
 
 // Start a bridge with the specified configuration
 const bridge = await startBridge({
@@ -151,7 +151,7 @@ The SDK provides a programmatic interface to all the functionality available thr
 You can process messages as they flow through the bridge by providing a message processor:
 
 ```typescript
-import { startBridge } from 'mcp-link';
+import { startBridge } from 'toolvault-bridge';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
 
 const bridge = await startBridge({

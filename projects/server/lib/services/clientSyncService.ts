@@ -8,6 +8,7 @@ import { ClientType, getClientTypeConfig } from '@/lib/types/clientType';
 import { ClientScope } from '@/lib/models/types/client';
 import { isSecurityWrappable, wrapSecurity, unwrapSecurity } from '../utils/security';
 import { logger } from '../logging/server';
+import path from 'path';
 
 export interface ServerScanResult {
     serverName: string;
@@ -87,6 +88,57 @@ function getManagedServerClientToken(config: McpServerConfig): string | null {
     return null;
 }
 
+// Helper function to compute projectPath from configPath and clientType
+function computeProjectPath(configPath: string, clientType: ClientType): string {
+    let projectPath = path.dirname(configPath);
+    
+    // Get the client type config to check for projectConfigDirectory
+    const clientTypeConfig = getClientTypeConfig(clientType);
+    
+    // If the clientType has a projectConfigDirectory, we need to go up one more level
+    if (clientTypeConfig.projectConfigDirectory) {
+        projectPath = path.dirname(projectPath);
+    }
+    
+    return projectPath;
+}
+
+// Helper function to set default cwd for stdio servers under certain conditions
+function setDefaultCwd(config: McpServerConfig, client: ClientData): McpServerConfig {
+    // Only proceed if this is a stdio server
+    if (config.type !== 'stdio') {
+        return config;
+    }
+    
+    // Only proceed if cwd is not already set
+    if (config.cwd) {
+        return config;
+    }
+    
+    // Only proceed if command is not npx or uvx
+    if (config.command === 'npx' || config.command === 'uvx') {
+        return config;
+    }
+    
+    // Only proceed if this is not a global client
+    if (client.scope === 'global') {
+        return config;
+    }
+    
+    // Only proceed if configPath is defined
+    if (!client.configPath) {
+        return config;
+    }
+    
+    // Compute the project path and set it as cwd
+    const projectPath = computeProjectPath(client.configPath, client.type);
+    
+    return {
+        ...config,
+        cwd: projectPath
+    };
+}
+
 // Compare two objects for deep equality (ignoring order of keys)
 //
 export function deepEqual(obj1: any, obj2: any): boolean {
@@ -147,6 +199,7 @@ function validateMcpConfig(config: any): McpServerConfig {
             command: config.command,
             ...(config.args && { args: config.args }),
             ...(config.env && { env: config.env }),
+            ...(config.cwd && { cwd: config.cwd }),
         } as McpServerConfig;
     } else if (type === 'sse' || type === 'streamable') {
         return {
@@ -369,7 +422,7 @@ export async function performImport(client: ClientData, options: SyncOptions, sc
                     logger.debug('[performImport] Creating new unmanaged server:', scannedServer.serverName);
                     const newServer = await serverModel.create({
                         name: scannedServer.serverName,
-                        config: scannedServer.config,
+                        config: setDefaultCwd(scannedServer.config, client),
                         security: "unmanaged", 
                         enabled: true
                     });
@@ -426,7 +479,7 @@ export async function performImport(client: ClientData, options: SyncOptions, sc
                 logger.debug('[performImport] Creating new unmanaged server:', scannedServer.serverName);
                 const newServer = await serverModel.create({
                     name: scannedServer.serverName,
-                    config: scannedServer.config,
+                    config: setDefaultCwd(scannedServer.config, client),
                     security: "unmanaged", 
                     enabled: true
                 });

@@ -9,15 +9,16 @@
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
     "outDir": "./dist",
-    "rootDir": ".",
     "sourceMap": true,
     "typeRoots": [
-      "./node_modules/@types"
+      "./node_modules/@types",
+      "../../node_modules/@types"
     ]
   },
   "include": [
     "src/**/*",
-    "test/**/*"
+    "test/**/*",
+    "../shared/**/*"
   ],
   "exclude": ["node_modules"]
 } 

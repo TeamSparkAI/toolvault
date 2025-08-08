@@ -5,7 +5,7 @@ export type ServerSecurity = 'network' | 'container' | 'wrapped' | 'unmanaged' |
 export type McpServerConfigType = 'stdio' | 'sse' | 'streamable';
 
 export type McpServerConfig = 
-  | { type: 'stdio'; command: string; args: string[]; env?: Record<string, string> }
+  | { type: 'stdio'; command: string; args: string[]; env?: Record<string, string>, cwd?: string }
   | { type: 'sse'; url: string; headers?: Record<string, string> }
   | { type: 'streamable'; url: string; headers?: Record<string, string> };
 

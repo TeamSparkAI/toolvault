@@ -78,7 +78,7 @@ try {
 
 // Copy Next.js standalone build to dist/.next
 console.log('📋 Copying Next.js build...');
-const nextSrc = path.join(__dirname, '..', 'projects', 'server', '.next', 'standalone', '.next');
+const nextSrc = path.join(__dirname, '..', 'projects', 'server', '.next', 'standalone', 'projects', 'server', '.next');
 const nextDest = path.join(distDir, '.next');
 if (fs.existsSync(nextSrc)) {
   fs.cpSync(nextSrc, nextDest, { recursive: true });

@@ -26,6 +26,7 @@ export interface ClientEndpointConfig {
     command?: string;
     env?: Record<string, string>;
     args?: string[];
+    cwd?: string;
     containerImage?: string;
     containerVolumes?: string[];
 }

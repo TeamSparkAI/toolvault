@@ -150,7 +150,7 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
 
       {/* Server Token */}
       {server.token && (
-        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+        <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
           <dt className="text-sm font-medium text-gray-500">Token</dt>
           <dd className="mt-1 text-sm text-gray-900 sm:mt-0 flex items-center gap-4">
             <span className="font-mono select-all">{showToken ? server.token : obfuscatedToken}</span>
@@ -167,7 +167,7 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
       {/* Server Info/Client Owner and Last Seen/Last Synced */}
       {server.security === 'unmanaged' ? (
         <>
-          <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Client Owner</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
               {server.clientOwner ? (
@@ -192,7 +192,7 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
               )}
             </dd>
           </div>
-          <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Last Synced</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
               {server.lastSynced
@@ -203,7 +203,7 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
         </>
       ) : (
         <>
-          <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Server Info</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
               {server.status.serverInfo?.name
@@ -211,7 +211,7 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
                 : '-'}
             </dd>
           </div>
-          <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Last Seen</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
               {server.status.lastSeen
@@ -223,7 +223,7 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
       )}
 
       {/* Server Configuration */}
-      <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+      <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
         <dt className="text-sm font-medium text-gray-500">Type</dt>
         <dd className="mt-1 text-sm text-gray-900 sm:mt-0 flex items-center justify-between">
           <span>{config.type}</span>
@@ -238,7 +238,7 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
 
       {displayConfig.type === 'stdio' ? (
         <>
-          <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Command</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0 flex items-center justify-between">
               <span className="font-mono">{(displayConfig as any).command || '-'}</span>
@@ -253,7 +253,7 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
             </dd>
           </div>
 
-          <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Arguments</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
               {(displayConfig as any).args && (displayConfig as any).args.length > 0 ? (
@@ -268,7 +268,7 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
             </dd>
           </div>
 
-          <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Environment</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
               {(displayConfig as any).env && Object.keys((displayConfig as any).env).length > 0 ? (
@@ -290,17 +290,28 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
               )}
             </dd>
           </div>
+
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+            <dt className="text-sm font-medium text-gray-500">Directory (cwd)</dt>
+            <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
+              {(displayConfig as any).cwd ? (
+                <span className="font-mono">{(displayConfig as any).cwd}</span>
+              ) : (
+                '-'
+              )}
+            </dd>
+          </div>
         </>
       ) : (
         <>
-          <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">URL</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
               {(config as any).url || '-'}
             </dd>
           </div>
 
-          <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+          <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-500">Headers</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
               {(config as any).headers && Object.keys((config as any).headers).length > 0 ? (
@@ -321,7 +332,7 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
       )}
 
       {/* Security */}
-      <div className={`${config.type === 'stdio' ? 'bg-gray-50' : 'bg-white'} px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6`}>
+      <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
         <dt className="text-sm font-medium text-gray-500">Security</dt>
         <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
           <SecurityBadge securityType={securityType} />

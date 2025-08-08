@@ -2,7 +2,7 @@
 
 import { McpServerConfig, ServerSecurity } from '@/lib/types/server';
 import { NPX_RUNNER_IMAGE, UVX_RUNNER_IMAGE } from '@/lib/config/containers';
-import { getAppDataPath } from '../../../shared/paths';
+import { getAppDataPath } from '../../../shared/utils/paths';
 import * as path from 'path';
 
 export const uvxCacheDir = path.join(getAppDataPath(), 'cache', 'uv');
@@ -94,7 +94,7 @@ export function getSecurityType(config: McpServerConfig, explicitSecurity?: Serv
 
 export function isSecurityWrappable(config: McpServerConfig): boolean {
     if (config.type === 'stdio') {
-        if (config.command === 'uvx' || config.command === 'npx') {
+        if ((config.command === 'uvx' || config.command === 'npx') && !config.cwd) {
             return true;
         }
     }

@@ -1,5 +1,5 @@
 import { dockerUtils } from "@/lib/utils/docker";
-import { getAppDataPath } from "../../shared/paths";
+import { getAppDataPath } from "../../shared/utils/paths";
 import * as fs from 'fs';
 import { NPX_RUNNER_IMAGE, UVX_RUNNER_IMAGE } from "@/lib/config/containers";
 

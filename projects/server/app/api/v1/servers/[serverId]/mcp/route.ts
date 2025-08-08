@@ -6,8 +6,12 @@ import { McpClient, McpClientBase } from '@/lib/services/mcpClient';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport';
 import { logger } from '@/lib/logging/server';
+import { ServerData } from '@/lib/models/types/server';
+import { expandPath, expandPaths } from '../../../../../../../shared/utils/pathExpansion';
 
 export const dynamic = 'force-dynamic';
+
+// !!! We should return the log messages along with the payload (success or error) and the UX should append it to the client side log and display it
 
 interface McpRequest {
   operation: 'ping' | 'tools' | 'call-tool';
@@ -28,9 +32,40 @@ class McpClientStdio extends McpClientBase implements McpClient {
             command: this.serverParams.command,
             args: this.serverParams.args ?? undefined,
             env: this.serverParams.env ?? undefined,
+            cwd: this.serverParams.cwd ?? undefined,
             stderr: 'pipe'
         });
     }
+}
+
+function getStdioServerParameters(serverData: ServerData): StdioServerParameters {
+  if (serverData.config.type !== 'stdio') {
+    throw new Error('Only stdio servers are supported for MCP operations');
+  }
+
+  const params: StdioServerParameters = {
+    command: serverData.config.command,
+    args: serverData.config.args,
+    env: serverData.config.env,
+    cwd: serverData.config.cwd,
+  };
+
+  // Expand paths in args, env, and cwd
+  if (params.args && params.args.length > 0) {
+    params.args = expandPaths(params.args);
+  }
+
+  if (params.env) {
+      params.env = Object.fromEntries(Object.entries(params.env).map(([key, value]) => [key, expandPath(value)]));
+  }
+
+  if (params.cwd) {
+      params.cwd = expandPath(params.cwd);
+  }
+
+  logger.error('Stdio server parameters:', params);
+
+  return params;
 }
 
 export async function POST(
@@ -62,11 +97,7 @@ export async function POST(
 
     // OK, we have an existing unmanaged stdio server, so we can proceed
 
-    const client = new McpClientStdio({
-      command: serverData.config.command,
-      args: serverData.config.args,
-      env: serverData.config.env
-    });
+    const client = new McpClientStdio(getStdioServerParameters(serverData));
 
     await client.connect();
 

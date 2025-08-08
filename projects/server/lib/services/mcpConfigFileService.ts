@@ -133,6 +133,7 @@ export class McpConfigFileService {
             newServer.command = config.command;
             if (config.args) newServer.args = config.args;
             if (config.env) newServer.env = config.env;
+            if (config.cwd) newServer.cwd = config.cwd;
         } else if (config.type === 'sse' || config.type === 'streamable') {
             newServer.url = config.url;
             if (config.headers) newServer.headers = config.headers;
@@ -174,6 +175,11 @@ export class McpConfigFileService {
                 this.applyModification(this.getMcpConfigPath(serverName, 'env'), newConfig.env);
             } else if (currentConfig.env) {
                 this.applyModification(this.getMcpConfigPath(serverName, 'env'), undefined);
+            }
+            if (newConfig.cwd) {
+                this.applyModification(this.getMcpConfigPath(serverName, 'cwd'), newConfig.cwd);
+            } else if (currentConfig.cwd) {
+                this.applyModification(this.getMcpConfigPath(serverName, 'cwd'), undefined);
             }
             // Clean up any SSE/streamable properties
             if (currentConfig.url) {
