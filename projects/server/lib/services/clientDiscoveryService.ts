@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import { ModelFactory } from '../models';
 import { ClientType, ClientTypeConfig, clientTypes } from '@/lib/types/clientType';
-import { ClientScope } from '@/lib/models/types/client';
+import { ClientScope, ClientData } from '@/lib/models/types/client';
 import { scanConfigFile } from './clientSyncService';
 import { directoryExists, fileExists } from '../utils/fs';
 import { logger } from '@/lib/logging/server';
@@ -156,7 +156,24 @@ export async function discoverClients(options: ScanOptions): Promise<DiscoveredC
     // Process client config files (for ones that exist) to get server config presence and count
     for (const client of discoveredClients) {
         if (client.isActual) {
-            const scanResults = await scanConfigFile(client.configPath, client.clientType, client.isGlobal ? 'global' : 'project');
+            // Create a mock client object for scanConfigFile
+            const mockClient: ClientData = {
+                clientId: 0, // Not used for scanning
+                type: client.clientType,
+                scope: client.isGlobal ? 'global' : 'project',
+                name: client.name,
+                description: client.description || '',
+                configPath: client.configPath,
+                autoUpdate: false,
+                enabled: true,
+                lastScanned: undefined,
+                lastUpdated: undefined,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                token: 'discovery-token'
+            };
+            
+            const scanResults = await scanConfigFile(client.configPath, mockClient);
             if (scanResults.servers) {
                 client.hasMcpConfig = true;
                 client.serverCount = scanResults.servers.length;

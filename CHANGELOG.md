@@ -1,6 +1,6 @@
 # ToolVault Release Notes
 
-## [v1.0.1] - 08-08-2023
+## [v1.0.1] - 08-09-2023
 
 ### Added
 
@@ -10,6 +10,9 @@ Support for managing stdio servers that care what directory they run in
 
 Support for home directory and env var expansion for stdio servers (in args, env var values, and cwd)
 - Use `~`, `$VAR`, or `${VAR}`
+
+Recovery and removal commands, including `--backups` and `--revert` for restoring IDE/Agent configurations
+and `--clean` for removing all ToolVault data.  See [README.md](README.md) for details.
 
 ### Fixed
 

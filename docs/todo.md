@@ -1,15 +1,5 @@
 # TeamSpark ToolVault
 
-Add the ability to inspect original MCP configs, revert if desired
-- On sync we create a backup (in place) of each file we modify, only if that backup doesn't exist (we don't want to backup our own previous mods).
-- Use tbk extension (appended to existing filename, including extension: eg: mcp.json.tbk)
-- Track all such backups (db, JSON file in app data?) - orig file, backup file, timestamp, client type?
-- Implement an --inspect command line option that lists the config files and backups
-- Implement a --revert command line option that restores original config and removes backups (only if both files exist)
-- Implement a --clean command that removes all app data (to be run before uninstall)
-- Make sure --revert and --clean are run in the correct sequence if both provided
-- Add docs for these options to help command
-
 ## Deploy
 
 Build

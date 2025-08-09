@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "test-server": {
+            "name": "toolvault-server",
+            "command": "tsx",
+            "args": ["projects/bridge/test/fixtures/mcp-server/index.ts", "secondArg"],
+            "env": {
+                "NODE_ENV": "development"
+            }
+        }
+    }
+}

@@ -3,6 +3,8 @@ import { McpServerConfig } from '../types/server';
 import { applyEdits, EditResult, JSONPath, ModificationOptions, modify, parse, ParseError, ParseOptions } from 'jsonc-parser';
 import { fileExists } from '../utils/fs';
 import { logger } from '@/lib/logging/server';
+import { ConfigBackupService, ConfigBackup } from './configBackupService';
+import { ClientData } from '../models/types/client';
 
 // NOTE: Many of our client config files are files that are meant to be edited by humans.  Humans are terrible at writing valid JSON.
 //       It is common to use Javascript-style comments, trailing commas, and other non-standard JSON features when hand-editing "JSON".
@@ -19,6 +21,8 @@ export interface McpConfigFileOptions {
     fileMustExist?: boolean; // If false, you may make mods and write the file even if it didn't exist on load
     mcpConfig?: string; // Optional key for nested MCP config (e.g., "mcp" for VS Code settings.json)
     mcpServers?: string; // Optional key for servers object, defaults to "mcpServers"
+    backupEnabled?: boolean; // Whether to create backups when saving (defaults to true)
+    backupClient?: ClientData; // Client data for backup tracking
 }
 
 function jsoncParse(content: string): any {
@@ -44,12 +48,19 @@ export class McpConfigFileService {
     private originalContent: string = '';
     private currentContent: string = '';
     private indent: number = 2;
+    private backupEnabled: boolean;
+    private backupClient?: ClientData;
+    private backupService: ConfigBackupService;
+    private backupCreated: ConfigBackup | null = null;
 
     constructor(options: McpConfigFileOptions) {
         this.filePath = options.filePath;
         this.fileMustExist = options.fileMustExist ?? true;
         this.mcpConfig = options.mcpConfig;
         this.mcpServers = options.mcpServers || 'mcpServers';
+        this.backupEnabled = options.backupEnabled ?? true;
+        this.backupClient = options.backupClient;
+        this.backupService = new ConfigBackupService();
     }
 
     /**
@@ -217,12 +228,50 @@ export class McpConfigFileService {
     }
 
     /**
+     * Create a backup of the original file if backup is enabled and hasn't been created yet
+     */
+    private async createBackupIfNeeded(): Promise<void> {
+        if (!this.backupEnabled || this.backupCreated || !this.backupClient) {
+            return;
+        }
+
+        try {
+            if (this.originalContent === '') {
+                // File did not exist on load – create an empty backup to signal "no original file"
+                this.backupCreated = await this.backupService.createEmptyBackup(
+                    this.filePath,
+                    this.backupClient
+                );
+            } else {
+                // File existed on load – create a normal backup (if not present)
+                this.backupCreated = await this.backupService.createBackup(
+                    this.filePath,
+                    this.backupClient
+                );
+            }
+        } catch (error) {
+            logger.error(`[McpConfigFileService] Failed to create backup: ${error}`);
+            // Don't throw - backup failure shouldn't prevent save operation
+        }
+    }
+
+    /**
+     * Get the backup that was created during this session
+     */
+    getBackupCreated(): ConfigBackup | null {
+        return this.backupCreated;
+    }
+
+    /**
      * Save the config back to the file
      */
     async save(): Promise<void> {
         if (!this.hasEdits()) {
             return;
         }
+
+        // Create backup before saving if enabled
+        await this.createBackupIfNeeded();
 
         try {
             await fs.writeFile(this.filePath, this.currentContent);

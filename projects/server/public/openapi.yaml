@@ -2842,6 +2842,9 @@ paths:
                             items:
                               type: integer
                             description: Array of server IDs that were processed (if specified in request)
+                          createBackups:
+                            type: boolean
+                            description: Whether to create backups when modifying config files (defaults to true)
                       scanResults:
                         type: object
                         properties:
@@ -2896,6 +2899,39 @@ paths:
                                   type: string
                                 serverName:
                                   type: string
+                      backupResults:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            originalFile:
+                              type: string
+                              description: Full path to the original file
+                            backupFile:
+                              type: string
+                              description: Full path to the backup file
+                            timestamp:
+                              type: string
+                              description: ISO timestamp of backup creation
+                            clientId:
+                              type: integer
+                              description: ID of the client that triggered backup
+                            clientType:
+                              type: string
+                              description: Type of client (vscode, cursor, etc.)
+                            clientName:
+                              type: string
+                              description: Name of the client
+                            operation:
+                              type: string
+                              description: Operation that triggered backup
+                            reverted:
+                              type: boolean
+                              description: Whether this backup has been reverted
+                            revertedAt:
+                              type: string
+                              description: Timestamp when backup was reverted
+                        description: Backup files created during the operation (internal use only)
         '400':
           description: Invalid client ID or request parameters
           content:

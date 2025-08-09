@@ -4,6 +4,7 @@ import { ClientServerData } from '@/lib/models/types/clientServer';
 import { McpServerConfig, McpServerConfigType, ServerSecurity } from '@/lib/types/server';
 import { ServerData } from '@/lib/models/types/server';
 import { McpConfigFileService } from './mcpConfigFileService';
+import { ConfigBackup } from './configBackupService';
 import { ClientType, getClientTypeConfig } from '@/lib/types/clientType';
 import { ClientScope } from '@/lib/models/types/client';
 import { isSecurityWrappable, wrapSecurity, unwrapSecurity } from '../utils/security';
@@ -48,6 +49,7 @@ export interface SyncOptions {
     convertWrapping?: boolean;
     update?: boolean;
     serverIds?: (number | null)[];
+    createBackups?: boolean; // Whether to create backups when modifying config files (defaults to true)
 }
 
 export interface SyncResponse {
@@ -57,6 +59,7 @@ export interface SyncResponse {
     importResults?: { servers: ImportResult[] };
     convertResults?: ConvertResult[];
     updateResults?: UpdateResults;
+    backupResults?: ConfigBackup[]; // Internal use only - not exposed to UX
 }
 
 function getManagedServerConfig(client: ClientData, server: ServerData): McpServerConfig {
@@ -211,13 +214,19 @@ function validateMcpConfig(config: any): McpServerConfig {
     throw new Error('Invalid MCP server config, invalid type: ' + JSON.stringify(config));
 }
 
-async function getMcpFileConfigService(configPath: string, clientType: ClientType, clientScope: ClientScope): Promise<McpConfigFileService> {
-    const clientTypeConfig = getClientTypeConfig(clientType);
+async function getMcpFileConfigService(
+    configPath: string, 
+    client: ClientData,
+    backupEnabled: boolean = true
+): Promise<McpConfigFileService> {
+    const clientTypeConfig = getClientTypeConfig(client.type);
     return new McpConfigFileService({
         filePath: configPath,
         fileMustExist: false,
-        mcpConfig: clientScope === "global" ? clientTypeConfig.globalFileMcpKey : undefined,
-        mcpServers: clientTypeConfig.mcpServersKey
+        mcpConfig: client.scope === "global" ? clientTypeConfig.globalFileMcpKey : undefined,
+        mcpServers: clientTypeConfig.mcpServersKey,
+        backupEnabled,
+        backupClient: backupEnabled ? client : undefined
     });
 }
 
@@ -225,8 +234,8 @@ async function getMcpFileConfigService(configPath: string, clientType: ClientTyp
 //
 // This is only called by discovery on files that we've actually found, so we don't need to handle the case where the file doesn't exist
 //
-export async function scanConfigFile(configPath: string, clientType: ClientType, clientScope: ClientScope): Promise<{ servers: ServerScanResult[] | null }> {
-    const configService = await getMcpFileConfigService(configPath, clientType, clientScope);
+export async function scanConfigFile(configPath: string, client: ClientData): Promise<{ servers: ServerScanResult[] | null }> {
+    const configService = await getMcpFileConfigService(configPath, client);
 
     // Load the config file
     try {
@@ -253,7 +262,12 @@ export async function syncClient(client: ClientData, options: SyncOptions): Prom
 
     logger.debug('[syncClient] configPath:', configPath);
 
-    const configService = await getMcpFileConfigService(configPath, client.type, client.scope);
+    const backupEnabled = options.createBackups ?? true;
+    const configService = await getMcpFileConfigService(
+        configPath, 
+        client,
+        backupEnabled
+    );
 
     // Load the config file
     try {
@@ -306,6 +320,13 @@ export async function syncClient(client: ClientData, options: SyncOptions): Prom
                 throw new Error('Error writing mcpServers to config file: ' + error);
             }
         }
+    }
+
+    // Collect backup results (internal use only)
+    const backupCreated = configService.getBackupCreated();
+    if (backupCreated) {
+        response.backupResults = [backupCreated];
+        logger.debug('[syncClient] Backup created:', backupCreated);
     }
 
     logger.debug('[syncClient] response:', JSON.stringify(response, null, 2));
