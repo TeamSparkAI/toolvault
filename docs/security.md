@@ -2,6 +2,8 @@
 
 Paper: [Enterprise-Grade Security for the Model Context Protocol (MCP): Frameworks and Mitigation Strategies](https://arxiv.org/html/2504.08623v1)
 
+Another one: [MCP Vulnerabilities Every Developer Should Know](https://composio.dev/blog/mcp-vulnerabilities-every-developer-should-know)
+
 ## Features
 
 ### OAuth
@@ -20,6 +22,10 @@ Paper: [Enterprise-Grade Security for the Model Context Protocol (MCP): Framewor
 - Policy to detect managed secrets in payload (prevent leaking any internally defined secrets)
   - Will require something other than stored regex (maybe regex generated at application time by function)
   - How do we do this with real secrets manager?
+
+### Prompt injection via MCP payloads
+
+- Policy engine can try to handle some obvious cases, but for novel attacks we may need some AI or other detection
 
 ### Server version control ("Pinning")
 

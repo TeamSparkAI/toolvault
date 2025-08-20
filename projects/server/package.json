@@ -23,7 +23,9 @@
     "@types/sqlite3": "^3.1.11",
     "@types/winston": "^2.4.4",
     "@types/ws": "^8.18.1",
-    "esbuild": "^0.20.0"
+    "esbuild": "^0.20.0",
+    "npm-registry-fetch": "^19.0.0",
+    "pypi-info": "^2.6.0"
   },
   "devDependencies": {
     "@octokit/rest": "^22.0.0",
@@ -32,6 +34,7 @@
     "@testing-library/user-event": "^14.5.2",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.17.54",
+    "@types/npm-registry-fetch": "^8.0.8",
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
     "@types/swagger-ui-react": "^5.18.0",
