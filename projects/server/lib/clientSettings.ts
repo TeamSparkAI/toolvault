@@ -45,14 +45,12 @@ class ClientSettingsManager {
    * Load settings from the server API
    */
   private async loadFromServer(): Promise<void> {
-    console.log('Loading client settings from server');
     try {
       // Only attempt fetch in browser environment
       if (typeof window === 'undefined') {
         // Server-side: use default settings
         // !!! This code should never be called from server-side, but because the MCP client is called from both sides, and uses console
         //     logging, this can happen.  The proper fix is to separate the MCP client support into client-only and server-only code.
-        console.log('Running server-side, using default client settings');
         this.settings = {
           logLevel: 'info' // !!! HACK / BAD (see above)
         };

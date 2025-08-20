@@ -30,7 +30,6 @@ async function updateLogLevelFromSettings(): Promise<void> {
         return initializationPromise;
     }
 
-    console.log('Starting log level initialization...');
     initializationPromise = (async () => {
         try {
             const serverLogLevel = await clientSettings.getLogLevel();

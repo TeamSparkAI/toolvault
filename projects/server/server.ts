@@ -13,6 +13,7 @@ import * as path from 'path';
 import { uvxCacheDir } from './lib/utils/security';
 import { npxCacheDir } from './lib/utils/security';
 import { ConfigBackupService } from '@/lib/services/configBackupService';
+import packageJson from '../../package.json';
 
 const dev = false; // process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -376,4 +377,5 @@ async function start() {
   }
 }
 
+logger.info(`ToolVault v${packageJson.version}`);
 start();

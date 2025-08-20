@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { JsonResponse } from '@/lib/jsonResponse';
 import { ModelFactory } from '@/lib/models';
 import { syncClient, SyncOptions } from '@/lib/services/clientSyncService';
+import { BridgeManager } from '@/lib/bridge/BridgeManager';
 import { logger } from '@/lib/logging/server';
 
 export async function POST(
@@ -37,6 +38,23 @@ export async function POST(
 
         const response = await syncClient(client, options);
         logger.debug('[syncClient] response:', response);
+
+        // Add new managed servers to the bridge after conversion
+        if (convert && response.convertResults && response.convertResults.length > 0) {
+            const bridgeManager = BridgeManager.getInstance();
+            const serverModel = await modelFactory.getServerModel();
+            for (const convertResult of response.convertResults) {
+                if (convertResult.managedServer.isNew) {
+                    // Add the new managed server to the bridge
+                    const server = await serverModel.findById(convertResult.managedServer.serverId);
+                    if (server) {
+                        logger.debug('[syncClient] Adding new managed server to bridge:', server.name);
+                        await bridgeManager.addClientEndpoint(server);
+                    }
+                }
+            }
+        }
+
         return JsonResponse.payloadResponse('sync', response);
     } catch (error) {
         logger.error('Error in client sync:', error);

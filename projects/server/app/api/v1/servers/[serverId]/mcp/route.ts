@@ -63,7 +63,7 @@ function getStdioServerParameters(serverData: ServerData): StdioServerParameters
       params.cwd = expandPath(params.cwd);
   }
 
-  logger.error('Stdio server parameters:', params);
+  logger.debug('Stdio server parameters:', params);
 
   return params;
 }

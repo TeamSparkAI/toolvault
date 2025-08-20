@@ -1,6 +1,6 @@
 {
   "name": "toolvault",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "ToolVault: An Integrated platform for AI agent tool management and security",
   "main": "index.js",
   "types": "index.d.ts",
@@ -33,7 +33,8 @@
   "scripts": {
     "build": "node scripts/build.js",
     "build:proxy": "npm run build --workspace=projects/proxy",
-    "build:server": "npm run build --workspace=projects/server"
+    "build:server": "npm run build --workspace=projects/server",
+    "start:server": "./dist/toolvault"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",

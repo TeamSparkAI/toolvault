@@ -60,7 +60,7 @@ export abstract class ServerEndpointHttpBase extends ServerEndpoint {
             await new Promise<void>((resolve) => {
                 this.server!.closeAllConnections();
                 this.server!.close(() => {
-                    logger.info(`${this.type} server endpoint shut down successfully`);
+                    logger.info(`Gateway server endpoing (${this.type}) shut down successfully`);
                     resolve();
                 });
             });
