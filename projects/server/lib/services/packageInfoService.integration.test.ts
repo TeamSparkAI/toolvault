@@ -50,6 +50,26 @@ describe('PackageInfoService Integration Tests', () => {
       }
     }, 10000);
 
+    it('should fetch mcp-server-time package info from real registry', async () => {
+      const info = await packageInfoService.getPackageInfo('pypi', 'mcp-server-time');
+      
+      expect(info.name).toBe('mcp-server-time');
+      expect(info.registry).toBe('pypi');
+      expect(info.latestVersion).toBeDefined();
+      expect(info.versions).toBeInstanceOf(Array);
+      expect(info.versions.length).toBeGreaterThan(0);
+      expect(info.description).toBeDefined();
+      expect(info.license).toBeDefined();
+      // Author might not always be present in PyPI registry
+      if (info.author) {
+        expect(info.author).toBeDefined();
+      }
+      // lastModified might not always be present in PyPI registry
+      if (info.lastModified) {
+        expect(info.lastModified).toBeDefined();
+      }
+    }, 10000);
+
     it('should handle non-existent npm package', async () => {
       await expect(
         packageInfoService.getPackageInfo('npm', 'this-package-does-not-exist-12345')

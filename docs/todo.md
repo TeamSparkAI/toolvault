@@ -1,5 +1,32 @@
 # TeamSpark ToolVault
 
+## Pinning
+
+Version: Not pinned - currently 2025.8.5 (latest)
+Version: Pinned to 2025.8.5 (latest)
+Version: Pinned to 2025.8.5 (update available)
+
+
+Version selector presents security validation
+
+[Pin to this version]
+
+Detect if server is not pinned, but can be, and offer "Pin Server" option
+- Get's latest, presents serverInfo/tools, on approval pins server to that version
+
+Pinned server check for updates
+- Get's latest, presents serverInfo/tools, on approval pins server to that version
+- In future will have the ability to present as diff to current
+
+Pinnable but not pinned servers should generate a compliance issue
+
+Note: We could pin by just adding @version to package (that has the benefit of supporting update even for servers we didn't actually pin)
+- But what if the user just changes the version (without going through our workflow).  For now that's probably OK, but later when we
+  serialize all server info, that's problematic (in that case, we'd maintin a non-editable pinned version, and disallow the specification
+  of a version in the command/module reference).
+- In that mode, and command with a version would not be considered pinned, so we could still offer a "Pin this server" option to convert it
+  to our pinned model (let them choose specified version or latest?)
+
 ## Misc
 
 Client import/sync API should propagate common errors (config file not found, invalid JSON, no mcpServers or whatever attr the client uses, failed to write file)

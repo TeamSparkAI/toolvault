@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAlerts } from '@/app/contexts/AlertsContext';
 import { AlertCountBubble } from '@/app/components/alerts/AlertCountBubble';
 
-export type TabType = 'details' | 'tools' | 'logs' | 'messages' | 'alerts' | 'clients';
+export type TabType = 'details' | 'tools' | 'logs' | 'messages' | 'alerts' | 'clients' | 'pinning';
 
 interface ServerTabsProps {
   activeTab: TabType;
@@ -10,9 +10,10 @@ interface ServerTabsProps {
   isUnmanaged?: boolean;
   serverId?: number;
   serverType?: string;
+  isPinnable?: boolean;
 }
 
-export function ServerTabs({ activeTab, onTabChange, isUnmanaged = false, serverId, serverType }: ServerTabsProps) {
+export function ServerTabs({ activeTab, onTabChange, isUnmanaged = false, serverId, serverType, isPinnable = false }: ServerTabsProps) {
   const { getUnseenAlertsCount, refreshCounter } = useAlerts();
   const [alertsCount, setAlertsCount] = useState<number>(0);
 
@@ -28,6 +29,7 @@ export function ServerTabs({ activeTab, onTabChange, isUnmanaged = false, server
 
   const baseTabs: { id: TabType; label: string; count?: number }[] = [
     { id: 'details', label: 'Details' },
+    ...(isPinnable ? [{ id: 'pinning' as TabType, label: 'Pinning' }] : []),
     { id: 'tools', label: 'Tools' },
     ...(serverType === 'stdio' || !serverType ? [{ id: 'logs' as TabType, label: 'Logs' }] : []),
   ];

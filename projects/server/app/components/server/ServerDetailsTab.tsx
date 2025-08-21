@@ -99,16 +99,11 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
           <h3 className="text-lg font-medium text-gray-900">View Configuration as JSON</h3>
           <p className="text-sm text-gray-500 mt-1">Server configuration in JSON format (read-only)</p>
         </div>
-        <textarea
-          value={jsonConfig}
-          readOnly
-          className="w-full h-96 p-3 border border-gray-300 rounded-md font-mono text-sm bg-gray-50"
-          placeholder="JSON configuration will appear here..."
-        />
-        <div className="flex justify-end mt-4">
+        <pre className="bg-gray-50 p-4 rounded text-sm overflow-auto max-h-96">{jsonConfig}</pre>
+        <div className="mt-4 flex justify-end">
           <button
             onClick={() => setModalContent(null)}
-            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
           >
             Close
           </button>

@@ -20,8 +20,10 @@ import { Server } from '@/lib/types/server';
 import { ServerSecurity } from '@/lib/types/server';
 import { ServerClientsTab } from '@/app/components/server/ServerClientsTab';
 import { ServerLogsTab } from '@/app/components/server/ServerLogsTab';
+import { ServerPinningTab } from '@/app/components/server/ServerPinningTab';
 import { getServerDeleteInfo, buildServerDeleteMessage } from '@/lib/utils/deleteConfirmation';
 import { log } from '@/lib/logging/console';
+import { PackageExtractionService } from '@/lib/services/packageExtractionService';
 
 export default function ServerDetailPage({ params }: { params: { serverId: string } }) {
   const [server, setServer] = useState<Server | null>(null);
@@ -52,6 +54,8 @@ export default function ServerDetailPage({ params }: { params: { serverId: strin
     loadServer();
     loadHostConfig();
   }, [params.serverId]);
+
+
 
   useEffect(() => {
     if (server) {
@@ -309,8 +313,13 @@ export default function ServerDetailPage({ params }: { params: { serverId: strin
   // When not editing, show header, tabs, and content
   const isUnmanaged = server.security === 'unmanaged';
   
+  // Determine if server is pinnable
+  const analysis = PackageExtractionService.analyzeServerConfig(server.config);
+  const isPinnable = analysis.packageInfo !== null;
+  
   // If the active tab is 'clients' but the server is unmanaged, default to 'details'
-  const effectiveActiveTab = (isUnmanaged && activeTab === 'clients') ? 'details' : activeTab;
+  // If the active tab is 'pinning' but the server is not pinnable, default to 'details'
+  const effectiveActiveTab = (isUnmanaged && activeTab === 'clients') || (!isPinnable && activeTab === 'pinning') ? 'details' : activeTab;
   
   return (
     <div className="space-y-6">
@@ -329,6 +338,7 @@ export default function ServerDetailPage({ params }: { params: { serverId: strin
         isUnmanaged={isUnmanaged}
         serverId={Number(params.serverId)}
         serverType={server.config.type}
+        isPinnable={isPinnable}
       />
 
       {effectiveActiveTab === 'messages' && !isUnmanaged && (
@@ -369,6 +379,10 @@ export default function ServerDetailPage({ params }: { params: { serverId: strin
 
       {effectiveActiveTab === 'logs' && (
         <ServerLogsTab serverToken={server.token} />
+      )}
+
+      {effectiveActiveTab === 'pinning' && isPinnable && (
+        <ServerPinningTab serverId={Number(params.serverId)} serverName={server.name} serverConfig={server.config} />
       )}
     </div>
   );

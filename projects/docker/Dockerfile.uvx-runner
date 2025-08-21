@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y curl unzip && \
     rm -rf /var/lib/apt/lists/*
 
 # Install uv (for uvx)
-COPY --from=ghcr.io/astral-sh/uv:0.5.5 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.7.3 /uv /uvx /bin/
 
 # Add uv to the PATH for all users
 ENV PATH="/root/.cargo/bin:/usr/local/uv/bin:${PATH}"

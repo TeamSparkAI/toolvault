@@ -33,6 +33,8 @@ tags:
     description: Bridge management endpoints
   - name: Compliance
     description: Compliance management endpoints
+  - name: Security
+    description: Security management endpoints
 
 components:
   schemas:
@@ -3549,6 +3551,253 @@ paths:
                     $ref: '#/components/schemas/ComplianceData'
         '500':
           description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /servers/{serverId}/package:
+    get:
+      tags:
+        - Servers
+      summary: Get package information
+      description: |
+        Retrieves package information for an npx/uvx server including all available versions,
+        current version, latest version, and update availability. This endpoint only returns
+        package metadata and does not perform any security validation.
+      parameters:
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the server to get package information for
+      responses:
+        '200':
+          description: Package information retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  package:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        description: Package name
+                      registry:
+                        type: string
+                        enum: [npm, pypi]
+                        description: Package registry (npm or PyPI)
+                      currentVersion:
+                        type: string
+                        nullable: true
+                        description: Current version if pinned, null if using latest
+                      latestVersion:
+                        type: string
+                        description: Latest available version
+                      hasUpdate:
+                        type: boolean
+                        description: Whether an update is available
+                      versions:
+                        type: array
+                        items:
+                          type: string
+                        description: All available versions
+                      description:
+                        type: string
+                        nullable: true
+                        description: Package description
+                      author:
+                        type: string
+                        nullable: true
+                        description: Package author
+                      license:
+                        type: string
+                        nullable: true
+                        description: Package license
+                      homepage:
+                        type: string
+                        nullable: true
+                        description: Package homepage URL
+                      repository:
+                        type: string
+                        nullable: true
+                        description: Package repository URL
+        '400':
+          description: Invalid server ID or server configuration not supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Server not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /servers/{serverId}/validate:
+    get:
+      tags:
+        - Servers
+      summary: Validate server security for specific version
+      description: |
+        Runs security validation for a specific version of an npx/uvx server by running it
+        in the same configuration (wrapped/unwrapped) as the original server. This allows for
+        security validation without permanently updating the server configuration.
+        
+        The endpoint:
+        1. Takes an optional version parameter (defaults to latest if not specified)
+        2. Runs the specified version in a temporary container
+        3. Interrogates the server to get its server info and tools
+        4. Returns validation results without modifying the original server
+        
+        This is useful for security validation workflows where you want to test specific
+        versions before applying them to production servers.
+      parameters:
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the server to validate
+        - name: version
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Specific version to validate (defaults to latest if not specified)
+      responses:
+        '200':
+          description: Security validation completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  validation:
+                    type: object
+                    properties:
+                      serverInfo:
+                        type: object
+                        nullable: true
+                        properties:
+                          name:
+                            type: string
+                            description: Name of the validated server
+                          version:
+                            type: string
+                            description: Version of the validated server
+                      tools:
+                        type: array
+                        items:
+                          type: object
+                          additionalProperties: true
+                        description: List of tools provided by the validated server
+                      validationTime:
+                        type: string
+                        format: date-time
+                        description: Timestamp when the validation was performed
+        '400':
+          description: Invalid server ID or server configuration not supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Server not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Servers
+      summary: Validate server security update (legacy)
+      description: |
+        Legacy endpoint that validates the latest version of a server. Use the GET endpoint
+        with version parameter for more control over which version to validate.
+      parameters:
+        - name: serverId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the server to validate for updates
+      responses:
+        '200':
+          description: Security validation completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  validation:
+                    type: object
+                    properties:
+                      hasUpdate:
+                        type: boolean
+                        description: Whether an update is available for the server
+                      currentVersion:
+                        type: string
+                        description: Current version of the server package
+                      latestVersion:
+                        type: string
+                        description: Latest available version of the server package
+                      serverInfo:
+                        type: object
+                        nullable: true
+                        properties:
+                          name:
+                            type: string
+                            description: Name of the updated server
+                          version:
+                            type: string
+                            description: Version of the updated server
+                      tools:
+                        type: array
+                        items:
+                          type: object
+                          additionalProperties: true
+                        description: List of tools provided by the updated server
+                      validationTime:
+                        type: string
+                        format: date-time
+                        description: Timestamp when the validation was performed
+        '400':
+          description: Invalid server ID or server configuration not supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Server not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error or validation failed
           content:
             application/json:
               schema:

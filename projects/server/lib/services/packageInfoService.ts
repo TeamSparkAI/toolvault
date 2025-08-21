@@ -1,5 +1,4 @@
-import fetch from 'npm-registry-fetch';
-import { getPackage } from 'pypi-info';
+import npmFetch from 'npm-registry-fetch';
 import { logger } from '@/lib/logging/server';
 
 export interface PackageInfo {
@@ -19,6 +18,9 @@ export interface PackageInfo {
   distTags?: Record<string, string>;
   lastModified?: string;
   registry: 'npm' | 'pypi';
+  // Update information
+  currentVersion?: string;
+  hasUpdate?: boolean;
 }
 
 export interface PackageUpdateInfo {
@@ -29,6 +31,7 @@ export interface PackageUpdateInfo {
 
 export interface PackageInfoService {
   getPackageInfo(registry: 'npm' | 'pypi', packageName: string): Promise<PackageInfo>;
+  getPackageInfoForVersion(registry: 'npm' | 'pypi', packageName: string, version?: string): Promise<PackageInfo>;
   checkForUpdates(registry: 'npm' | 'pypi', packageName: string, currentVersion: string): Promise<PackageUpdateInfo>;
 }
 
@@ -46,7 +49,7 @@ export class PackageInfoServiceImpl implements PackageInfoService {
 
   private async getNpmPackageInfo(packageName: string): Promise<PackageInfo> {
     try {
-      const data = await fetch.json(`/${packageName}`) as any;
+      const data = await npmFetch.json(`/${packageName}`) as any;
 
       return {
         name: packageName,
@@ -74,7 +77,13 @@ export class PackageInfoServiceImpl implements PackageInfoService {
 
   private async getPyPIPackageInfo(packageName: string): Promise<PackageInfo> {
     try {
-      const data = await getPackage(packageName) as any;
+      const response = await fetch(`https://pypi.org/pypi/${packageName}/json`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json() as any;
 
       return {
         name: packageName,
@@ -87,12 +96,19 @@ export class PackageInfoServiceImpl implements PackageInfoService {
         author: data.info.author,
         maintainers: data.info.maintainer ? [data.info.maintainer] : undefined,
         keywords: data.info.keywords ? data.info.keywords.split(',').map((k: string) => k.trim()) : undefined,
+        dependencies: data.info.requires_dist,
         lastModified: data.info.upload_time,
         registry: 'pypi'
       };
-    } catch (error) {
-      logger.error(`Failed to get PyPI package info for ${packageName}:`, error);
-      throw new Error(`Failed to fetch PyPI package ${packageName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+    } catch (error: any) {
+      console.log('Failed to get PyPI package info for', packageName, ':', error);
+      console.log('Error type:', typeof error);
+      console.log('Error constructor:', error?.constructor?.name);
+      console.log('Error message:', error?.message);
+      console.log('Error stack:', error?.stack);
+      
+      throw new Error(`Failed to get PyPI package info for ${packageName}: ${error.message}`);
     }
   }
 
@@ -102,6 +118,20 @@ export class PackageInfoServiceImpl implements PackageInfoService {
     } else {
       return this.getPyPIPackageInfo(packageName);
     }
+  }
+
+  async getPackageInfoForVersion(registry: 'npm' | 'pypi', packageName: string, version?: string): Promise<PackageInfo> {
+    const baseInfo = await this.getPackageInfo(registry, packageName);
+    
+    // If no version specified, use latest
+    const targetVersion = version || baseInfo.latestVersion;
+    
+    // Add update information
+    return {
+      ...baseInfo,
+      currentVersion: targetVersion,
+      hasUpdate: targetVersion !== baseInfo.latestVersion
+    };
   }
 
   async checkForUpdates(registry: 'npm' | 'pypi', packageName: string, currentVersion: string): Promise<PackageUpdateInfo> {
