@@ -3556,15 +3556,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+
+
   /servers/{serverId}/package:
     get:
       tags:
         - Servers
-      summary: Get package information
+      summary: Get package information for server
       description: |
         Retrieves package information for an npx/uvx server including all available versions,
-        current version, latest version, and update availability. This endpoint only returns
-        package metadata and does not perform any security validation.
+        latest version, and update status. This endpoint provides static package information
+        that doesn't change based on version selection.
+        
+        The endpoint:
+        1. Analyzes the server configuration to extract package information
+        2. Fetches package details from the appropriate registry (npm or PyPI)
+        3. Returns all available versions and metadata
+        4. Indicates whether the server is pinned to a specific version
+        
+        This is used by the pinning UI to display package information and available versions
+        for selection.
       parameters:
         - name: serverId
           in: path
@@ -3592,13 +3603,13 @@ paths:
                         type: string
                         enum: [npm, pypi]
                         description: Package registry (npm or PyPI)
-                      currentVersion:
-                        type: string
-                        nullable: true
-                        description: Current version if pinned, null if using latest
                       latestVersion:
                         type: string
                         description: Latest available version
+                      currentVersion:
+                        type: string
+                        nullable: true
+                        description: Currently pinned version (if any)
                       hasUpdate:
                         type: boolean
                         description: Whether an update is available
@@ -3628,7 +3639,7 @@ paths:
                         nullable: true
                         description: Package repository URL
         '400':
-          description: Invalid server ID or server configuration not supported
+          description: Server configuration does not contain package information
           content:
             application/json:
               schema:
@@ -3657,13 +3668,14 @@ paths:
         security validation without permanently updating the server configuration.
         
         The endpoint:
-        1. Takes an optional version parameter (defaults to latest if not specified)
-        2. Runs the specified version in a temporary container
-        3. Interrogates the server to get its server info and tools
-        4. Returns validation results without modifying the original server
+        1. Takes a required version parameter
+        2. Creates a temporary configuration with the specified version
+        3. Runs the specified version in a temporary container
+        4. Interrogates the server to get its server info and tools
+        5. Returns validation results without modifying the original server
         
-        This is useful for security validation workflows where you want to test specific
-        versions before applying them to production servers.
+        This is used by the pinning UI to validate specific versions before applying them
+        to production servers.
       parameters:
         - name: serverId
           in: path
@@ -3673,10 +3685,10 @@ paths:
           description: ID of the server to validate
         - name: version
           in: query
-          required: false
+          required: true
           schema:
             type: string
-          description: Specific version to validate (defaults to latest if not specified)
+          description: Specific version to validate
       responses:
         '200':
           description: Security validation completed successfully
@@ -3690,6 +3702,9 @@ paths:
                   validation:
                     type: object
                     properties:
+                      packageVersion:
+                        type: string
+                        description: Version of the package that was validated
                       serverInfo:
                         type: object
                         nullable: true
@@ -3710,80 +3725,12 @@ paths:
                         type: string
                         format: date-time
                         description: Timestamp when the validation was performed
-        '400':
-          description: Invalid server ID or server configuration not supported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Server not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error or validation failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    post:
-      tags:
-        - Servers
-      summary: Validate server security update (legacy)
-      description: |
-        Legacy endpoint that validates the latest version of a server. Use the GET endpoint
-        with version parameter for more control over which version to validate.
-      parameters:
-        - name: serverId
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: ID of the server to validate for updates
-      responses:
-        '200':
-          description: Security validation completed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  meta:
-                    $ref: '#/components/schemas/Meta'
-                  validation:
-                    type: object
-                    properties:
-                      hasUpdate:
-                        type: boolean
-                        description: Whether an update is available for the server
-                      currentVersion:
-                        type: string
-                        description: Current version of the server package
-                      latestVersion:
-                        type: string
-                        description: Latest available version of the server package
-                      serverInfo:
-                        type: object
-                        nullable: true
-                        properties:
-                          name:
-                            type: string
-                            description: Name of the updated server
-                          version:
-                            type: string
-                            description: Version of the updated server
-                      tools:
+                      errorLog:
                         type: array
                         items:
-                          type: object
-                          additionalProperties: true
-                        description: List of tools provided by the updated server
-                      validationTime:
-                        type: string
-                        format: date-time
-                        description: Timestamp when the validation was performed
+                          type: string
+                        nullable: true
+                        description: Error logs if validation failed
         '400':
           description: Invalid server ID or server configuration not supported
           content:

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { JsonResponse } from '@/lib/jsonResponse';
+import { ModelFactory } from '@/lib/models';
 import { SecurityValidationService } from '@/lib/services/securityValidationService';
 import { logger } from '@/lib/logging/server';
 
@@ -19,9 +20,16 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const version = searchParams.get('version');
 
+    // Get server data to get the config
+    const serverModel = await ModelFactory.getInstance().getServerModel();
+    const serverData = await serverModel.findById(serverId);
+    if (!serverData) {
+      return JsonResponse.errorResponse(404, 'Server not found');
+    }
+
     logger.info(`Security validation request for server ${serverId} with version: ${version || 'latest'}`);
     
-    const result = await SecurityValidationService.validateServerUpdate(serverId, version || undefined);
+    const result = await SecurityValidationService.validateServerUpdate(serverData.config, version || 'latest');
     
     return JsonResponse.payloadResponse('validation', result);
   } catch (error) {

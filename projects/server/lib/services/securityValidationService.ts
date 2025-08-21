@@ -1,6 +1,4 @@
-import { ModelFactory } from '../models';
-import { packageInfoService } from './packageInfoService';
-import { PackageExtractionService } from './packageExtractionService';
+import { McpServerConfig } from '@/lib/types/server';
 import { VersionUpdateService } from './versionUpdateService';
 import { McpClientStdio } from './mcpClientServer';
 import { logger } from '../logging/server';
@@ -8,9 +6,7 @@ import { Tool } from '@modelcontextprotocol/sdk/types';
 import { StdioServerParameters } from '@modelcontextprotocol/sdk/client/stdio';
 
 export interface SecurityValidationResult {
-  hasUpdate: boolean;
-  currentVersion: string;
-  latestVersion: string;
+  packageVersion: string;
   serverInfo: { name: string; version: string } | null;
   tools: Tool[];
   validationTime: Date;
@@ -18,43 +14,16 @@ export interface SecurityValidationResult {
 }
 
 export class SecurityValidationService {
-  static async validateServerUpdate(serverId: number, targetVersion?: string): Promise<SecurityValidationResult> {
-    const serverModel = await ModelFactory.getInstance().getServerModel();
-    const serverData = await serverModel.findById(serverId);
-    if (!serverData) {
-      throw new Error('Server not found');
-    }
-    
-    // Use existing utility to analyze config
-    const analysis = PackageExtractionService.analyzeServerConfig(serverData.config);
-    if (!analysis.packageInfo) {
-      throw new Error('Server configuration does not contain package information');
-    }
-    
-    const { packageInfo } = analysis;
-    
-    // Get package info to determine latest version
-    const packageInfoResult = await packageInfoService.getPackageInfo(
-      packageInfo.registry,
-      packageInfo.packageName
-    );
-    
-    // Determine which version to run
-    const versionToRun = targetVersion || packageInfoResult.latestVersion;
-    const currentVersion = packageInfo.currentVersion || '';
-    const hasUpdate = currentVersion !== packageInfoResult.latestVersion;
-    
+  static async validateServerUpdate(originalConfig: McpServerConfig, targetVersion: string): Promise<SecurityValidationResult> {
     // Create configuration for the target version
     const targetConfig = await VersionUpdateService.createUpdatedConfig(
-      serverData.config,
-      versionToRun
+      originalConfig,
+      targetVersion
     );
     
     // Log the MCP config being used
     logger.info(`Security validation using MCP config:`, {
-      serverId,
       targetVersion,
-      versionToRun,
       configType: targetConfig.type,
       command: targetConfig.type === 'stdio' ? targetConfig.command : 'N/A',
       args: targetConfig.type === 'stdio' ? targetConfig.args : 'N/A',
@@ -85,15 +54,13 @@ export class SecurityValidationService {
       }
       
       return {
-        hasUpdate,
-        currentVersion,
-        latestVersion: packageInfoResult.latestVersion,
+        packageVersion: client.serverVersion?.version || targetVersion,
         serverInfo: client.serverVersion,
         tools: client.serverTools,
         validationTime: new Date()
       };
     } catch (error) {
-      logger.error(`Failed to connect to server version ${versionToRun} for validation:`, error);
+      logger.error(`Failed to connect to server version ${targetVersion} for validation:`, error);
       
       // Get error logs from the client
       const errorLog = client.getErrorLog();
@@ -104,9 +71,7 @@ export class SecurityValidationService {
       
       // Return a validation result with error information instead of throwing
       return {
-        hasUpdate,
-        currentVersion,
-        latestVersion: packageInfoResult.latestVersion,
+        packageVersion: targetVersion, // Use requested version since validation failed
         serverInfo: null,
         tools: [],
         validationTime: new Date(),
