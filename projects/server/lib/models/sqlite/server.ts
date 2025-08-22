@@ -1,6 +1,6 @@
 import { DatabaseClient } from './database';
 import { ServerModel } from '../server';
-import { ServerFilter, ServerListResult, ServerPagination, ServerData } from '../types/server';
+import { ServerFilter, ServerListResult, ServerPagination, ServerData, ServerPinningInfo } from '../types/server';
 import { ServerSecurity } from '@/lib/types/server';
 import { getServerCatalogService } from '@/lib/services/serverCatalogService';
 import { generateBase32Id } from '../../utils/id';
@@ -21,6 +21,7 @@ interface ServerRow {
     enabled: boolean;
     security?: string;
     serverCatalogId?: string;
+    pinningInfo?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -37,7 +38,8 @@ export class SqliteServerModel extends ServerModel {
         const serverData: ServerData = {
             ...server,
             config: JSON.parse(server.config),
-            security: server.security as ServerSecurity | undefined
+            security: server.security as ServerSecurity | undefined,
+            pinningInfo: server.pinningInfo ? JSON.parse(server.pinningInfo) : undefined
         };
 
         // Hydrate catalog icon if serverCatalogId is present
@@ -151,7 +153,7 @@ export class SqliteServerModel extends ServerModel {
 
         const token = data.token ?? generateBase32Id();
         await this.db.execute(
-            `INSERT INTO servers (token, name, description, config, enabled, security, serverCatalogId) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO servers (token, name, description, config, enabled, security, serverCatalogId, pinningInfo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 token,
                 data.name,
@@ -159,7 +161,8 @@ export class SqliteServerModel extends ServerModel {
                 JSON.stringify(data.config),
                 data.enabled,
                 data.security || null,
-                data.serverCatalogId || null
+                data.serverCatalogId || null,
+                data.pinningInfo ? JSON.stringify(data.pinningInfo) : null
             ]
         );
 
@@ -184,6 +187,9 @@ export class SqliteServerModel extends ServerModel {
             if (key === 'config') {
                 updates.push(`${key} = ?`);
                 params.push(JSON.stringify(value));
+            } else if (key === 'pinningInfo') {
+                updates.push(`${key} = ?`);
+                params.push(value === null ? null : JSON.stringify(value));
             } else {
                 updates.push(`${key} = ?`);
                 params.push(value === undefined ? null : value);

@@ -20,6 +20,8 @@ export interface McpClient {
     getErrorLog(): string[];
     isConnected(): boolean;
     ping(): Promise<{ elapsedTimeMs: number }>;
+    getRawInitializeResponse(): object | null;
+    getRawToolsListResponse(): object | null;
 }
 
 export abstract class McpClientBase {
@@ -31,6 +33,13 @@ export abstract class McpClientBase {
     serverTools: Tool[] = [];
     protected connected: boolean = false;
 
+    // Support for capturing raw responses from the server for initialize and tools/list requests
+    private initializeRequestId = 0;
+    private toolsListRequestId = 1;
+    protected rawInitializeResponse: object | null = null;
+    protected rawToolsListResponse: object | null = null;
+    private originalOnMessage: ((message: any, extra?: any) => void) | null = null;    
+
     constructor() {
         this.mcp = new Client({
             name: "mcp-client",
@@ -40,6 +49,22 @@ export abstract class McpClientBase {
     }
 
     protected abstract createTransport(): Promise<Transport>;
+
+    private captureRawResponses(message: any) {
+        // Check if this is a response to our tracked requests and capture if so
+        if ('jsonrpc' in message && message.jsonrpc === '2.0' && 'id' in message) {
+            // Match initialize response
+            if (message.id === this.initializeRequestId) {
+                log.debug('[MCP CLIENT] ✅ Captured initialize response');
+                this.rawInitializeResponse = message;
+            }            
+            // Match tools/list response
+            if (message.id === this.toolsListRequestId) {
+                log.debug('[MCP CLIENT] ✅ Captured tools/list response');
+                this.rawToolsListResponse = message;
+            }
+        }        
+    }
 
     protected addErrorMessage(message: string) {
         if (message.trim()) {
@@ -73,6 +98,18 @@ export abstract class McpClientBase {
         this.transport = await this.createTransport();
 
         try {
+            // Intercept the transport's onmessage before passing to MCP client
+            this.originalOnMessage = this.transport.onmessage || null;            
+            this.transport.onmessage = (message: any, extra?: any) => {
+                // Capture raw responses we care about
+                this.captureRawResponses(message);
+                
+                // Pass through to original handler
+                if (this.originalOnMessage) {
+                    this.originalOnMessage(message, extra);
+                }
+            };
+
             this.transport.onerror = (err: Error) => {
                 const message = `Transport error: ${err.message}`;
                 log.error(message);
@@ -104,10 +141,22 @@ export abstract class McpClientBase {
         return this.connected;
     }
 
+    getRawInitializeResponse(): object | null {
+        return this.rawInitializeResponse;
+    }
+
+    getRawToolsListResponse(): object | null {
+        return this.rawToolsListResponse;
+    }
+
     async onDisconnect() {
         this.transport?.close();
         this.transport = null;
         this.connected = false;
+        // NEW: Clear captured responses and tracked IDs
+        this.rawInitializeResponse = null;
+        this.rawToolsListResponse = null;
+        this.originalOnMessage = null;
     }
 
     async callTool(tool: Tool, args?: Record<string, unknown>): Promise<{ result: CallToolResult; elapsedTimeMs: number }> {

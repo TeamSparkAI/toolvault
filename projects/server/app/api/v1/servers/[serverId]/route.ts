@@ -5,6 +5,7 @@ import { BridgeManager } from '@/lib/bridge/BridgeManager';
 import { Server } from '@/lib/types/server';
 import { syncClient } from '@/lib/services/clientSyncService';
 import { logger } from '@/lib/logging/server';
+import { PackageExtractionService } from '@/lib/services/packageExtractionService';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,7 +116,7 @@ export async function PUT(
   try {
     const serverModel = await ModelFactory.getInstance().getServerModel();
     const requestBody = await request.json();
-    const { name, description, config, enabled, security, serverCatalogId } = requestBody;
+    const { name, description, config, enabled, security, serverCatalogId, pinningInfo } = requestBody;
 
     // Get the current server to check if we're keeping the same name
     const currentServer = await serverModel.findById(parseInt(params.serverId));
@@ -123,14 +124,70 @@ export async function PUT(
       return JsonResponse.errorResponse(404, 'Server not found');
     }
 
+    // Validation: If pinningInfo is provided (including null), config must also be provided
+    if (pinningInfo !== undefined && config === undefined) {
+      return JsonResponse.errorResponse(400, 'Config must be provided when pinningInfo is provided');
+    }
+
+    // Validation: If both are provided, validate they match
+    if (pinningInfo !== undefined && config !== undefined) {
+      const analysis = PackageExtractionService.analyzeServerConfig(config);
+      
+      if (pinningInfo === null) {
+        // Explicitly clearing pinning - config must NOT be pinned
+        if (analysis.isPinned) {
+          return JsonResponse.errorResponse(400, 'Cannot clear pinningInfo when config is pinned');
+        }
+      } else {
+        // Setting pinning info - config must be pinned and match
+        if (!analysis.isPinned) {
+          return JsonResponse.errorResponse(400, 'Config must be pinned when pinningInfo is provided');
+        }
+        
+        if (analysis.packageInfo?.registry !== pinningInfo.package.registry ||
+            analysis.packageInfo?.packageName !== pinningInfo.package.name ||
+            analysis.packageInfo?.currentVersion !== pinningInfo.package.version) {
+          return JsonResponse.errorResponse(400, 'PinningInfo package reference does not match config');
+        }
+      }
+    }
+
     // Build update object
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description === '' ? null : description;
-    if (config !== undefined) updateData.config = config;
     if (enabled !== undefined) updateData.enabled = enabled;
     if (security !== undefined) updateData.security = security;
     if (serverCatalogId !== undefined) updateData.serverCatalogId = serverCatalogId === '' ? null : serverCatalogId;
+
+    // Handle config updates
+    if (config !== undefined) {
+      updateData.config = config;
+      
+      // If pinningInfo was provided, use it (already validated above)
+      if (pinningInfo !== undefined) {
+        updateData.pinningInfo = pinningInfo;
+      } else {
+        // No pinningInfo provided - check if existing pinningInfo still matches
+        const analysis = PackageExtractionService.analyzeServerConfig(config);
+        if (analysis.isPinned && 
+            currentServer.pinningInfo &&
+            currentServer.pinningInfo.package.registry === analysis.packageInfo?.registry &&
+            currentServer.pinningInfo.package.name === analysis.packageInfo?.packageName &&
+            currentServer.pinningInfo.package.version === analysis.packageInfo?.currentVersion) {
+          // Keep existing pinningInfo - it still matches
+          // Don't update pinningInfo field
+        } else {
+          // Config changed or no longer pinned - clear pinningInfo
+          updateData.pinningInfo = null;
+        }
+      }
+    }
+
+    // Handle explicit pinningInfo updates (when config is not being updated)
+    if (pinningInfo !== undefined && config === undefined) {
+      updateData.pinningInfo = pinningInfo; // null/empty to clear, or valid pinningInfo
+    }
 
     const server = await serverModel.update(parseInt(params.serverId), updateData);
 

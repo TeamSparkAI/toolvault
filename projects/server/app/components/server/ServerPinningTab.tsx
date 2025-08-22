@@ -28,6 +28,11 @@ export function ServerPinningTab({ serverId, serverName, serverConfig, onServerU
   const [validationLoading, setValidationLoading] = useState(false);
   const [pinningLoading, setPinningLoading] = useState(false);
   const [unpinningLoading, setUnpinningLoading] = useState(false);
+  // NEW: Store raw responses from validation for reuse during pinning
+  const [cachedRawResponses, setCachedRawResponses] = useState<{
+    initialize: object | null;
+    toolsList: object | null;
+  } | null>(null);
   
   // Initialize selected version from server config
   const analysis = PackageExtractionService.analyzeServerConfig(serverConfig);
@@ -99,6 +104,11 @@ export function ServerPinningTab({ serverId, serverName, serverConfig, onServerU
       
       if (validationResponse.isSuccess()) {
         setSecurityValidation(validationResponse.payload);
+        // Store raw responses for reuse during pinning
+        if (validationResponse.payload.rawResponses) {
+          setCachedRawResponses(validationResponse.payload.rawResponses);
+          log.info('Cached raw responses from validation:', validationResponse.payload.rawResponses);
+        }
       } else {
         log.warn('Security validation failed:', validationResponse.message);
       }
@@ -124,20 +134,43 @@ export function ServerPinningTab({ serverId, serverName, serverConfig, onServerU
       setPinningLoading(true);
       setError(null);
 
+      // Use cached raw responses from previous validation
+      if (!cachedRawResponses?.initialize || !cachedRawResponses?.toolsList) {
+        throw new Error('No cached raw responses available. Please select a version first to validate it.');
+      }
+      
+      log.info('Using cached raw responses for pinning:', cachedRawResponses);
+      
+      const pinningInfo = {
+        package: {
+          registry: packageData?.registry || 'npm',
+          name: packageData?.name || '',
+          version: selectedVersion
+        },
+        mcpResponses: {
+          initialize: cachedRawResponses.initialize,
+          toolsList: cachedRawResponses.toolsList
+        },
+        pinnedAt: new Date().toISOString(),
+        pinnedBy: 'user' // TODO: Get actual user info
+      };
+      
+      log.info('Pinning info prepared with raw responses:', pinningInfo);
+
       // Create updated config with selected version
       const updatedConfig = await VersionUpdateService.createUpdatedConfig(
         serverConfig, 
         selectedVersion
       );
       
-      // Update server via API
+      // Update server via API with pinning info
       const response = await fetch(`/api/v1/servers/${serverId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: serverName,
           config: updatedConfig,
-          // Preserve other fields from current server
+          pinningInfo: pinningInfo
         })
       });
       
@@ -153,7 +186,7 @@ export function ServerPinningTab({ serverId, serverName, serverConfig, onServerU
       // Reload package data to reflect new pinned version
       await loadPackageData();
       
-      log.info(`Successfully pinned ${packageData?.name} to version ${selectedVersion}`);
+      log.info(`Successfully pinned ${packageData?.name} to version ${selectedVersion} with pinning data`);
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to pin version';
@@ -172,14 +205,14 @@ export function ServerPinningTab({ serverId, serverName, serverConfig, onServerU
       // Create unpinned config (removes version specification)
       const updatedConfig = await VersionUpdateService.createUpdatedConfig(serverConfig, null);
       
-      // Update server via API
+      // Update server via API with null pinningInfo to clear it
       const response = await fetch(`/api/v1/servers/${serverId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: serverName,
           config: updatedConfig,
-          // Preserve other fields from current server
+          pinningInfo: null // Clear pinning info
         })
       });
       
@@ -200,7 +233,7 @@ export function ServerPinningTab({ serverId, serverName, serverConfig, onServerU
       // Reload package data to reflect unpinned state
       await loadPackageData();
       
-      log.info(`Successfully unpinned ${packageData?.name}`);
+      log.info(`Successfully unpinned ${packageData?.name} and cleared pinning data`);
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to unpin version';

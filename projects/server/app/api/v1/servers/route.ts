@@ -3,6 +3,7 @@ import { ModelFactory } from '@/lib/models';
 import { JsonResponse } from '@/lib/jsonResponse';
 import { BridgeManager } from '@/lib/bridge/BridgeManager';
 import { logger } from '@/lib/logging/server';
+import { PackageExtractionService } from '@/lib/services/packageExtractionService';
 import { ServerData } from '@/lib/models/types/server';
 
 export const dynamic = 'force-dynamic';
@@ -78,6 +79,7 @@ export async function GET(request: NextRequest) {
           security: server.security,
           serverCatalogId: server.serverCatalogId,
           serverCatalogIcon: server.serverCatalogIcon,
+          pinningInfo: server.pinningInfo,
           status: {
             serverInfo,
             lastSeen: lastMessage.messages[0]?.timestamp || null
@@ -98,7 +100,25 @@ export async function POST(request: Request) {
 
   try {
     const serverModel = await ModelFactory.getInstance().getServerModel();
-    const { name, description, config, enabled, security, serverCatalogId } = await request.json();
+    const { name, description, config, enabled, security, serverCatalogId, pinningInfo } = await request.json();
+    
+    // Validation: If pinningInfo is provided (including null), config must be pinned and match
+    if (pinningInfo !== undefined) {
+      if (pinningInfo === null) {
+        return JsonResponse.errorResponse(400, 'Cannot create server with null pinningInfo');
+      }
+      
+      const analysis = PackageExtractionService.analyzeServerConfig(config);
+      if (!analysis.isPinned) {
+        return JsonResponse.errorResponse(400, 'Config must be pinned when pinningInfo is provided');
+      }
+      
+      if (analysis.packageInfo?.registry !== pinningInfo.package.registry ||
+          analysis.packageInfo?.packageName !== pinningInfo.package.name ||
+          analysis.packageInfo?.currentVersion !== pinningInfo.package.version) {
+        return JsonResponse.errorResponse(400, 'PinningInfo package reference does not match config');
+      }
+    }
     
     const server = await serverModel.create({
       name,
@@ -106,7 +126,8 @@ export async function POST(request: Request) {
       config,
       enabled: enabled !== undefined ? enabled : true,
       security: security !== undefined ? security : null,
-      serverCatalogId: serverCatalogId || null
+      serverCatalogId: serverCatalogId || null,
+      pinningInfo
     });
     
     // Add to bridge only if not unmanaged

@@ -11,6 +11,11 @@ export interface SecurityValidationResult {
   tools: Tool[];
   validationTime: Date;
   errorLog?: string[];
+  // NEW: Raw MCP responses for pinning
+  rawResponses?: {
+    initialize: object | null;
+    toolsList: object | null;
+  };
 }
 
 export class SecurityValidationService {
@@ -53,11 +58,26 @@ export class SecurityValidationService {
         throw new Error('Failed to connect to MCP server');
       }
       
+      // Log raw responses for pinning verification
+      const rawInitResponse = client.getRawInitializeResponse();
+      const rawToolsResponse = client.getRawToolsListResponse();
+      
+      logger.info(`Raw response capture for server validation (version ${targetVersion}):`, {
+        initializeResponse: rawInitResponse ? '✅ Captured' : '❌ Not captured',
+        toolsListResponse: rawToolsResponse ? '✅ Captured' : '❌ Not captured',
+        initializePayload: rawInitResponse,
+        toolsListPayload: rawToolsResponse
+      });
+      
       return {
         packageVersion: client.serverVersion?.version || targetVersion,
         serverInfo: client.serverVersion,
         tools: client.serverTools,
-        validationTime: new Date()
+        validationTime: new Date(),
+        rawResponses: {
+          initialize: client.getRawInitializeResponse(),
+          toolsList: client.getRawToolsListResponse()
+        }
       };
     } catch (error) {
       logger.error(`Failed to connect to server version ${targetVersion} for validation:`, error);
@@ -75,7 +95,11 @@ export class SecurityValidationService {
         serverInfo: null,
         tools: [],
         validationTime: new Date(),
-        errorLog: allErrors
+        errorLog: allErrors,
+        rawResponses: {
+          initialize: null,
+          toolsList: null
+        }
       };
     } finally {
       await client.disconnect();
