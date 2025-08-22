@@ -203,6 +203,20 @@ export default function ServerDetailPage({ params }: { params: { serverId: strin
     }
   };
 
+  const handleServerUpdate = async (updatedServer: any) => {
+    try {
+      // Disconnect client helper when server config changes
+      await cleanupHelper();
+      
+      await loadServer();
+      
+      // Trigger compliance refresh since server changes affect compliance
+      triggerRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update server');
+    }
+  };
+
   const handleDelete = async () => {
     if (!server) return;
     
@@ -382,7 +396,12 @@ export default function ServerDetailPage({ params }: { params: { serverId: strin
       )}
 
       {effectiveActiveTab === 'pinning' && isPinnable && (
-        <ServerPinningTab serverId={Number(params.serverId)} serverName={server.name} serverConfig={server.config} />
+        <ServerPinningTab 
+          serverId={Number(params.serverId)} 
+          serverName={server.name} 
+          serverConfig={server.config}
+          onServerUpdate={handleServerUpdate}
+        />
       )}
     </div>
   );

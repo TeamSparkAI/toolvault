@@ -40,7 +40,18 @@ export async function GET(
       packageInfo.packageName
     );
 
-    return JsonResponse.payloadResponse('package', packageInfoResult);
+    // Preserve the actual pinned version from the server config
+    const pinnedVersion = packageInfo.currentVersion;
+    const isPinned = !!pinnedVersion;
+    const hasUpdate = isPinned && pinnedVersion !== packageInfoResult.latestVersion;
+
+    const result = {
+      ...packageInfoResult,
+      currentVersion: pinnedVersion,
+      hasUpdate
+    };
+
+    return JsonResponse.payloadResponse('package', result);
   } catch (error) {
     logger.error('Package info request failed:', error);
     return JsonResponse.errorResponse(500, 'Failed to get package information');

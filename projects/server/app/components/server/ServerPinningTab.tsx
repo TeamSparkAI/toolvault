@@ -6,23 +6,28 @@ import { PackageInfo } from '@/lib/services/packageInfoService';
 import { SecurityValidationResult } from '@/lib/services/securityValidationService';
 import { PackageExtractionService } from '@/lib/services/packageExtractionService';
 import { log } from '@/lib/logging/console';
+import { getServerIconUrl } from '@/lib/utils/githubImageUrl';
 
 
 
 import { McpServerConfig } from '@/lib/types/server';
+import { VersionUpdateService } from '@/lib/services/versionUpdateService';
 
 interface ServerPinningTabProps {
   serverId: number;
   serverName: string;
   serverConfig: McpServerConfig;
+  onServerUpdate?: (updatedServer: any) => void; // New callback
 }
 
-export function ServerPinningTab({ serverId, serverName, serverConfig }: ServerPinningTabProps) {
+export function ServerPinningTab({ serverId, serverName, serverConfig, onServerUpdate }: ServerPinningTabProps) {
   const [packageData, setPackageData] = useState<PackageInfo | null>(null);
   const [securityValidation, setSecurityValidation] = useState<SecurityValidationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [validationLoading, setValidationLoading] = useState(false);
+  const [pinningLoading, setPinningLoading] = useState(false);
+  const [unpinningLoading, setUnpinningLoading] = useState(false);
   
   // Initialize selected version from server config
   const analysis = PackageExtractionService.analyzeServerConfig(serverConfig);
@@ -61,8 +66,8 @@ export function ServerPinningTab({ serverId, serverName, serverConfig }: ServerP
       
       setPackageData(packageResponse.payload);
       
-      // If server is not pinned, set selected version to latest
-      if (!analysis.packageInfo?.currentVersion) {
+      // Only set selected version to latest if server is not pinned AND we don't have a selected version
+      if (!packageResponse.payload.currentVersion && !selectedVersion) {
         setSelectedVersion(packageResponse.payload.latestVersion);
       }
     } catch (err) {
@@ -107,6 +112,103 @@ export function ServerPinningTab({ serverId, serverName, serverConfig }: ServerP
 
   const handleVersionSelect = (version: string) => {
     setSelectedVersion(version);
+  };
+
+  const handlePinToVersion = async () => {
+    if (!selectedVersion) {
+      setError('No version selected for pinning');
+      return;
+    }
+
+    try {
+      setPinningLoading(true);
+      setError(null);
+
+      // Create updated config with selected version
+      const updatedConfig = await VersionUpdateService.createUpdatedConfig(
+        serverConfig, 
+        selectedVersion
+      );
+      
+      // Update server via API
+      const response = await fetch(`/api/v1/servers/${serverId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: serverName,
+          config: updatedConfig,
+          // Preserve other fields from current server
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update server configuration');
+      }
+
+      const responseData = await response.json();
+      
+      // Notify parent of update
+      onServerUpdate?.(responseData.server);
+      
+      // Reload package data to reflect new pinned version
+      await loadPackageData();
+      
+      log.info(`Successfully pinned ${packageData?.name} to version ${selectedVersion}`);
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to pin version';
+      setError(errorMessage);
+      log.error('Error pinning version:', err);
+    } finally {
+      setPinningLoading(false);
+    }
+  };
+
+  const handleUnpin = async () => {
+    try {
+      setUnpinningLoading(true);
+      setError(null);
+
+      // Create unpinned config (removes version specification)
+      const updatedConfig = await VersionUpdateService.createUpdatedConfig(serverConfig, null);
+      
+      // Update server via API
+      const response = await fetch(`/api/v1/servers/${serverId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: serverName,
+          config: updatedConfig,
+          // Preserve other fields from current server
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update server configuration');
+      }
+
+      const responseData = await response.json();
+      
+      // Notify parent of update
+      onServerUpdate?.(responseData.server);
+      
+      // Update selected version to reflect unpinned state (use latest)
+      if (packageData) {
+        setSelectedVersion(packageData.latestVersion);
+      }
+      
+      // Reload package data to reflect unpinned state
+      await loadPackageData();
+      
+      log.info(`Successfully unpinned ${packageData?.name}`);
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to unpin version';
+      setError(errorMessage);
+      log.error('Error unpinning version:', err);
+    } finally {
+      setUnpinningLoading(false);
+    }
   };
 
   if (loading) {
@@ -165,8 +267,9 @@ export function ServerPinningTab({ serverId, serverName, serverConfig }: ServerP
               {packageData.name} ({packageData.registry.toUpperCase()})
             </a>
           </p>
-          <p className="text-gray-600 mt-1">
-            <span className="font-bold">Version:</span> {(() => {
+          <p className="text-gray-600 mt-1 flex items-center gap-2">
+            <span className="font-bold">Version:</span> 
+            <span>{(() => {
               const analysis = PackageExtractionService.analyzeServerConfig(serverConfig);
               const pinnedVersion = analysis.packageInfo?.currentVersion;
               if (pinnedVersion) {
@@ -175,6 +278,26 @@ export function ServerPinningTab({ serverId, serverName, serverConfig }: ServerP
               } else {
                 return `Not pinned - currently ${packageData?.latestVersion || 'unknown'} (latest)`;
               }
+            })()}</span>
+            {(() => {
+              const analysis = PackageExtractionService.analyzeServerConfig(serverConfig);
+              const pinnedVersion = analysis.packageInfo?.currentVersion;
+              if (pinnedVersion) {
+                return (
+                  <button 
+                    onClick={handleUnpin}
+                    disabled={unpinningLoading}
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      unpinningLoading 
+                        ? 'bg-gray-400 text-white cursor-not-allowed' 
+                        : 'bg-red-500 text-white hover:bg-red-600'
+                    }`}
+                  >
+                    {unpinningLoading ? 'Unpinning...' : 'Unpin'}
+                  </button>
+                );
+              }
+              return null;
             })()}
           </p>
         </div>
@@ -264,7 +387,10 @@ export function ServerPinningTab({ serverId, serverName, serverConfig }: ServerP
 
       {/* Security Validation Results */}
       <div className="bg-white rounded-lg border p-4">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Security Validation</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <img src="/mcp_black.png" alt="MCP" className="w-5 h-5" />
+          Validated Server Response
+        </h2>
         {validationLoading ? (
           <div className="flex items-center justify-center py-8">
             <div className="flex items-center gap-2">
@@ -291,7 +417,32 @@ export function ServerPinningTab({ serverId, serverName, serverConfig }: ServerP
               <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Package Version</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{selectedVersion || 'Latest'}</dd>
+                  <dd className="mt-1 text-sm text-gray-900 flex items-center gap-2">
+                    {selectedVersion || 'Latest'}
+                    {(() => {
+                      const analysis = PackageExtractionService.analyzeServerConfig(serverConfig);
+                      const pinnedVersion = analysis.packageInfo?.currentVersion;
+                      const isCurrentVersion = pinnedVersion && selectedVersion === pinnedVersion;
+                      
+                      if (isCurrentVersion) {
+                        return <span className="text-xs text-green-600 font-medium">(current pinned version)</span>;
+                      } else {
+                        return (
+                          <button 
+                            onClick={handlePinToVersion}
+                            disabled={pinningLoading}
+                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                              pinningLoading 
+                                ? 'bg-gray-400 text-white cursor-not-allowed' 
+                                : 'bg-blue-500 text-white hover:bg-blue-600'
+                            }`}
+                          >
+                            {pinningLoading ? 'Pinning...' : 'Pin to this Version'}
+                          </button>
+                        );
+                      }
+                    })()}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Validated At</dt>

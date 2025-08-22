@@ -5,7 +5,7 @@ import { PackageExtractionService } from './packageExtractionService';
 export class VersionUpdateService {
   static async createUpdatedConfig(
     originalConfig: McpServerConfig,
-    newVersion: string
+    newVersion: string | null
   ): Promise<McpServerConfig> {
     const analysis = PackageExtractionService.analyzeServerConfig(originalConfig);
     
@@ -26,10 +26,16 @@ export class VersionUpdateService {
     }
     
     // Update the package name at the correct index
-    if (packageInfo.registry === 'npm') {
-      newArgs[packageIndex] = `${packageInfo.packageName}@${newVersion}`;
+    if (newVersion === null) {
+      // Unpin: remove version specification
+      newArgs[packageIndex] = packageInfo.packageName;
     } else {
-      newArgs[packageIndex] = `${packageInfo.packageName}==${newVersion}`;
+      // Pin: add version specification
+      if (packageInfo.registry === 'npm') {
+        newArgs[packageIndex] = `${packageInfo.packageName}@${newVersion}`;
+      } else {
+        newArgs[packageIndex] = `${packageInfo.packageName}==${newVersion}`;
+      }
     }
     
     // Ensure the unwrapped config is a stdio config
