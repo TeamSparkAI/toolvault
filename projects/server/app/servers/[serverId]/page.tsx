@@ -329,7 +329,7 @@ export default function ServerDetailPage({ params }: { params: { serverId: strin
   
   // Determine if server is pinnable
   const analysis = PackageExtractionService.analyzeServerConfig(server.config);
-  const isPinnable = analysis.packageInfo !== null;
+  const isPinnable = analysis.isPinnable;
   
   // If the active tab is 'clients' but the server is unmanaged, default to 'details'
   // If the active tab is 'pinning' but the server is not pinnable, default to 'details'

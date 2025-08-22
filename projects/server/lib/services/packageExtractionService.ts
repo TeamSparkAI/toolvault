@@ -14,6 +14,8 @@ export interface ServerConfigAnalysis {
   isWrappable: boolean;
   isWrapped: boolean;
   unwrappedConfig: McpServerConfig;
+  isPinnable: boolean;
+  isPinned: boolean;
 }
 
 export class PackageExtractionService {
@@ -136,11 +138,17 @@ export class PackageExtractionService {
     const isWrappable = packageInfo !== null; // If we can extract package info, it's wrappable
     const unwrappedConfig = isWrapped ? unwrapSecurity(config) : config;
     
+    // Add pinning analysis
+    const isPinnable = packageInfo !== null;
+    const isPinned = packageInfo?.currentVersion !== undefined;
+    
     return {
       packageInfo,
       isWrappable,
       isWrapped,
-      unwrappedConfig
+      unwrappedConfig,
+      isPinnable,
+      isPinned
     };
   }
 }

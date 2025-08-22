@@ -42,7 +42,7 @@ export async function GET(
 
     // Preserve the actual pinned version from the server config
     const pinnedVersion = packageInfo.currentVersion;
-    const isPinned = !!pinnedVersion;
+    const isPinned = analysis.isPinned;
     const hasUpdate = isPinned && pinnedVersion !== packageInfoResult.latestVersion;
 
     const result = {

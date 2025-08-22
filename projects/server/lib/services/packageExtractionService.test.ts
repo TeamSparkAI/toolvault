@@ -215,6 +215,8 @@ describe('PackageExtractionService', () => {
       expect(result.isWrappable).toBe(true);
       expect(result.isWrapped).toBe(false);
       expect(result.unwrappedConfig).toEqual(config);
+      expect(result.isPinnable).toBe(true);
+      expect(result.isPinned).toBe(false);
     });
 
     it('should analyze wrapped npm config', () => {
@@ -240,6 +242,8 @@ describe('PackageExtractionService', () => {
         command: 'npx',
         args: ['package-name']
       });
+      expect(result.isPinnable).toBe(true);
+      expect(result.isPinned).toBe(false);
     });
 
     it('should analyze unwrapped npm config with flags', () => {
@@ -261,6 +265,25 @@ describe('PackageExtractionService', () => {
       expect(result.isWrappable).toBe(true);
       expect(result.isWrapped).toBe(false);
       expect(result.unwrappedConfig).toEqual(config);
+      expect(result.isPinnable).toBe(true);
+      expect(result.isPinned).toBe(true);
+    });
+
+    it('should analyze non-pinnable config', () => {
+      const config: McpServerConfig = {
+        type: 'stdio',
+        command: 'echo',
+        args: ['hello', 'world']
+      };
+
+      const result = PackageExtractionService.analyzeServerConfig(config);
+
+      expect(result.packageInfo).toBeNull();
+      expect(result.isWrappable).toBe(false);
+      expect(result.isWrapped).toBe(false);
+      expect(result.unwrappedConfig).toEqual(config);
+      expect(result.isPinnable).toBe(false);
+      expect(result.isPinned).toBe(false);
     });
   });
 });
