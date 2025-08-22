@@ -8,7 +8,9 @@ import { useLayout } from '@/app/contexts/LayoutContext';
 import { StatusBadge } from '@/app/components/common/StatusBadge';
 import { SecurityBadge } from '@/app/components/common/SecurityBadge';
 import { SecurityStatusBadge } from '@/app/components/common/SecurityStatusBadge';
+import { UnpinnedBadge } from '@/app/components/common/UnpinnedBadge';
 import { getServerIconUrl } from '@/lib/utils/githubImageUrl';
+import { PackageExtractionService } from '@/lib/services/packageExtractionService';
 
 export default function ServersPage() {
   const router = useRouter();
@@ -170,7 +172,15 @@ export default function ServersPage() {
                         : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <SecurityBadge securityType={securityType} />
+                      <div className="flex items-center space-x-2">
+                        <SecurityBadge securityType={securityType} />
+                        <UnpinnedBadge 
+                          isUnpinned={(() => {
+                            const analysis = PackageExtractionService.analyzeServerConfig(server.config);
+                            return analysis.isPinnable && !analysis.isPinned;
+                          })()}
+                        />
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <SecurityStatusBadge 

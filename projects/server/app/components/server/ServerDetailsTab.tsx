@@ -4,6 +4,7 @@ import { getSecurityType, isSecurityUnwrappable, unwrapSecurity, wrapSecurity } 
 import { ServerSecurity } from '@/lib/types/server';
 import { useModal } from '@/app/contexts/ModalContext';
 import { SecurityBadge } from '@/app/components/common/SecurityBadge';
+import { UnpinnedBadge } from '@/app/components/common/UnpinnedBadge';
 import { getClientIcon } from '@/lib/client-icons';
 import { getServerCatalogIconUrl } from '@/lib/utils/githubImageUrl';
 import { ServerCatalogEntry } from '@/types/server-catalog';
@@ -12,6 +13,7 @@ import { isSecretEnvVar } from '@/app/lib/utils/secret';
 import { HideReveal } from '../common/HideReveal';
 import { ClientType } from '@/lib/types/clientType';
 import { log } from '@/lib/logging/console';
+import { PackageExtractionService } from '@/lib/services/packageExtractionService';
 
 interface ServerDetailsTabProps {
   serverName: string;
@@ -330,7 +332,15 @@ export function ServerDetailsTab({ serverName, config, server, onEdit, onDelete 
       <div className="bg-white even:bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
         <dt className="text-sm font-medium text-gray-500">Security</dt>
         <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
-          <SecurityBadge securityType={securityType} />
+          <div className="flex items-center space-x-2">
+            <SecurityBadge securityType={securityType} />
+            <UnpinnedBadge 
+              isUnpinned={(() => {
+                const analysis = PackageExtractionService.analyzeServerConfig(config);
+                return analysis.isPinnable && !analysis.isPinned;
+              })()}
+            />
+          </div>
         </dd>
       </div>
     </dl>

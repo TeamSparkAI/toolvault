@@ -110,6 +110,12 @@ export function ComplianceProvider({ children }: { children: React.ReactNode }) 
           hasWarning = true;
         }
 
+        // WARNING SEVERITY: Unpinned Pinnable Servers
+        if (clientData.hasUnpinnedPinnableServers) {
+          issues.push('Has unpinned pinnable servers');
+          hasWarning = true;
+        }
+
         // Determine status based on severity
         let status: 'compliant' | 'warning' | 'error' = 'compliant';
         if (hasError) {

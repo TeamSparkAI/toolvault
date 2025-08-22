@@ -6,6 +6,7 @@ import { ServerData } from '@/lib/models/types/server';
 import { ClientServerData } from '@/lib/models/types/clientServer';
 import { ClientType } from '@/lib/types/clientType';
 import { logger } from '@/lib/logging/server';
+import { PackageExtractionService } from '@/lib/services/packageExtractionService';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,7 @@ export interface ClientComplianceData {
   hasPendingOperations: boolean;
   hasUnmanagedServers: boolean;
   hasNonSecureServers: boolean;
+  hasUnpinnedPinnableServers: boolean;
 }
 
 export interface ComplianceData {
@@ -91,6 +93,16 @@ export async function GET(): Promise<NextResponse> {
         return serverSecurity === null;
       });
       
+      // Check for unpinned pinnable servers
+      const hasUnpinnedPinnableServers = clientRelationships.some(cs => {
+        if (!cs.serverId) return false;
+        const server = servers.find(s => s.serverId === cs.serverId);
+        if (!server) return false;
+        
+        const analysis = PackageExtractionService.analyzeServerConfig(server.config);
+        return analysis.isPinnable && !analysis.isPinned;
+      });
+      
       return {
         clientId: client.clientId,
         name: client.name,
@@ -102,6 +114,7 @@ export async function GET(): Promise<NextResponse> {
         hasPendingOperations,
         hasUnmanagedServers,
         hasNonSecureServers,
+        hasUnpinnedPinnableServers,
       };
     });
     

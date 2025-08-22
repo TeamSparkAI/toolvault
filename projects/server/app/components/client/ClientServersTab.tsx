@@ -16,6 +16,8 @@ import { getServerIconUrl } from '@/lib/utils/githubImageUrl';
 import { getServerDisplayInfo } from '@/lib/utils/serverDisplay';
 import { ConvertServerDialog } from './ConvertServerDialog';
 import { log } from '@/lib/logging/console';
+import { PackageExtractionService } from '@/lib/services/packageExtractionService';
+import { UnpinnedBadge } from '@/app/components/common/UnpinnedBadge';
 
 interface ClientServersTabProps {
   client: Client & { clientId: number };
@@ -621,7 +623,16 @@ export function ClientServersTab({ client, onClientUpdated }: ClientServersTabPr
                     <ManagedBadge isManaged={getSecurityType(relationship) !== 'unmanaged'} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <SecurityBadge securityType={getSecurityType(relationship) as any} />
+                    <div className="flex items-center space-x-2">
+                      <SecurityBadge securityType={getSecurityType(relationship) as any} />
+                      <UnpinnedBadge 
+                        isUnpinned={(() => {
+                          if (!relationship.server) return false;
+                          const analysis = PackageExtractionService.analyzeServerConfig(relationship.server.config);
+                          return analysis.isPinnable && !analysis.isPinned;
+                        })()}
+                      />
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <SecurityStatusBadge 

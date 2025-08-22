@@ -2,8 +2,6 @@
 
 ## Pinning
 
-Pinnable but not pinned servers should generate a compliance issue
-
 Note: We could pin by just adding @version to package (that has the benefit of supporting update even for servers we didn't actually pin)
 - But what if the user just changes the version (without going through our workflow).  For now that's probably OK, but later when we
   serialize all server info, that's problematic (in that case, we'd maintin a non-editable pinned version, and disallow the specification
