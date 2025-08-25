@@ -17,23 +17,24 @@ The policy actions (applied to each filter match) revolve around content modific
 - replace
 - none
 
-There can be multiple content modification actions within and across policies and we coalesce (merge) them as best we can
+There can be multiple content modification actions within and across policies and we coalesce (merge) them as best we can to the final message
 
 ## New filterting use cases
     
-These are specific cases, but we also want to support these kinds of things generally
+These are specific cases, but we also want to support these kinds of things generally:
 
-For server pinning, when we receive a response to an initialize or tools/list message, we want to compare that to stored payloads and take action of they don't match
+For server pinning, when we receive a response to an initialize or tools/list message, we want to compare that to stored payloads and take action if they don't match
 - The likely action is return MCP protocol error (error code and message)
 - There isn't a "text match" (with or without regex), so text replacement actions wouldn't make sense as options on this kind of policy
 
 For secret leak detection, we want to run all message text against a list of secrets we manange, and if found, take the kind
 of text modification actions we currenty take on regex matching filters.  In contrast to a regex validator that matches a regex
-and then just validates the match, this kind of validator wouldn't have a refex and would just take each text chunk (each message
+and then just validates the match, this kind of validator (filter) wouldn't have a regex and would just take each text chunk (each message
 attribute value) and process it for matches using it's own logic, generating potential text modification or other actions per match.
 
 For data loss preventions (DLP) we might want a validator to take the entire JSONRPC message, process it, and send it to an external
-DLP detection engine for processing (possibly via ICAP).  The actions may include text modifications or other actions.
+DLP detection engine for processing (possibly via ICAP).  The actions may include text modifications or other actions, and results/matches
+might be scored where that score drives the filter or specific match qualification.
 
 For message validation, review message to make sure it contains appropriate fields, no extra fields (including no tool call response fields not defined in schema),
 proper format or message and contents, apply length and range constraints, etc.
@@ -44,13 +45,14 @@ For opentelemetry, send every message to opentelemetry (maybe some other mechani
 
 For any policy match, we might want to take zero, one, or more than one actions
 - The text processing actions should only be available to filters/validators that produce matches
+  - Maybe we don't care - if you have text processing actions and no filters that produce matches, it's a noop (reasonable)
 - Any policy might want to take certain generic actions
   - Return an MCP error (error code and message)
   - Return specific result (result payload as text or JSON)
   - Log a security event (local log)
   - Log an event to a SIEM
   - Send message to opentelemetry
-- No action should always be an option
+- "No Action" should always be an option
   - Even with no action, if any filter matches an alert will be generated, and if is a text matcher, the matching text will be identified in the alert for audit/review
 
 For multiple actions, some are mutually exclusive and require prioritization, others are not (but questions about triggering/context)
@@ -65,12 +67,13 @@ For multiple actions, some are mutually exclusive and require prioritization, ot
 
 Some filters or actions could require configuration
 - Filters could require applicaiton-level config (DLP system config, etc)
-- Filters could require filter-instance config (regexes to match, validator function, etc)
+- Filters could require filter-instance params (regexes to match, validator function, etc)
 - Actions could require application-level config (SIEM config, etc)
-- Actions could require action-level config (what to send to log/SIEM, etc, examples?)
+- Actions could require action-level params (what to send to log/SIEM, etc, examples?)
 
 Some filters or actions may need more context than just the text when being called during processing
 - They will need their application-level config, if any
+- They will need their params
 - They may need to know the serverId (for pinning validator)
 - They may need access to models/data (pinning validator) or other servies (secrets manager service for secrets filter)
 
@@ -113,9 +116,9 @@ A policy processor can have it's own application-level configuration
 - It has a schema indicating fields, required/optional, default values, etc
 - It has an optional validator to validate a config
 A list of installed policy processors is maintained (policy processors can be added, removed or configured through our UX)
-A policy filter may have instance config
+A policy filter may have instance params
 - A schema indicating fields, required/optional, default values, etc
-- It has an optional validator to validte instance fields
+- It has an optional validator to validte instance params
 
 If we made this general purpose / pluggable, you could imagine the current regex/validator/keywords filter being one of these things
 - Metadata
@@ -129,11 +132,11 @@ If we made this general purpose / pluggable, you could imagine the current regex
 
 Things like text filter (with no config) might be single instance installed globally and not removable
 Others might be multi-instance (for example, you could have two secret filters configured against two different secret stores)
-- In this case, we need to be able to distinguish the instances (maybe we have a user provided "name" and a model provided "type"?)
+- In this case, we need to be able to distinguish the instances (maybe we have a user provided "name" and a model provided "type", "instance", or "id"?)
 
 ## Policy Action
 
-Similar to policy filter, an action can have application-level config via schema and instance data via schema
+Similar to policy filter, an action can have application-level config via schema and instance params via schema
 Similar to policy filter, we can install, remove, and configure a policy action through the UX
 Metadata
 - name
@@ -173,3 +176,182 @@ Examples:
 - A secrets validator would be a "text" validator that does produce matches
 - A normal "match" filter with regex, optional Luhn validation, and keywords, produces matches
   - All "match" filters should produce matches and their validators are simple bool returns for match validation
+
+So we have a series of policies, where each policy has a series of filters, where each filter can product an alert (with zero or more matches)
+
+Content actions (replace, redact, remove, error) must be coalesced across all policies/filters/alerts for a message
+Non-content actions will accumulate for a message
+
+## Data structures
+
+### Policy Filter
+
+We have a policy filter object and we have the stored policy filter(s) on the policy (that reference the policy filter object by type/id)
+
+### Policy Action
+
+We have a policy action object and we have the stored policy action(s) on the policy (that reference the policy action object by type/id)
+
+### Alert (model)
+
+#### Current:
+
+export interface FieldMatch {
+    fieldPath: string;   // JSON path like "params.args[0].apiKey"
+    start: number;       // Start position within the field value
+    end: number;         // End position within the field value
+    action: PolicyAction;
+    actionText: string;
+}
+
+export interface AlertData {
+    alertId: number;
+    messageId: number;
+    policyId: number;
+    filterName: string; // Should we copy the filter from the policy (it can changed or be removed after this alert is generated)?
+    origin: MessageOrigin;
+    matches: FieldMatch[] | null;
+    timestamp: string;
+    createdAt: string;
+    seenAt: string | null;
+}
+
+#### Future:
+
+// Incident of data relevant to policy filter (replaces FieldMatch)
+export interface Finding {
+  details: string,
+  metadata: any
+  match: {
+    fieldPath: string.
+    start: number,
+    end: number,
+  }
+}
+
+### Policy Filter (policy model)
+
+#### Current:
+
+export interface PolicyData {
+    ...policy model fields...
+    filters: Array<{
+        name: string;
+        notes?: string;
+        regex: string;
+        keywords?: string[];
+        validator?: 'none' | 'luhn';
+    }>;
+}
+
+#### Future:
+
+filters: PolicyFilter
+
+PolicyFilter
+- type
+- instance
+- name
+- notes
+- params
+
+#### Examples:
+
+PolicyFilter
+- type: 'regex'
+- name: 'Visa'
+- notes: 'Matches Visa card format and checksum;
+- params: { regex: 'xxxxx', keywords: 'yyyy, zzzz', validator: 'luhn' }
+
+PolicyFilter
+- type: 'pinning'
+- params: {}
+
+
+### Policy Actions (policy model)
+
+#### Current:
+
+export type PolicyAction = 'remove' | 'redact' | 'redactPattern' | 'replace' | 'none';
+
+export interface PolicyData {
+    ...policy model fields...
+    action: PolicyAction;
+    actionText?: string;
+
+#### Future:
+
+actions: PolicyAction[]
+
+PolicyAction
+- type
+- instance
+- params
+
+#### Examples:
+
+PolicyAction
+- type: 'rewrite'
+- params: { action: 'remove' | 'redact' | 'redactPattern' | 'replace', actionText: 'xxx' } // actionText required for redactPattern and replace
+
+PolicyAction
+- type: 'error'
+- params: { code: 32000, message: 'Tools did not match pinned tools' }
+
+PolicyAction
+- type: 'log'
+- instance (id?): points to log action instance with it's own settings:, like: { logfile: 'security.log' }
+- params: { level: 'info', message: 'This is the log message' }
+
+### Policy Actions taken
+
+We currently stick the policy action taken on an alert into the Alert (the Alert.FieldMatch.action)
+- This does allow us to reproduce the final message by processing all alerts
+
+In the new model, actions can be taken at the alert or message level.  We need to store the actions taken in another model at the policy (message?) level.
+
+The content modifying types (rewrite and error) are built-in and have no instance config, so we can apply them to Alerts reliably after the fact to recreated the output message
+
+PolicyActionTaken
+- type
+- instance // What if instance changes or is deleted after action taken?
+- params: any
+- details: string
+
+policyActionsTaken model
+- messageId: number
+- policyId: number
+- actions: PolicyActionTaken[]
+
+Alernatively:
+
+messageActions model
+- messageId: string
+- policies: [
+  - policyId: string,
+  - actions: PolicyActionsTaken[]
+]
+
+### Available and Installed Filters and Actions
+
+There needs to be a way to enumerate filter and action classes (so they can be installed into the system)
+
+There needs to be a way to enumerate installed filter and action instances (so they can be configured in the system, or used in policies)
+
+We need CRUD actions for installed filters/actions (install new from class, get/getAll, update, remove)
+
+We need an identifier for the instance of an installed filter/action with a config (id/instance/???) so we can reference it in policies/alerts/actions
+
+Aynthing without an instance config can be pre-installed and non-removable (maybe they can be enabled/disabled to prevent them showing as options in new policies)
+
+Anything with an instance config can be deleted, but if used in policies, we need to prevent or handle in some way (remove from policies, gracefully fail when applying?)
+
+Maybe we have a policyElement model that represents installed actions/filters and their config
+
+PolicyElement
+- type: string (action/filter)
+- classId: string
+- instanceId: string
+- config: any (JSON)
+- enabled: boolean
+- createdAt/updateAt: timestamp
