@@ -2,6 +2,8 @@
 
 ## Current
 
+Current policy application logic is in /lib/services/MessageFilter.ts
+
 Our current policy system is somewhat limiting (it doesn't support some specific new use cases).
 
 Currently we have a policy with a set of filters and a single action.  
@@ -80,7 +82,7 @@ Some filters or actions may need more context than just the text when being call
 ## Module system
 
 For each policy we have a list of policy filters and policy actions, with their respective instance confugration
-We apply the policy filters, which produce alerts, then we send those alert to the configured policy actions
+We apply the policy filters, which produce alerts, then we send those alers to the configured policy actions
 
 Policy filter instances will have name/notes (as current)
 
@@ -104,14 +106,16 @@ Some of those alerts will be specific text matches (suitable for text replacemen
 Some of the alerts will not reference any text in the message
 
 Some of the alerts might reference text in the message (so that the UX can highlight the matched/offending content), but those matches may not be suitable for replacement actions
-- Let's think about the actual case where this would be true to make sure it's a real thing
+- Let's say message contained invalid JSON element (or out of range, etc) - we might want to indicate the content, but it is not suitable for replacement
 - Let's say pinning validation wants to indicate the values that didn't match the stored elements (like this new method showed up, or this too description changed)
-  - Indication is at the message level
+  - Indication is at the message level, matches might highlight bad content, but it's not suitable for replacement
+- Note: This probably means "Finding" needa a bool for suitable for replacement (or "text match")
 
 ## Policy Filter
 
 A policy filter is a module implementing the PolicyFilter interface
 It will have metadata (name, description, input type: message or text, and output type - produces matches)
+- In new implementation it takes a message, has base class utility methods to process as fields
 A policy processor can have it's own application-level configuration
 - It has a schema indicating fields, required/optional, default values, etc
 - It has an optional validator to validate a config
@@ -130,7 +134,7 @@ If we made this general purpose / pluggable, you could imagine the current regex
   - filterSchema: requires a regex, allows an option validator from a list (containing only Luhn for now) and an optional keywords string value
 - Migration - we could migtrate all existing filters to instances of this Text Filter policyFilter fairly directly
 
-Things like text filter (with no config) might be single instance installed globally and not removable
+Things like text filter (with no config, as evidenced by no configSchema) might be single instance installed globally and not removable
 Others might be multi-instance (for example, you could have two secret filters configured against two different secret stores)
 - In this case, we need to be able to distinguish the instances (maybe we have a user provided "name" and a model provided "type", "instance", or "id"?)
 
@@ -159,12 +163,13 @@ We could allow policy filters to produce general purpose state that actions coul
 
 ## Other 
 
-Validators will indicate whether they produce matches
+Validators will indicate whether they produce matches (not sure we need this - it's just for UX to know whether to show text replacement action)
 
 If any filter has a validator that produces matches, the match processing actions will be avalable on the policy
 
-Text replacement and error return actions are contradictory - we'd need to resolve what to do if the user indicated both
-- Or prevent the user from indicating both somehow in the UX
+Text replacement and error return actions are contradictory
+- If both, message level action wins
+- We could try to prevent the user from indicating both somehow in the UX (maybe later)
 
 Examples:
 - A pinning validator would be a "message" validator that doesn't produce matches
@@ -218,7 +223,7 @@ export interface AlertData {
 
 #### Future:
 
-// Incident of data relevant to policy filter (replaces FieldMatch)
+// Incident of data relevant to policy filter (replaces FieldMatch in AlertData)
 export interface Finding {
   details: string,
   metadata: any
@@ -355,3 +360,11 @@ PolicyElement
 - config: any (JSON)
 - enabled: boolean
 - createdAt/updateAt: timestamp
+
+### Notes
+
+We have filter and action classes
+
+- ActionClass: the actual implementation class of the Action
+- ActionConfiguration: an instance of the class installed on the system, referencing the class, with metadata (name, desc, etc) and configuration
+- ActionInstance: an instace of the action in a policy, referencing the ActionConfiguration, and having it's own params

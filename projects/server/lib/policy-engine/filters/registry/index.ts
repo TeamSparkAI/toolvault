@@ -1,0 +1,1 @@
+export { FilterRegistry } from './FilterRegistry';

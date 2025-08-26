@@ -6,6 +6,7 @@ import { MessageData } from '@/lib/models/types/message';
 import { FieldMatch } from '@/lib/models/types/alert';
 import { applyAllFieldMatches, FieldMatchWithAlertId } from '../utils/matches';
 import { logger } from '@/lib/logging/server';
+import { PolicyEngine, PolicyContext, PolicyEngineResult } from '../policy-engine/core';
 
 export interface MessageFilterResult {
     success: boolean;
@@ -68,6 +69,83 @@ function getStringFieldValues(obj: any, path: string = ''): StringFieldValue[] {
     }
 
     return results;
+}
+
+// New policy engine (get serverId from jwtPayload in caller)
+//
+export async function applyPoliciesNew(messageData: MessageData, message: JsonRpcMessageWrapper, serverId: number): Promise<JsonRpcMessageWrapper> {
+    const policyModel = await ModelFactory.getInstance().getPolicyModel();
+    const policies = await policyModel.list();
+
+    // Get enabled and applicable policies (based on enabled, origin, and methods)
+    const applicablePolicies = policies.filter(policy => {
+        if (!policy.enabled) {
+            return false;
+        }
+        if (policy.origin !== 'either' && policy.origin !== message.origin) {
+            return false;
+        }
+        if (policy.methods && policy.methods.length > 0 && !policy.methods.includes(messageData.payloadMethod)) {
+            return false;
+        }
+        return true;
+    });
+
+    // Build context (serverId from message)
+    const context: PolicyContext = { 
+        serverId: serverId
+    };
+    
+    // Use new Policy Engine (static method)
+    const result = await PolicyEngine.processMessage(message, applicablePolicies, context);
+
+    // Create alerts from hierarchical findings
+    const alertModel = await ModelFactory.getInstance().getAlertModel();
+    for (const policyFinding of result.policyFindings) {
+        for (const filterFinding of policyFinding.filterFindings) {
+            if (filterFinding.findings.length > 0) {
+                // Convert findings to field matches for alert creation
+                const fieldMatches: FieldMatch[] = filterFinding.findings
+                    .filter(finding => finding.match) // Only findings with text matches
+                    .map(finding => ({
+                        fieldPath: finding.match!.fieldPath,
+                        start: finding.match!.start,
+                        end: finding.match!.end,
+                        action: 'none', // Will be determined by policy actions
+                        actionText: ''
+                    }));
+                
+                if (fieldMatches.length > 0) {
+                    await alertModel.create({
+                        messageId: messageData.messageId,
+                        timestamp: messageData.timestamp,
+                        policyId: policyFinding.policy.policyId,
+                        filterName: filterFinding.filter.name,
+                        origin: message.origin,
+                        matches: fieldMatches
+                    });
+                }
+            }
+        }
+    }
+
+    // TODO: Store message actions when we implement the policy actions model
+    // for (const policyAction of result.policyActions) {
+    //     for (const actionResult of policyAction.actionResults) {
+    //         for (const actionEvent of actionResult.actionEvents) {
+    //             await actionModel.create({
+    //                 messageId: messageData.messageId,
+    //                 policyId: policyAction.policy.policyId,
+    //                 actionType: actionResult.action.type,
+    //                 actionParams: actionResult.action.params,
+    //                 eventType: actionEvent.type,
+    //                 // ... other fields
+    //             });
+    //         }
+    //     }
+    // }
+    
+    return result.modifiedMessage;
 }
 
 /**
