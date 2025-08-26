@@ -1,6 +1,6 @@
 import { JsonSchema } from "../types/core";
 
-export type PolicyElementType = 'action' | 'filter';
+export type PolicyElementType = 'condition' | 'action';
 
 export interface ValidationResult {
     isValid: boolean;

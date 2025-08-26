@@ -31,14 +31,14 @@ export function getStringFieldValues(obj: any, path: string = ''): StringFieldVa
     return results;
 }
 
-export abstract class PolicyFilterBase extends PolicyElementBase {
+export abstract class PolicyConditionBase extends PolicyElementBase {
     constructor(
         classId: string,
         name: string,
         description: string
     ) {
-        super('filter', classId, name, description);
+        super('condition', classId, name, description);
     }
 
-    abstract applyFilter(message: JsonRpcMessageWrapper, config: any, params: any): Promise<Finding[]>
+    abstract applyCondition(message: JsonRpcMessageWrapper, config: any, params: any): Promise<Finding[]>
 }

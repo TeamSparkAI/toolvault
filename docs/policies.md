@@ -67,39 +67,39 @@ For multiple actions, some are mutually exclusive and require prioritization, ot
 
 ## Application and instance configuration
 
-Some filters or actions could require configuration
-- Filters could require applicaiton-level config (DLP system config, etc)
-- Filters could require filter-instance params (regexes to match, validator function, etc)
+Some conditions or actions could require configuration
+- Conditions could require applicaiton-level config (DLP system config, etc)
+- Conditions could require condition-instance params (regexes to match, validator function, etc)
 - Actions could require application-level config (SIEM config, etc)
 - Actions could require action-level params (what to send to log/SIEM, etc, examples?)
 
-Some filters or actions may need more context than just the text when being called during processing
+Some conditions or actions may need more context than just the text when being called during processing
 - They will need their application-level config, if any
 - They will need their params
 - They may need to know the serverId (for pinning validator)
-- They may need access to models/data (pinning validator) or other servies (secrets manager service for secrets filter)
+- They may need access to models/data (pinning validator) or other servies (secrets manager service for secrets condition)
 
 ## Module system
 
-For each policy we have a list of policy filters and policy actions, with their respective instance confugration
-We apply the policy filters, which produce alerts, then we send those alers to the configured policy actions
+For each policy we have a list of policy conditions and policy actions, with their respective instance confugration
+We apply the policy conditions, which produce alerts, then we send those alers to the configured policy actions
 
-Policy filter instances will have name/notes (as current)
+Policy condition instances will have name/notes (as current)
 
-All policy filters will produce alerts
+All policy conditions will produce alerts
 - Currently alerts contain filterName and array of matches
 - It seems like we will need to add some more context?  Look at examples.
   - For something like pinning, new tool showed up, tool disappeard, tool description changed, tool schema changed, etc
   - This would be per match (at least in this specific case)
-- Some filters may produce alert "matches" with no matching text
+- Some conditions may produce alert "matches" with no matching text
   - Message validator might have a "exceeds maximum message size" alert that doesn't relate to any specific text match
-- Some filters might want to add metadata to alerts or alert matchs (for example, confident score for a secret or DLP match)
+- Some conditions might want to add metadata to alerts or alert matchs (for example, confident score for a secret or DLP match)
   - Maybe the matches contain a description, the match data (optional), and then a metadata JSON object (optional)
   - The metadata will be available to actions
     - Some actions may know about sepcific metadata
     - Some actions may allow metadata to be accessed generally (through tokens, for example, like "DLP leak detected with confidence $match.score")
       - This might imply that the user knows about the metadata
-      - Should alert metadata schema be part of the policy filter definition?
+      - Should alert metadata schema be part of the policy condition definition?
 
 Some of those alerts will be specific text matches (suitable for text replacement action)
 
@@ -111,43 +111,43 @@ Some of the alerts might reference text in the message (so that the UX can highl
   - Indication is at the message level, matches might highlight bad content, but it's not suitable for replacement
 - Note: This probably means "Finding" needa a bool for suitable for replacement (or "text match")
 
-## Policy Filter
+## Policy condition
 
-A policy filter is a module implementing the PolicyFilter interface
+A policy condition is a module implementing the PolicyCondition interface
 It will have metadata (name, description, input type: message or text, and output type - produces matches)
 - In new implementation it takes a message, has base class utility methods to process as fields
 A policy processor can have it's own application-level configuration
 - It has a schema indicating fields, required/optional, default values, etc
 - It has an optional validator to validate a config
 A list of installed policy processors is maintained (policy processors can be added, removed or configured through our UX)
-A policy filter may have instance params
+A policy condition may have instance params
 - A schema indicating fields, required/optional, default values, etc
 - It has an optional validator to validte instance params
 
-If we made this general purpose / pluggable, you could imagine the current regex/validator/keywords filter being one of these things
+If we made this general purpose / pluggable, you could imagine the current regex/validator/keywords condition being one of these things
 - Metadata
-  - name: Text Filter
+  - name: Text Match
   - description: Match regular expressions in message text, with optional keyword and function validators
   - input: text
   - producesMatches: true
   - configSchema: null
-  - filterSchema: requires a regex, allows an option validator from a list (containing only Luhn for now) and an optional keywords string value
-- Migration - we could migtrate all existing filters to instances of this Text Filter policyFilter fairly directly
+  - paramsSchema: requires a regex, allows an option validator from a list (containing only Luhn for now) and an optional keywords string value
+- Migration - we could migtrate all existing filters to instances of this Text Match policyCondition fairly directly
 
-Things like text filter (with no config, as evidenced by no configSchema) might be single instance installed globally and not removable
-Others might be multi-instance (for example, you could have two secret filters configured against two different secret stores)
+Things like text match condition (with no config, as evidenced by no configSchema) might be single instance installed globally and not removable
+Others might be multi-instance (for example, you could have two secret conditions configured against two different secret stores)
 - In this case, we need to be able to distinguish the instances (maybe we have a user provided "name" and a model provided "type", "instance", or "id"?)
 
 ## Policy Action
 
-Similar to policy filter, an action can have application-level config via schema and instance params via schema
-Similar to policy filter, we can install, remove, and configure a policy action through the UX
+Similar to policy condition, an action can have application-level config via schema and instance params via schema
+Similar to policy condition, we can install, remove, and configure a policy action through the UX
 Metadata
 - name
 - description
 - configSchema
 - actionSchema (per action data)
-The policy action receives the set of all alerts generate by the filters and has access to the output context (returned message)
+The policy action receives the set of all alerts generate by the conditions and has access to the output context (returned message)
 It is up to the policy action to determine how to prioritize or otherwise reconcile multiple alerts/matches (there is no implied priority)
 It is up to the policy action if it wants to generate an action per policy, per alert, or per alert match (this could be static or by instance config)
 
@@ -158,14 +158,14 @@ Metadata
 - configSchema: null
 - actionSchema: action [replace, remove, redact], redactionPattern (optional) 
 
-We could allow policy filters to produce general purpose state that actions could access, or we could put that in actions
+We could allow policy conditions to produce general purpose state that actions could access, or we could put that in actions
 - This way a policy log action could indicate the matching text, confidence score, etc/.
 
 ## Other 
 
 Validators will indicate whether they produce matches (not sure we need this - it's just for UX to know whether to show text replacement action)
 
-If any filter has a validator that produces matches, the match processing actions will be avalable on the policy
+If any condition has a validator that produces matches, the match processing actions will be avalable on the policy
 
 Text replacement and error return actions are contradictory
 - If both, message level action wins
@@ -179,23 +179,23 @@ Examples:
 - A DLP validator would be a "message" validator that does produce matches
   - Is there any match context that we'd want to include in the alert (along with the match/matches)
 - A secrets validator would be a "text" validator that does produce matches
-- A normal "match" filter with regex, optional Luhn validation, and keywords, produces matches
-  - All "match" filters should produce matches and their validators are simple bool returns for match validation
+- A normal "match" condition with regex, optional Luhn validation, and keywords, produces matches
+  - All "match" conditions should produce matches and their validators are simple bool returns for match validation
 
-So we have a series of policies, where each policy has a series of filters, where each filter can product an alert (with zero or more matches)
+So we have a series of policies, where each policy has a series of conditions, where each condition can product an alert (with zero or more matches)
 
-Content actions (replace, redact, remove, error) must be coalesced across all policies/filters/alerts for a message
+Content actions (replace, redact, remove, error) must be coalesced across all policies/conditions/alerts for a message
 Non-content actions will accumulate for a message
 
 ## Data structures
 
-### Policy Filter
+### Policy Condition
 
-We have a policy filter object and we have the stored policy filter(s) on the policy (that reference the policy filter object by type/id)
+We have a policy condition object and we have an installed/confured instance of the policy condition object we call a "configuration" that is referenced in policy conditions by configId
 
 ### Policy Action
 
-We have a policy action object and we have the stored policy action(s) on the policy (that reference the policy action object by type/id)
+We have a policy action object and we have an installed/confured instance of the policy action object we call a "configuration" that is referenced in policy actions by configId
 
 ### Alert (model)
 
@@ -223,7 +223,7 @@ export interface AlertData {
 
 #### Future:
 
-// Incident of data relevant to policy filter (replaces FieldMatch in AlertData)
+// Incident of data relevant to policy condition (replaces FieldMatch in AlertData)
 export interface Finding {
   details: string,
   metadata: any
@@ -234,7 +234,7 @@ export interface Finding {
   }
 }
 
-### Policy Filter (policy model)
+### Policy Condition (policy model)
 
 #### Current:
 
@@ -251,9 +251,9 @@ export interface PolicyData {
 
 #### Future:
 
-filters: PolicyFilter
+conditions: PolicyCondition
 
-PolicyFilter
+PolicyCondition
 - type
 - instance
 - name
@@ -262,13 +262,13 @@ PolicyFilter
 
 #### Examples:
 
-PolicyFilter
+PolicyCondition
 - type: 'regex'
 - name: 'Visa'
 - notes: 'Matches Visa card format and checksum;
 - params: { regex: 'xxxxx', keywords: 'yyyy, zzzz', validator: 'luhn' }
 
-PolicyFilter
+PolicyCondition
 - type: 'pinning'
 - params: {}
 
@@ -313,58 +313,110 @@ PolicyAction
 We currently stick the policy action taken on an alert into the Alert (the Alert.FieldMatch.action)
 - This does allow us to reproduce the final message by processing all alerts
 
-In the new model, actions can be taken at the alert or message level.  We need to store the actions taken in another model at the policy (message?) level.
+In the new implementation, actions can be taken at the alert or message level.  We need to store the actions taken in another model at the message level.
 
 The content modifying types (rewrite and error) are built-in and have no instance config, so we can apply them to Alerts reliably after the fact to recreated the output message
 
-PolicyActionTaken
-- type
-- instance // What if instance changes or is deleted after action taken?
-- params: any
-- details: string
+Policy application accumulates policy actions by message, by policy withing message, and by actions per policy
 
-policyActionsTaken model
-- messageId: number
-- policyId: number
-- actions: PolicyActionTaken[]
+We'll write this to a new model MessageActions (table: message_actions)
 
-Alernatively:
+### Available and Installed Conditions and Actions
 
-messageActions model
-- messageId: string
-- policies: [
-  - policyId: string,
-  - actions: PolicyActionsTaken[]
-]
+An installed condition or action is called a "configuration"
 
-### Available and Installed Filters and Actions
+There needs to be a way to enumerate condition and action classes (so they can be installed into the system)
 
-There needs to be a way to enumerate filter and action classes (so they can be installed into the system)
+There needs to be a way to enumerate installed condition and action instances (so they can be configured in the system, or used in policies)
 
-There needs to be a way to enumerate installed filter and action instances (so they can be configured in the system, or used in policies)
+We need CRUD actions for installed conditions/actions (install new from class, get/getAll, update, remove)
 
-We need CRUD actions for installed filters/actions (install new from class, get/getAll, update, remove)
-
-We need an identifier for the instance of an installed filter/action with a config (id/instance/???) so we can reference it in policies/alerts/actions
+We use the policy element configId in policies/alerts/actions references to the policy element configuration
 
 Aynthing without an instance config can be pre-installed and non-removable (maybe they can be enabled/disabled to prevent them showing as options in new policies)
 
 Anything with an instance config can be deleted, but if used in policies, we need to prevent or handle in some way (remove from policies, gracefully fail when applying?)
 
-Maybe we have a policyElement model that represents installed actions/filters and their config
+The policyElement model represents installed actions/conditions and their config
 
 PolicyElement
-- type: string (action/filter)
-- classId: string
-- instanceId: string
-- config: any (JSON)
+- configId
+- className
+- elementType: string (condition/action)
+- config: any (JSON), null for static element (no config)
 - enabled: boolean
 - createdAt/updateAt: timestamp
 
 ### Notes
 
-We have filter and action classes
+We have condition and action classes, configurations, and instances
 
-- ActionClass: the actual implementation class of the Action
+- ConditionClass: the actual implementation class of the Condition (PolicyConditionBase)
+- ConditionConfiguration: an instance of the class installed on the system, referencing the class, with metadata (name, desc, etc) and configuration
+- ConditionInstance: an instace of the condition in a policy, referencing the ConditionConfiguration by id, and having it's own params
+
+- ActionClass: the actual implementation class of the Action (PolicyActionBase)
 - ActionConfiguration: an instance of the class installed on the system, referencing the class, with metadata (name, desc, etc) and configuration
-- ActionInstance: an instace of the action in a policy, referencing the ActionConfiguration, and having it's own params
+- ActionInstance: an instace of the action in a policy, referencing the ActionConfiguration by id, and having it's own params
+
+## Migration
+
+Note: Need to update policy import script / data to support new policy model
+
+### Pass 1 - Prepare new schema (merge into 002)
+
+ALTER TABLE policies ADD COLUMN actions JSON NOT NULL;
+
+ALTER TABLE alerts ADD COLUMN condition JSON NOT NULL; 
+ALTER TABLE alerts ADD COLUMN findings JSON NOT NULL;
+
+CREATE TABLE message_actions (
+    messageId INTEGER NOT NULL,
+    actions JSON NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE policy_elements (
+    configId INTEGER PRIMARY KEY AUTOINCREMENT,
+    className TEXT NOT NULL,
+    elementType TEXT NOT NULL,
+    config JSON,
+    enabled BOOLEAN DEFAULT 1,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO policy_elements (className, elementType)
+VALUES 
+    ('regex', 'condition'),
+    ('rewrite', 'action');
+
+### Pass 2 - Convert data
+
+Process policies
+- Update conditions field, converting existing array to new conditions object array (convert existing conditions to new regex conditions)
+
+Process alerts
+- Update filterName to new condition field/object (referencing regex condition config, with params)
+- Convert matches to new findings field/object
+- Generate message_actions using policy action/actionText and matches/findings
+
+### Pass 3 - Clean up schema (003)
+
+ALTER TABLE policies REMOVE COLUMN action;
+ALTER TABLE policies REMOVE COLUMN actionText;
+
+ALTER TABLE alerts REMOVE COLUMN filterName;
+ALTER TABLE alerts REMOVE COLUMN matches;
+
+## Next (we can do this without any migration)
+
+Implement the PolicyElement model and CRUD interface
+- Implement config UX (install/uninstall, configure)
+Implement the MessageAction model and write message actions to it
+
+## Then
+
+Implement the new policy model and types (conditions/actions)
+Implement policy config (condition/action) UX
+At this point conditions/actions will have configId and everything should work end-to-end

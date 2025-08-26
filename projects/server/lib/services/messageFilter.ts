@@ -102,7 +102,7 @@ export async function applyPoliciesNew(messageData: MessageData, message: JsonRp
     // Create alerts from hierarchical findings
     const alertModel = await ModelFactory.getInstance().getAlertModel();
     for (const policyFinding of result.policyFindings) {
-        for (const filterFinding of policyFinding.filterFindings) {
+        for (const filterFinding of policyFinding.conditionFindings) {
             if (filterFinding.findings.length > 0) {
                 // Convert findings to field matches for alert creation
                 const fieldMatches: FieldMatch[] = filterFinding.findings
@@ -120,7 +120,7 @@ export async function applyPoliciesNew(messageData: MessageData, message: JsonRp
                         messageId: messageData.messageId,
                         timestamp: messageData.timestamp,
                         policyId: policyFinding.policy.policyId,
-                        filterName: filterFinding.filter.name,
+                        filterName: filterFinding.condition.conditionName,
                         origin: message.origin,
                         matches: fieldMatches
                     });

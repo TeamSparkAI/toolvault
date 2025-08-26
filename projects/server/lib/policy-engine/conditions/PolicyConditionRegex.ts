@@ -1,4 +1,4 @@
-import { PolicyFilterBase, getStringFieldValues } from "./PolicyFilterBase";
+import { PolicyConditionBase, getStringFieldValues } from "./PolicyConditionBase";
 import { JsonSchema, ValidationResult, Finding } from "../types/core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { logger } from "@/lib/logging/server";
@@ -27,9 +27,9 @@ async function isLuhnValid(number: string): Promise<boolean> {
     return sum % 10 === 0;
 }
 
-export class RegexFilter extends PolicyFilterBase {
+export class RegexCondition extends PolicyConditionBase {
     constructor() {
-        super('regex', 'Text Filter', 'Match regular expressions in message text, with optional keyword and function validators');
+        super('regex', 'Text Match', 'Match regular expressions in message text, with optional keyword and function validators');
     }
 
     get configSchema(): JsonSchema | null {
@@ -111,7 +111,7 @@ export class RegexFilter extends PolicyFilterBase {
         };
     }
 
-    async applyFilter(message: JsonRpcMessageWrapper, config: any, params: any): Promise<Finding[]> {
+    async applyCondition(message: JsonRpcMessageWrapper, config: any, params: any): Promise<Finding[]> {
         const findings: Finding[] = [];
 
         // Determine payload type

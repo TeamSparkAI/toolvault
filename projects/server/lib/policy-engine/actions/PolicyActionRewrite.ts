@@ -82,7 +82,8 @@ export class PolicyActionRewrite extends PolicyActionBase {
         for (const finding of findingsWithMatches) {
             if (finding.match) {
                 events.push({
-                    type: 'rewrite',
+                    actionClassName: 'rewrite',
+                    actionConfigId: 0, // !!!                    type: 'rewrite',
                     params: params,
                     description: `Applied ${params.action} to: ${finding.details}`,
                     metadata: finding.metadata,

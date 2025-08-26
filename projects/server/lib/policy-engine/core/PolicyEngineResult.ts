@@ -8,37 +8,45 @@ export interface PolicyEngineResult {
     policyActions: PolicyActions[];
 }
 
+// A collection of findings grouped by policy
 export interface PolicyFindings {
-    policy: PolicyData;
-    filterFindings: FilterFindings[];
+    policy: PolicyData; // !!! Do we need this, or is policyId sufficient?  What if policy has changed or been deleted?
+    conditionFindings: ConditionFindings[];
 }
 
-export interface FilterFindings {
-    filter: PolicyFilter;
+// A collection of findings grouped by condition
+export interface ConditionFindings {
+    condition: PolicyConditionInstance;
     findings: Finding[];
 }
 
-// !!! We need to figure out how we're going to reference the filter (type and instance) and represent its params (generally, not like this)
-export interface PolicyFilter {
-    name: string;
-    notes?: string;
-    regex: string;
-    keywords?: string[];
-    validator?: 'none' | 'luhn';
+// Defines the policy condition (the instance on the policy) that generated a finding
+export interface PolicyConditionInstance {
+    conditionClassName: string;
+    conditionConfigId: number;
+    conditionInstanceId: number; // !!! This is the instance of the condition in the policy
+    // The conditionInstanceId refers to the instance of the condition in the policy, but it could be edited or removed, so we store the below
+    // fields to record the state of the condition instance at the time of the policy run
+    conditionName: string;
+    conditionParams: any;
 }
 
+// A collection of actions results grouped by policy
 export interface PolicyActions {
-    policy: PolicyData;
+    policy: PolicyData; // !!! Do we need this, or is policyId sufficient?  What if policy has changed or been deleted?
     actionResults: ActionResults[];
 }
 
+// A collection of actions resulting from a given policy action
 export interface ActionResults {
-    action: PolicyAction;
+    action: PolicyActionInstance;
     actionEvents: ActionEvent[];
 }
 
-// !!! We need to figure out how we're going to reference the action (type and instance) and represent its params
-export interface PolicyAction {
-    type: string;
-    params: any;
+// Defines the policy action (the instance on the policy) that triggered the resilts
+export interface PolicyActionInstance {
+    actionClassName: string;
+    actionConfigId: number;
+    actionInstanceId: number; // !!! This is the instance of the action in the policy
+    actionParams: any;
 }

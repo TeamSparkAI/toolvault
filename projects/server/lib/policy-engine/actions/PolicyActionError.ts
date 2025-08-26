@@ -49,7 +49,8 @@ export class PolicyActionError extends PolicyActionBase {
 
     async applyAction(message: JsonRpcMessageWrapper, findings: Finding[], config: any, params: any): Promise<ActionEvent[]> {
         return [{
-            type: 'error',
+            actionClassName: 'error',
+            actionConfigId: 0, // !!!
             params: params,
             description: `Policy error: ${params.message}`,
             metadata: {

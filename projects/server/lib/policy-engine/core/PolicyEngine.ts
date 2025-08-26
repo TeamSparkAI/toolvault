@@ -1,10 +1,10 @@
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { PolicyData } from "@/lib/models/types/policy";
 import { Finding, ActionEvent, MessageReplacement, FieldModification } from "../types/core";
-import { FilterRegistry } from "../filters/registry/FilterRegistry";
+import { ConditionRegistry } from "../conditions/registry/ConditionRegistry";
 import { ActionRegistry } from "../actions/registry/ActionRegistry";
 import { PolicyContext } from "./PolicyContext";
-import { PolicyEngineResult, PolicyFindings, FilterFindings, PolicyActions, ActionResults } from "./PolicyEngineResult";
+import { PolicyEngineResult, PolicyFindings, ConditionFindings, PolicyActions, ActionResults, PolicyActionInstance, PolicyConditionInstance } from "./PolicyEngineResult";
 import { applyAllFieldMatches } from "@/lib/utils/matches";
 
 export class PolicyEngine {
@@ -14,39 +14,47 @@ export class PolicyEngine {
         context?: PolicyContext
     ): Promise<PolicyEngineResult> {
         
-        // Phase 1: Run all filters to collect findings in hierarchical structure
+        // Phase 1: Run all conditions to collect findings in hierarchical structure
         const policyFindings: PolicyFindings[] = [];
         for (const policy of policies) {
             if (!policy.enabled) continue;
             
-            const filterFindings: FilterFindings[] = [];
+            const conditionFindings: ConditionFindings[] = [];
             
-            // For now, we'll use the existing filter structure
-            // TODO: Update when we implement new filter/action models
+            // For now, we'll use the existing filter structure and convert to condition
+            // TODO: Update when we implement new condition/action models
             if (policy.filters && policy.filters.length > 0) {
-                const regexFilter = FilterRegistry.getFilter('regex');
-                if (regexFilter) {
+                const regexCondition = ConditionRegistry.getCondition('regex');
+                if (regexCondition) {
                     // Convert existing filter structure to new format
-                    for (const filterConfig of policy.filters) {
+                    for (const conditionConfig of policy.filters) {
                         const params = {
-                            regex: filterConfig.regex,
-                            keywords: filterConfig.keywords,
-                            validator: filterConfig.validator || 'none'
+                            regex: conditionConfig.regex,
+                            keywords: conditionConfig.keywords,
+                            validator: conditionConfig.validator || 'none'
                         };
-                        const findings = await regexFilter.applyFilter(message, null, params);
-                        
-                        filterFindings.push({
-                            filter: filterConfig,
+                        const findings = await regexCondition.applyCondition(message, null, params);
+
+                        const conditionInstance: PolicyConditionInstance = {
+                            conditionClassName: 'regex',
+                            conditionConfigId: 1, // !!! Get from condition instance
+                            conditionInstanceId: 0, // !!! Get from condition instance
+                            conditionName: conditionConfig.name,
+                            conditionParams: params
+                        };
+
+                        conditionFindings.push({
+                            condition: conditionInstance,
                             findings: findings
                         });
                     }
                 }
             }
             
-            if (filterFindings.length > 0) {
+            if (conditionFindings.length > 0) {
                 policyFindings.push({
                     policy: policy,
-                    filterFindings: filterFindings
+                    conditionFindings: conditionFindings
                 });
             }
         }
@@ -54,8 +62,8 @@ export class PolicyEngine {
         // Collect all findings for action processing
         const allFindings: Finding[] = [];
         for (const policyFinding of policyFindings) {
-            for (const filterFinding of policyFinding.filterFindings) {
-                allFindings.push(...filterFinding.findings);
+            for (const conditionFinding of policyFinding.conditionFindings) {
+                allFindings.push(...conditionFinding.findings);
             }
         }
 
@@ -69,7 +77,7 @@ export class PolicyEngine {
             const actionResults: ActionResults[] = [];
             
             // For now, we'll use the existing action structure
-            // TODO: Update when we implement new filter/action models
+            // TODO: Update when we implement new condition/action models
             if (policy.action && policy.action !== 'none') {
                 const rewriteAction = ActionRegistry.getAction('rewrite');
                 if (rewriteAction) {
@@ -85,13 +93,17 @@ export class PolicyEngine {
                         ...e, 
                         policySeverity: policy.severity 
                     })));
+
+                    const actionInstance: PolicyActionInstance = {
+                        actionClassName: 'rewrite',
+                        actionConfigId: 1, //!!! Get from action instance
+                        actionInstanceId: 0, // !!! Get from action instance
+                        actionParams: params
+                    };
                     
                     // Store all events in hierarchical structure
                     actionResults.push({
-                        action: {
-                            type: 'rewrite',
-                            params: params
-                        },
+                        action: actionInstance,
                         actionEvents: events
                     });
                 }
@@ -119,8 +131,8 @@ export class PolicyEngine {
                 if (current.policySeverity < highest.policySeverity) return current;
                 if (current.policySeverity === highest.policySeverity) {
                     // If same severity, error takes precedence over replace
-                    if (current.type === 'error' && highest.type !== 'error') return current;
-                    if (highest.type === 'error' && current.type !== 'error') return highest;
+                    if (current.actionClassName === 'error' && highest.actionClassName !== 'error') return current;
+                    if (highest.actionClassName === 'error' && current.actionClassName !== 'error') return highest;
                     // If both same type, keep the first one
                 }
                 return highest;

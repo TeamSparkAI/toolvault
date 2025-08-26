@@ -23,7 +23,7 @@ export interface ValidationResult {
     error?: string;
 }
 
-// Incident of data produced by policy filter
+// Incident of data produced by policy condition
 export interface Finding {
     details: string;
     metadata?: any;
@@ -40,7 +40,8 @@ export type ContentModificationAction = 'remove' | 'redact' | 'redactPattern' | 
 
 // Action event types for policy engine
 export interface ActionEvent {
-    type: 'log' | 'siem' | 'alert' | 'rewrite' | 'error' | 'replace';
+    actionClassName: string; // 'log' | 'siem' | 'alert' | 'rewrite' | 'error' | 'replace'
+    actionConfigId: number; // reference to the policy action configuration
     params: any;
     description: string;
     metadata?: any;
