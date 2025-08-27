@@ -14,6 +14,7 @@ ALTER TABLE alerts ADD COLUMN findings JSON;
 CREATE TABLE message_actions (
     messageId INTEGER NOT NULL,
     actions JSON NOT NULL,
+    timestamp TIMESTAMP NOT NULL,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (messageId) REFERENCES messages(messageId) ON DELETE CASCADE
 );

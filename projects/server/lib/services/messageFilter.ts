@@ -129,21 +129,16 @@ export async function applyPoliciesNew(messageData: MessageData, message: JsonRp
         }
     }
 
-    // TODO: Store message actions when we implement the policy actions model
-    // for (const policyAction of result.policyActions) {
-    //     for (const actionResult of policyAction.actionResults) {
-    //         for (const actionEvent of actionResult.actionEvents) {
-    //             await actionModel.create({
-    //                 messageId: messageData.messageId,
-    //                 policyId: policyAction.policy.policyId,
-    //                 actionType: actionResult.action.type,
-    //                 actionParams: actionResult.action.params,
-    //                 eventType: actionEvent.type,
-    //                 // ... other fields
-    //             });
-    //         }
-    //     }
-    // }
+    // Store message actions
+    if (result.policyActions.length > 0) {
+        const messageActionModel = await ModelFactory.getInstance().getMessageActionModel();
+        
+        await messageActionModel.create({
+            messageId: messageData.messageId,
+            actions: result.policyActions,
+            timestamp: messageData.timestamp
+        });
+    }
     
     return result.modifiedMessage;
 }
