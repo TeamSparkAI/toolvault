@@ -402,7 +402,10 @@ export async function performImport(client: ClientData, options: SyncOptions, sc
             // have no other details about the server we deleted).  We will delete this pending delete relation at this clientServerName
             // and continue, which will process the config as if it was a new server (which is what we want).  If it happens to refer
             // to the deleted server, it will be handled (ignored) below as an obsolute managed server reference.
-            await clientServerModel.delete(clientServerRelation.clientServerId);
+            const deleted = await clientServerModel.delete(clientServerRelation.clientServerId);
+            if (!deleted) {
+                logger.warn(`[performImport] Failed to delete client-server relation ${clientServerRelation.clientServerId}`);
+            }
             removeProcessedRelation(clientServerRelations, relation => relation.clientServerId === clientServerRelation!.clientServerId);
             clientServerRelation = undefined;
         }
@@ -529,10 +532,16 @@ export async function performImport(client: ClientData, options: SyncOptions, sc
             if (server.security === "unmanaged") {
                 // If the relationship we're deleting references an unmanaged server, we need to delete that unmanaged server (since it will no longer be referenced)
                 logger.debug('[performImport] Deleting unmanaged server:', server.name);
-                await serverModel.delete(server.serverId);
+                const serverDeleted = await serverModel.delete(server.serverId);
+                if (!serverDeleted) {
+                    logger.warn(`[performImport] Failed to delete unmanaged server ${server.serverId}`);
+                }
                 serverMap.delete(server.serverId);
             }
-            await clientServerModel.delete(clientServerRelation.clientServerId);
+            const deleted = await clientServerModel.delete(clientServerRelation.clientServerId);
+            if (!deleted) {
+                logger.warn(`[performImport] Failed to delete client-server relation ${clientServerRelation.clientServerId}`);
+            }
         }
     }
 
@@ -695,7 +704,10 @@ export async function performUpdate(client: ClientData, options: SyncOptions, co
             logger.debug(`[performUpdate] deleting server config for ${relation.clientServerName}`);
             configService.removeServer(relation.clientServerName!);
         }
-        await clientServerModel.delete(relation.clientServerId);
+        const deleted = await clientServerModel.delete(relation.clientServerId);
+        if (!deleted) {
+            logger.warn(`[performUpdate] Failed to delete client-server relation ${relation.clientServerId}`);
+        }
         removeProcessedRelation(relation.clientServerId);
     }
 
@@ -722,14 +734,20 @@ export async function performUpdate(client: ClientData, options: SyncOptions, co
             // If there is no pending add, we need to delete the server config
             configService.removeServer(relation.clientServerName!);
         }
-        await clientServerModel.delete(relation.clientServerId);
+        const deleted = await clientServerModel.delete(relation.clientServerId);
+        if (!deleted) {
+            logger.warn(`[performUpdate] Failed to delete client-server relation ${relation.clientServerId}`);
+        }
         removeProcessedRelation(relation.clientServerId);
 
         const removedServer = relation.serverId ? serverMap.get(relation.serverId) : null;
         if (removedServer && removedServer.security === "unmanaged") {
             // If the server relation we deleted was for an unmanaged server, we need to delete the server from the system
             logger.debug(`[performUpdate] deleting unmanaged server: ${removedServer.name}`);
-            await serverModel.delete(removedServer.serverId);
+            const serverDeleted = await serverModel.delete(removedServer.serverId);
+            if (!serverDeleted) {
+                logger.warn(`[performUpdate] Failed to delete unmanaged server ${removedServer.serverId}`);
+            }
         }
     }
 

@@ -14,7 +14,7 @@ export abstract class ServerModel {
     abstract list(filter: ServerFilter, pagination: ServerPagination): Promise<ServerListResult>;
     abstract create(data: Omit<ServerData, 'serverId' | 'token' | 'createdAt' | 'updatedAt'> & { token?: string }): Promise<ServerData>;
     abstract update(serverId: number, data: Partial<ServerData>): Promise<ServerData>;
-    abstract delete(serverId: number): Promise<void>;
+    abstract delete(serverId: number): Promise<boolean>;
     abstract getByIds(serverIds: number[]): Promise<ServerData[]>;
 
     async getMcpServerConfigForProxy(serverToken: string, bearerToken: string): Promise<McpServerConfig> {

@@ -115,7 +115,8 @@ export class SqlitePolicyModel extends PolicyModel {
         return this.findById(policyId) as Promise<PolicyData>;
     }
 
-    async delete(policyId: number): Promise<void> {
-        await this.db.execute('DELETE FROM policies WHERE policyId = ?', [policyId]);
+    async delete(policyId: number): Promise<boolean> {
+        const result = await this.db.execute('DELETE FROM policies WHERE policyId = ?', [policyId]);
+        return result.changes > 0;
     }
 } 

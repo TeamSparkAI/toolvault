@@ -86,11 +86,12 @@ export class SqliteClientModel extends ClientModel {
         return this.findById(clientId) as Promise<ClientData>;
     }
 
-    async delete(clientId: number): Promise<void> {
+    async delete(clientId: number): Promise<boolean> {
         if (clientId === 1) {
             throw new Error('Cannot delete the internal ToolVault (ttv) client.');
         }
-        await this.db.execute('DELETE FROM clients WHERE clientId = ?', [clientId]);
+        const result = await this.db.execute('DELETE FROM clients WHERE clientId = ?', [clientId]);
+        return result.changes > 0;
     }
 
     async list(): Promise<ClientData[]> {

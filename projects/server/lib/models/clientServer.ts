@@ -5,6 +5,6 @@ export abstract class ClientServerModel {
     abstract findByClientAndServer(clientId: number, serverId: number | null): Promise<ClientServerData | null>;
     abstract create(data: Omit<ClientServerData, 'clientServerId' | 'createdAt' | 'updatedAt'>): Promise<ClientServerData>;
     abstract update(clientServerId: number, data: Partial<Omit<ClientServerData, 'clientServerId' | 'createdAt' | 'updatedAt'>>): Promise<ClientServerData>;
-    abstract delete(clientServerId: number): Promise<void>;
+    abstract delete(clientServerId: number): Promise<boolean>;
     abstract list(filter: ClientServerFilter): Promise<ClientServerData[]>;
 } 

@@ -43,8 +43,13 @@ export async function DELETE(
 ) {
     try {
         const policyModel = await ModelFactory.getInstance().getPolicyModel();
-        await policyModel.delete(parseInt(params.policyId));
-        return JsonResponse.payloadResponse('success', true);
+        const deleted = await policyModel.delete(parseInt(params.policyId));
+        
+        if (!deleted) {
+            return JsonResponse.errorResponse(404, 'Policy not found');
+        }
+        
+        return JsonResponse.emptyResponse();
     } catch (error) {
         logger.error('Error deleting policy:', error);
         return JsonResponse.errorResponse(500, 'Failed to delete policy');

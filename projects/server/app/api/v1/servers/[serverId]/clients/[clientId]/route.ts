@@ -128,7 +128,10 @@ export async function DELETE(
 
         if (relationship.syncState === "add") {
             // If the relationship is an "add", we need to delete the relation ("undo" of the add)
-            await clientServerModel.delete(relationship.clientServerId);
+            const deleted = await clientServerModel.delete(relationship.clientServerId);
+            if (!deleted) {
+                return JsonResponse.errorResponse(404, 'Server-client relationship not found');
+            }
         } else {
             if (relationship.syncState === "scanned") {
                 relationship.syncState = "deleteScanned";

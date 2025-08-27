@@ -245,8 +245,9 @@ export class SqliteMessageModel extends MessageModel {
         return this.findById(messageId) as Promise<MessageData>;
     }
 
-    async delete(messageId: number): Promise<void> {
-        await this.db.execute('DELETE FROM messages WHERE messageId = ?', [messageId]);
+    async delete(messageId: number): Promise<boolean> {
+        const result = await this.db.execute('DELETE FROM messages WHERE messageId = ?', [messageId]);
+        return result.changes > 0;
     }
 
     async timeSeries(params: {

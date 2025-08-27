@@ -208,8 +208,9 @@ export class SqliteServerModel extends ServerModel {
         return this.findById(serverId) as Promise<ServerData>;
     }
 
-    async delete(serverId: number): Promise<void> {
-        await this.db.execute('DELETE FROM servers WHERE serverId = ?', [serverId]);
+    async delete(serverId: number): Promise<boolean> {
+        const result = await this.db.execute('DELETE FROM servers WHERE serverId = ?', [serverId]);
+        return result.changes > 0;
     }
 
     async getByIds(serverIds: number[]): Promise<ServerData[]> {

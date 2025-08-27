@@ -92,8 +92,9 @@ export class SqliteClientServerModel extends ClientServerModel {
         return this.findById(clientServerId) as Promise<ClientServerData>;
     }
 
-    async delete(clientServerId: number): Promise<void> {
-        await this.db.execute('DELETE FROM client_servers WHERE clientServerId = ?', [clientServerId]);
+    async delete(clientServerId: number): Promise<boolean> {
+        const result = await this.db.execute('DELETE FROM client_servers WHERE clientServerId = ?', [clientServerId]);
+        return result.changes > 0;
     }
 
     async list(filter: ClientServerFilter): Promise<ClientServerData[]> {

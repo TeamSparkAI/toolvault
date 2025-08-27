@@ -6,7 +6,7 @@ export abstract class MessageModel {
     abstract list(filter: MessageFilter, pagination: MessagePagination): Promise<MessageListResult>;
     abstract create(data: Omit<MessageData, 'messageId' | 'createdAt'>): Promise<MessageData>;
     abstract update(messageId: number, data: Partial<MessageData>): Promise<MessageData>;
-    abstract delete(messageId: number): Promise<void>;
+    abstract delete(messageId: number): Promise<boolean>;
     abstract timeSeries(params: {
         dimension: string;
         timeUnit: 'hour' | 'day' | 'week' | 'month';

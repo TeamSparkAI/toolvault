@@ -241,7 +241,11 @@ export async function DELETE(
     const clientModel = await ModelFactory.getInstance().getClientModel();
     const clientServerRelations = await clientServerModel.list({ serverId: parseInt(params.serverId) });
 
-    await serverModel.delete(parseInt(params.serverId));
+    const deleted = await serverModel.delete(parseInt(params.serverId));
+    
+    if (!deleted) {
+        return JsonResponse.errorResponse(404, 'Server not found');
+    }
 
     for (const relation of clientServerRelations) {
       if (relation.syncState === "add") {

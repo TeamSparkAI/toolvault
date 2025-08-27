@@ -41,7 +41,12 @@ export async function DELETE(
 ) {
   try {
     const clientModel = await ModelFactory.getInstance().getClientModel();
-    await clientModel.delete(parseInt(params.clientId));
+    const deleted = await clientModel.delete(parseInt(params.clientId));
+    
+    if (!deleted) {
+      return JsonResponse.errorResponse(404, 'Client not found');
+    }
+    
     return JsonResponse.emptyResponse();
   } catch (error) {
     logger.error('Error deleting client:', error);
