@@ -5,6 +5,7 @@ import { SqliteClientModel } from './sqlite/client';
 import { SqlitePolicyModel } from './sqlite/policy';
 import { SqliteAlertModel } from './sqlite/alert';
 import { SqliteClientServerModel } from './sqlite/clientServer';
+import { SqlitePolicyElementModel } from './sqlite/policyElement';
 import { initializeDatabase } from './sqlite/init';
 import { DB_CONFIG } from './sqlite/config';
 import { HostModel } from './host';
@@ -18,6 +19,7 @@ import { ClientModel } from './client';
 import { PolicyModel } from './policy';
 import { AlertModel } from './alert';
 import { ClientServerModel } from './clientServer';
+import { PolicyElementModel } from './policyElement';
 import path from 'path';
 import fs from 'fs/promises';
 import { logger } from '@/lib/logging/server';
@@ -41,6 +43,7 @@ export class ModelFactory {
     private policyModel: SqlitePolicyModel | null = null;
     private alertModel: SqliteAlertModel | null = null;
     private clientServerModel: SqliteClientServerModel | null = null;
+    private policyElementModel: SqlitePolicyElementModel | null = null;
     private hostModel: HostModel | null = null;
     private appSettingsModel: AppSettingsModel | null = null;
 
@@ -69,6 +72,7 @@ export class ModelFactory {
             this.policyModel = new SqlitePolicyModel(this.db);
             this.alertModel = new SqliteAlertModel(this.db);
             this.clientServerModel = new SqliteClientServerModel(this.db);
+            this.policyElementModel = new SqlitePolicyElementModel(this.db);
             if (dbWasCreated) {
                 await this.onDatabaseCreated();
             }
@@ -138,6 +142,16 @@ export class ModelFactory {
             throw new Error('Client server model not initialized');
         }
         return this.clientServerModel;
+    }
+
+    public async getPolicyElementModel(): Promise<PolicyElementModel> {
+        if (!this.initialized) {
+            await this.initialize();
+        }
+        if (!this.policyElementModel) {
+            throw new Error('Policy element model not initialized');
+        }
+        return this.policyElementModel;
     }
 
     public async getHostModel(): Promise<HostModel> {
