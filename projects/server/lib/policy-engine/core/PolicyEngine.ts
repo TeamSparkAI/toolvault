@@ -67,9 +67,8 @@ export class PolicyEngine {
             }
         }
 
-        // Phase 2: Run all actions, collect content modifications in hierarchical structure
+        // Phase 2: Run all actions, collect action events in hierarchical structure
         const policyActions: PolicyActions[] = [];
-        const contentModifications: (ActionEvent & { policySeverity: number })[] = [];
         
         for (const policy of policies) {
             if (!policy.enabled) continue;
@@ -86,13 +85,6 @@ export class PolicyEngine {
                         actionText: policy.actionText
                     };
                     const events = await rewriteAction.applyAction(message, allFindings, null, params);
-                    
-                    // Collect only content modifications for coalescing
-                    const contentEvents = events.filter(e => e.contentModification);
-                    contentModifications.push(...contentEvents.map(e => ({ 
-                        ...e, 
-                        policySeverity: policy.severity 
-                    })));
 
                     const actionInstance: PolicyActionInstance = {
                         actionClassName: 'rewrite',
@@ -117,9 +109,31 @@ export class PolicyEngine {
             }
         }
 
-        // Phase 3: Reconcile content modifications
-        let modifiedMessage = message;
+        return {
+            modifiedMessage: message, // Return original message, modifications applied separately
+            policyFindings: policyFindings,
+            policyActions: policyActions
+        };
+    }
+
+    static applyModifications(
+        originalMessage: JsonRpcMessageWrapper,
+        policyActions: PolicyActions[]
+    ): JsonRpcMessageWrapper {
+        // Extract all content modifications from policy actions
+        const contentModifications: (ActionEvent & { policySeverity: number })[] = [];
         
+        for (const policyAction of policyActions) {
+            for (const actionResult of policyAction.actionResults) {
+                // Collect only content modifications for coalescing
+                const contentEvents = actionResult.actionEvents.filter(e => e.contentModification);
+                contentModifications.push(...contentEvents.map(e => ({ 
+                    ...e, 
+                    policySeverity: policyAction.policy.severity 
+                })));
+            }
+        }
+
         // Check for message replacement actions (error, replace)
         const messageReplacements = contentModifications.filter(
             e => e.contentModification?.type === 'message'
@@ -139,7 +153,7 @@ export class PolicyEngine {
             });
             
             const messageReplacement = highestPriority.contentModification as MessageReplacement;
-            modifiedMessage = messageReplacement.payload;
+            return messageReplacement.payload;
         } else {
             // No message replacement, handle field modifications
             const fieldModifications = contentModifications.filter(
@@ -161,7 +175,7 @@ export class PolicyEngine {
                 });
                 
                 // Use existing coalescing logic
-                const messagePayload = message.params || message.result;
+                const messagePayload = originalMessage.params || originalMessage.result;
                 const messagePayloadString = JSON.stringify(messagePayload, null, 2);
                 const appliedMatches = applyAllFieldMatches(messagePayloadString, fieldMatches);
                 
@@ -169,18 +183,15 @@ export class PolicyEngine {
                 const resultPayload = JSON.parse(appliedMatches.resultText);
                 
                 // Determine payload type and return modified message
-                if (message.origin === 'server' && message.messageId) {
-                    modifiedMessage = message.withPayload('result', resultPayload);
+                if (originalMessage.origin === 'server' && originalMessage.messageId) {
+                    return originalMessage.withPayload('result', resultPayload);
                 } else {
-                    modifiedMessage = message.withPayload('params', resultPayload);
+                    return originalMessage.withPayload('params', resultPayload);
                 }
             }
         }
 
-        return {
-            modifiedMessage,
-            policyFindings: policyFindings,
-            policyActions: policyActions
-        };
+        // No modifications, return original message
+        return originalMessage;
     }
 }

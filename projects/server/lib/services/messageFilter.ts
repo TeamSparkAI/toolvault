@@ -140,7 +140,10 @@ export async function applyPoliciesNew(messageData: MessageData, message: JsonRp
         });
     }
     
-    return result.modifiedMessage;
+    // Apply modifications separately
+    const modifiedMessage = PolicyEngine.applyModifications(message, result.policyActions);
+    
+    return modifiedMessage;
 }
 
 /**
