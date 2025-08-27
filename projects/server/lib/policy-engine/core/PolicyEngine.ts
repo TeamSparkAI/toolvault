@@ -36,11 +36,11 @@ export class PolicyEngine {
                         const findings = await regexCondition.applyCondition(message, null, params);
 
                         const conditionInstance: PolicyConditionInstance = {
-                            conditionClassName: 'regex',
-                            conditionConfigId: 1, // !!! Get from condition instance
-                            conditionInstanceId: 0, // !!! Get from condition instance
-                            conditionName: conditionConfig.name,
-                            conditionParams: params
+                            elementClassName: 'regex',
+                            elementConfigId: 1, // !!! Get from condition instance
+                            instanceId: "0", // !!! Get from condition instance
+                            name: conditionConfig.name,
+                            params: params
                         };
 
                         conditionFindings.push({
@@ -87,10 +87,10 @@ export class PolicyEngine {
                     const events = await rewriteAction.applyAction(message, allFindings, null, params);
 
                     const actionInstance: PolicyActionInstance = {
-                        actionClassName: 'rewrite',
-                        actionConfigId: 1, //!!! Get from action instance
-                        actionInstanceId: 0, // !!! Get from action instance
-                        actionParams: params
+                        elementClassName: 'rewrite',
+                        elementConfigId: 1, //!!! Get from action instance
+                        instanceId: "0", // !!! Get from action instance
+                        params: params
                     };
                     
                     // Store all events in hierarchical structure

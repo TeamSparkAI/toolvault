@@ -13,6 +13,8 @@ const emptyPolicy: Omit<PolicyData, 'policyId' | 'createdAt' | 'updatedAt'> = {
   severity: 2,
   origin: 'either',
   methods: undefined,
+  conditions: [],
+  actions: [],
   filters: [],
   action: 'none',
   actionText: undefined,

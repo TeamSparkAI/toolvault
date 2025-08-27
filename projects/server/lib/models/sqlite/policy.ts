@@ -11,7 +11,7 @@ export class SqlitePolicyModel extends PolicyModel {
     }
 
     async findById(policyId: number): Promise<PolicyData | null> {
-        const result = await this.db.query<PolicyData & { filters: string; methods: string }>(
+        const result = await this.db.query<PolicyData & { filters: string; methods: string; conditions: string; actions: string }>(
             'SELECT * FROM policies WHERE policyId = ?',
             [policyId]
         );
@@ -22,12 +22,14 @@ export class SqlitePolicyModel extends PolicyModel {
         return {
             ...policy,
             filters: JSON.parse(policy.filters),
-            methods: policy.methods ? JSON.parse(policy.methods) : undefined
+            methods: policy.methods ? JSON.parse(policy.methods) : undefined,
+            conditions: policy.conditions ? JSON.parse(policy.conditions) : [],
+            actions: policy.actions ? JSON.parse(policy.actions) : []
         };
     }
 
     async list(): Promise<PolicyData[]> {
-        const result = await this.db.query<PolicyData & { filters: string; methods: string }>(
+        const result = await this.db.query<PolicyData & { filters: string; methods: string; conditions: string; actions: string }>(
             'SELECT * FROM policies ORDER BY name'
         );
 
@@ -35,7 +37,9 @@ export class SqlitePolicyModel extends PolicyModel {
         return result.rows.map(policy => ({
             ...policy,
             filters: JSON.parse(policy.filters),
-            methods: policy.methods ? JSON.parse(policy.methods) : undefined
+            methods: policy.methods ? JSON.parse(policy.methods) : undefined,
+            conditions: policy.conditions ? JSON.parse(policy.conditions) : [],
+            actions: policy.actions ? JSON.parse(policy.actions) : []
         }));
     }
 
@@ -43,7 +47,7 @@ export class SqlitePolicyModel extends PolicyModel {
         if (policyIds.length === 0) return [];
         
         const placeholders = policyIds.map(() => '?').join(',');
-        const result = await this.db.query<PolicyData & { filters: string; methods: string }>(
+        const result = await this.db.query<PolicyData & { filters: string; methods: string; conditions: string; actions: string }>(
             `SELECT * FROM policies WHERE policyId IN (${placeholders}) ORDER BY name`,
             policyIds
         );
@@ -51,7 +55,9 @@ export class SqlitePolicyModel extends PolicyModel {
         return result.rows.map(policy => ({
             ...policy,
             filters: JSON.parse(policy.filters),
-            methods: policy.methods ? JSON.parse(policy.methods) : undefined
+            methods: policy.methods ? JSON.parse(policy.methods) : undefined,
+            conditions: policy.conditions ? JSON.parse(policy.conditions) : [],
+            actions: policy.actions ? JSON.parse(policy.actions) : []
         }));
     }
 
@@ -59,8 +65,8 @@ export class SqlitePolicyModel extends PolicyModel {
         await this.db.execute(
             `INSERT INTO policies (
                 name, description, severity, origin, methods, filters,
-                action, actionText, enabled
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                action, actionText, conditions, actions, enabled
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 data.name,
                 data.description || null,
@@ -70,6 +76,8 @@ export class SqlitePolicyModel extends PolicyModel {
                 JSON.stringify(data.filters),
                 data.action,
                 data.actionText || null,
+                data.conditions ? JSON.stringify(data.conditions) : null,
+                data.actions ? JSON.stringify(data.actions) : null,
                 data.enabled ? 1 : 0
             ]
         );
@@ -92,6 +100,12 @@ export class SqlitePolicyModel extends PolicyModel {
                 updates.push(`${key} = ?`);
                 params.push(JSON.stringify(value));
             } else if (key === 'methods') {
+                updates.push(`${key} = ?`);
+                params.push(value ? JSON.stringify(value) : null);
+            } else if (key === 'conditions') {
+                updates.push(`${key} = ?`);
+                params.push(value ? JSON.stringify(value) : null);
+            } else if (key === 'actions') {
                 updates.push(`${key} = ?`);
                 params.push(value ? JSON.stringify(value) : null);
             } else if (key === 'enabled') {

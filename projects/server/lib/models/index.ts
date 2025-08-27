@@ -216,6 +216,8 @@ export class ModelFactory {
                 severity: policy.severity,
                 origin: policy.origin,
                 methods: policy.methods,
+                conditions: policy.conditions,
+                actions: policy.actions,
                 filters: policy.filters,
                 action: policy.action,
                 actionText: policy.actionText,

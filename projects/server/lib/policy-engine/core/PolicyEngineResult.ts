@@ -22,13 +22,13 @@ export interface ConditionFindings {
 
 // Defines the policy condition (the instance on the policy) that generated a finding
 export interface PolicyConditionInstance {
-    conditionClassName: string;
-    conditionConfigId: number;
-    conditionInstanceId: number; // !!! This is the instance of the condition in the policy
-    // The conditionInstanceId refers to the instance of the condition in the policy, but it could be edited or removed, so we store the below
-    // fields to record the state of the condition instance at the time of the policy run
-    conditionName: string;
-    conditionParams: any;
+    elementClassName: string;
+    elementConfigId: number;
+    instanceId: string; // This is the instance of the condition in the policy
+    // The instanceId refers to the instance of the condition in the policy, but it could be edited or removed, so we store
+    // the below fields to record the state of the condition instance at the time of the policy run
+    name: string;
+    params: any;
 }
 
 // A collection of actions results grouped by policy
@@ -45,8 +45,8 @@ export interface ActionResults {
 
 // Defines the policy action (the instance on the policy) that triggered the resilts
 export interface PolicyActionInstance {
-    actionClassName: string;
-    actionConfigId: number;
-    actionInstanceId: number; // !!! This is the instance of the action in the policy
-    actionParams: any;
+    elementClassName: string;
+    elementConfigId: number;
+    instanceId: string; // The is the instance of the action in the policy
+    params: any;
 }

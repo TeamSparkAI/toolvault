@@ -1,12 +1,12 @@
 import { MessageOrigin } from "@/lib/jsonrpc";
 import { ClientType } from "@/lib/types/clientType";
-import { PolicyAction } from "@/lib/models/types/policy";
+import { PolicyActionType } from "@/lib/models/types/policy";
 
 export interface FieldMatch {
     fieldPath: string;   // JSON path like "params.args[0].apiKey"
     start: number;       // Start position within the field value
     end: number;         // End position within the field value
-    action: PolicyAction;
+    action: PolicyActionType;
     actionText: string;
 }
 

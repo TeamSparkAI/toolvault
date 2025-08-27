@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSeverityOptions } from '@/lib/severity';
-import { PolicyAction, PolicyData } from '@/lib/models/types/policy';
+import { PolicyActionType, PolicyData } from '@/lib/models/types/policy';
 import { useDialog } from '@/app/hooks/useDialog';
 import { useNavigationGuard } from '@/app/hooks/useNavigationGuard';
 import { MCP_METHODS_BY_CATEGORY, getMcpMethodCategories } from '@/lib/types/mcpMethod';
@@ -327,7 +327,7 @@ export function PolicyDetails({
               <div className="space-y-2">
                 <select
                   value={editedPolicy.action}
-                  onChange={(e) => setEditedPolicy({ ...editedPolicy, action: e.target.value as PolicyAction })}
+                  onChange={(e) => setEditedPolicy({ ...editedPolicy, action: e.target.value as PolicyActionType })}
                   className="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm w-auto min-w-[200px]"
                 >
                   <option value="remove">Remove</option>

@@ -411,9 +411,9 @@ ALTER TABLE alerts REMOVE COLUMN matches;
 
 ## Next (we can do this without any migration)
 
-Implement the PolicyElement model and CRUD interface
-- Implement config UX (install/uninstall, configure)
-Implement the MessageAction model and write message actions to it
+[DONE] Implement the PolicyElement model and CRUD interface
+- Implement config UX (install/uninstall, configure) - LATER (we have existing regex/rewrite pre-installed and usable now)
+[DONE] Implement the MessageAction model and write message actions to it
 
 ## Then
 

@@ -120,7 +120,7 @@ export async function applyPoliciesNew(messageData: MessageData, message: JsonRp
                         messageId: messageData.messageId,
                         timestamp: messageData.timestamp,
                         policyId: policyFinding.policy.policyId,
-                        filterName: filterFinding.condition.conditionName,
+                        filterName: filterFinding.condition.name,
                         origin: message.origin,
                         matches: fieldMatches
                     });

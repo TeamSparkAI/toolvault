@@ -3,7 +3,8 @@ ALTER TABLE servers ADD COLUMN pinningInfo JSON;
 
 -- Pass 1 - Prepare new policy schema for modular condition/action system
 
--- Add new actions column to policies table
+-- Add new conditons and actions columns to policies table
+ALTER TABLE policies ADD COLUMN conditions JSON;
 ALTER TABLE policies ADD COLUMN actions JSON;
 
 -- Add new condition and findings columns to alerts table
