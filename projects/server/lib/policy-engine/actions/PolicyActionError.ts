@@ -1,6 +1,7 @@
 import { PolicyActionBase } from "./PolicyActionBase";
 import { JsonSchema, ValidationResult, Finding, ActionEvent } from "../types/core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
+import { PolicyAction } from "@/lib/models/types/policy";
 
 export class PolicyActionError extends PolicyActionBase {
     constructor() {
@@ -51,19 +52,17 @@ export class PolicyActionError extends PolicyActionBase {
         };
     }
 
-    async applyAction(message: JsonRpcMessageWrapper, findings: Finding[], config: any, params: any): Promise<ActionEvent[]> {
+    async applyAction(message: JsonRpcMessageWrapper, findings: Finding[], config: any, action: PolicyAction): Promise<ActionEvent[]> {
         return [{
-            actionClassName: 'error',
-            actionConfigId: 0, // !!!
-            params: params,
-            description: `Policy error: ${params.message}`,
+            action: action,
+            description: `Policy error: ${action.params.message}`,
             metadata: {
                 findingsCount: findings.length,
                 findings: findings.map(f => f.details)
             },
             contentModification: {
                 type: 'message',
-                payload: { error: { code: params.code, message: params.message } }
+                payload: { error: { code: action.params.code, message: action.params.message } }
             }
         }];
     }

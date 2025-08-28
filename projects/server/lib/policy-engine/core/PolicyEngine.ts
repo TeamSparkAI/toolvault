@@ -73,7 +73,7 @@ export class PolicyEngine {
                 for (const action of policy.actions) {
                     const actionClass = ActionRegistry.getAction(action.elementClassName);
                     if (actionClass) {
-                        const events = await actionClass.applyAction(message, allFindings, null, action.params);
+                        const events = await actionClass.applyAction(message, allFindings, null, action);
 
                         const actionInstance: PolicyActionInstance = {
                             elementClassName: action.elementClassName,
@@ -134,9 +134,9 @@ export class PolicyEngine {
             const highestPriority = messageReplacements.reduce((highest, current) => {
                 if (current.policySeverity < highest.policySeverity) return current;
                 if (current.policySeverity === highest.policySeverity) {
-                    // If same severity, error takes precedence over replace
-                    if (current.actionClassName === 'error' && highest.actionClassName !== 'error') return current;
-                    if (highest.actionClassName === 'error' && current.actionClassName !== 'error') return highest;
+                                // If same severity, error takes precedence over replace
+            if (current.action.elementClassName === 'error' && highest.action.elementClassName !== 'error') return current;
+            if (highest.action.elementClassName === 'error' && current.action.elementClassName !== 'error') return highest;
                     // If both same type, keep the first one
                 }
                 return highest;

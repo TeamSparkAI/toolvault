@@ -1,4 +1,5 @@
 // Core types
+import { PolicyAction } from "@/lib/models/types/policy";
 
 export interface JsonSchema {
     type: 'string' | 'number' | 'boolean' | 'array' | 'object';
@@ -38,9 +39,7 @@ export type ContentModificationAction = 'remove' | 'redact' | 'redactPattern' | 
 
 // Action event types for policy engine
 export interface ActionEvent {
-    actionClassName: string; // 'log' | 'siem' | 'alert' | 'rewrite' | 'error' | 'replace'
-    actionConfigId: number; // reference to the policy action configuration
-    params: any;
+    action: PolicyAction; // The policy action that triggered this event
     description: string;
     metadata?: any;
     contentModification?: ContentModification;

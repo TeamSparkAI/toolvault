@@ -1,6 +1,7 @@
 import { PolicyActionBase } from "./PolicyActionBase";
 import { JsonSchema, ValidationResult, Finding, ActionEvent, ContentModificationAction } from "../types/core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
+import { PolicyAction } from "@/lib/models/types/policy";
 
 export class PolicyActionRewrite extends PolicyActionBase {
     constructor() {
@@ -70,7 +71,7 @@ export class PolicyActionRewrite extends PolicyActionBase {
         };
     }
 
-    async applyAction(message: JsonRpcMessageWrapper, findings: Finding[], config: any, params: any): Promise<ActionEvent[]> {
+    async applyAction(message: JsonRpcMessageWrapper, findings: Finding[], config: any, action: PolicyAction): Promise<ActionEvent[]> {
         const events: ActionEvent[] = [];
 
         // Filter findings that have matches suitable for rewriting
@@ -84,18 +85,16 @@ export class PolicyActionRewrite extends PolicyActionBase {
         for (const finding of findingsWithMatches) {
             if (finding.match) {
                 events.push({
-                    actionClassName: 'rewrite',
-                    actionConfigId: 0, // !!!                    type: 'rewrite',
-                    params: params,
-                    description: `Applied ${params.action} to: ${finding.details}`,
+                    action: action,
+                    description: `Applied ${action.params.action} to: ${finding.details}`,
                     metadata: finding.metadata,
                     contentModification: {
                         type: 'field',
                         fieldPath: finding.match.fieldPath,
                         start: finding.match.start,
                         end: finding.match.end,
-                        action: params.action as ContentModificationAction,
-                        actionText: params.actionText
+                        action: action.params.action as ContentModificationAction,
+                        actionText: action.params.actionText
                     }
                 });
             }
