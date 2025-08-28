@@ -120,9 +120,13 @@ export async function applyPoliciesNew(messageData: MessageData, message: JsonRp
                         messageId: messageData.messageId,
                         timestamp: messageData.timestamp,
                         policyId: policyFinding.policy.policyId,
-                        filterName: filterFinding.condition.name,
                         origin: message.origin,
-                        matches: fieldMatches
+                        // OLD FIELDS:
+                        filterName: filterFinding.condition.name,
+                        matches: fieldMatches,
+                        // NEW FIELDS:
+                        condition: filterFinding.condition,
+                        findings: filterFinding.findings
                     });
                 }
             }
@@ -231,7 +235,9 @@ async function applyPolicies(messageData: MessageData, message: JsonRpcMessageWr
                     policyId: policy.policyId,
                     filterName: filter.name,
                     origin: message.origin,
-                    matches: fieldMatches
+                    matches: fieldMatches,
+                    condition: null, // Old filter-based logic doesn't have condition data
+                    findings: null   // Old filter-based logic doesn't have findings data
                 });
                 matches.push(...fieldMatches.map(match => ({
                     ...match,

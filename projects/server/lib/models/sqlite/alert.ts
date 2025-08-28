@@ -11,7 +11,7 @@ export class SqliteAlertModel extends AlertModel {
     }
 
     async findById(alertId: number): Promise<AlertReadData | null> {
-        const result = await this.db.query<AlertReadData & { matches: string }>(
+        const result = await this.db.query<AlertReadData & { matches: string; condition: string; findings: string }>(
             `SELECT a.*, p.severity as policySeverity,
                     m.serverId, m.clientId, c.type as clientType
              FROM alerts a 
@@ -23,11 +23,13 @@ export class SqliteAlertModel extends AlertModel {
         );
         if (!result.rows[0]) return null;
         
-        // Deserialize matches
+        // Deserialize JSON fields
         const alert = result.rows[0];
         return {
             ...alert,
-            matches: alert.matches ? JSON.parse(alert.matches) : null
+            matches: alert.matches ? JSON.parse(alert.matches) : null,
+            condition: alert.condition ? JSON.parse(alert.condition) : null,
+            findings: alert.findings ? JSON.parse(alert.findings) : null
         };
     }
 
@@ -88,7 +90,7 @@ export class SqliteAlertModel extends AlertModel {
             pagination.limit
         ];
 
-        const alerts = await this.db.query<AlertReadData & { matches: string }>(
+        const alerts = await this.db.query<AlertReadData & { matches: string; condition: string; findings: string }>(
             `SELECT a.*, p.severity as policySeverity,
                     m.serverId, m.clientId, c.type as clientType
              FROM alerts a 
@@ -99,10 +101,12 @@ export class SqliteAlertModel extends AlertModel {
             queryParams
         );
 
-        // Deserialize matches for each alert
+        // Deserialize JSON fields for each alert
         alerts.rows = alerts.rows.map(alert => ({
             ...alert,
-            matches: alert.matches ? JSON.parse(alert.matches) : null
+            matches: alert.matches ? JSON.parse(alert.matches) : null,
+            condition: alert.condition ? JSON.parse(alert.condition) : null,
+            findings: alert.findings ? JSON.parse(alert.findings) : null
         }));
 
         const total = await this.db.query<{ count: number }>(
@@ -133,10 +137,10 @@ export class SqliteAlertModel extends AlertModel {
 
     async create(data: Omit<AlertData, 'alertId' | 'createdAt' | 'seenAt'>): Promise<AlertReadData> {
         const result = await this.db.query<AlertData>(
-            `INSERT INTO alerts (messageId, policyId, filterName, origin, matches, timestamp) 
-             VALUES (?, ?, ?, ?, ?, ?) 
+            `INSERT INTO alerts (messageId, policyId, filterName, origin, matches, condition, findings, timestamp) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
              RETURNING *`,
-            [data.messageId, data.policyId, data.filterName, data.origin, JSON.stringify(data.matches), data.timestamp]
+            [data.messageId, data.policyId, data.filterName, data.origin, JSON.stringify(data.matches), JSON.stringify(data.condition), JSON.stringify(data.findings), data.timestamp]
         );
         
         // After creating, fetch the full record with policy data
