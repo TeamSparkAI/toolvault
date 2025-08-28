@@ -21,26 +21,19 @@ export class PolicyEngine {
             
             const conditionFindings: ConditionFindings[] = [];
             
-            // For now, we'll use the existing filter structure and convert to condition
-            // TODO: Update when we implement new condition/action models
-            if (policy.filters && policy.filters.length > 0) {
-                const regexCondition = ConditionRegistry.getCondition('regex');
-                if (regexCondition) {
-                    // Convert existing filter structure to new format
-                    for (const conditionConfig of policy.filters) {
-                        const params = {
-                            regex: conditionConfig.regex,
-                            keywords: conditionConfig.keywords,
-                            validator: conditionConfig.validator || 'none'
-                        };
-                        const findings = await regexCondition.applyCondition(message, null, params);
+            // Process conditions using the new condition/action system
+            if (policy.conditions && policy.conditions.length > 0) {
+                for (const condition of policy.conditions) {
+                    const conditionClass = ConditionRegistry.getCondition(condition.elementClassName);
+                    if (conditionClass) {
+                        const findings = await conditionClass.applyCondition(message, null, condition.params);
 
                         const conditionInstance: PolicyConditionInstance = {
-                            elementClassName: 'regex',
-                            elementConfigId: 1, // !!! Get from condition instance
-                            instanceId: "0", // !!! Get from condition instance
-                            name: conditionConfig.name,
-                            params: params
+                            elementClassName: condition.elementClassName,
+                            elementConfigId: condition.elementConfigId,
+                            instanceId: condition.instanceId,
+                            name: condition.name,
+                            params: condition.params
                         };
 
                         conditionFindings.push({
@@ -75,29 +68,26 @@ export class PolicyEngine {
             
             const actionResults: ActionResults[] = [];
             
-            // For now, we'll use the existing action structure
-            // TODO: Update when we implement new condition/action models
-            if (policy.action && policy.action !== 'none') {
-                const rewriteAction = ActionRegistry.getAction('rewrite');
-                if (rewriteAction) {
-                    const params = {
-                        action: policy.action,
-                        actionText: policy.actionText
-                    };
-                    const events = await rewriteAction.applyAction(message, allFindings, null, params);
+            // Process actions using the new condition/action system
+            if (policy.actions && policy.actions.length > 0) {
+                for (const action of policy.actions) {
+                    const actionClass = ActionRegistry.getAction(action.elementClassName);
+                    if (actionClass) {
+                        const events = await actionClass.applyAction(message, allFindings, null, action.params);
 
-                    const actionInstance: PolicyActionInstance = {
-                        elementClassName: 'rewrite',
-                        elementConfigId: 1, //!!! Get from action instance
-                        instanceId: "0", // !!! Get from action instance
-                        params: params
-                    };
-                    
-                    // Store all events in hierarchical structure
-                    actionResults.push({
-                        action: actionInstance,
-                        actionEvents: events
-                    });
+                        const actionInstance: PolicyActionInstance = {
+                            elementClassName: action.elementClassName,
+                            elementConfigId: action.elementConfigId,
+                            instanceId: action.instanceId,
+                            params: action.params
+                        };
+                        
+                        // Store all events in hierarchical structure
+                        actionResults.push({
+                            action: actionInstance,
+                            actionEvents: events
+                        });
+                    }
                 }
             }
             
@@ -110,7 +100,7 @@ export class PolicyEngine {
         }
 
         return {
-            modifiedMessage: message, // Return original message, modifications applied separately
+            modifiedMessage: message, // Return original message, modifications to be applied separately
             policyFindings: policyFindings,
             policyActions: policyActions
         };
