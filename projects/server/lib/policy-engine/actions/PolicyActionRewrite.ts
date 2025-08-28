@@ -17,6 +17,7 @@ export class PolicyActionRewrite extends PolicyActionBase {
 
     get paramsSchema(): JsonSchema {
         return {
+            type: 'object',
             properties: {
                 action: {
                     type: 'string',
@@ -28,16 +29,15 @@ export class PolicyActionRewrite extends PolicyActionBase {
                         redact: 'Redact',
                         redactPattern: 'Redact Pattern',
                         replace: 'Replace'
-                    },
-                    required: true
+                    }
                 },
                 actionText: {
                     type: 'string',
                     title: 'Action Text',
-                    description: 'Text to use for redaction pattern or replacement',
-                    required: false
+                    description: 'Text to use for redaction pattern or replacement'
                 }
-            }
+            },
+            required: ['action']
         };
     }
 

@@ -1,9 +1,9 @@
 import React from 'react';
-import { JsonSchemaProperty } from '@/lib/policy-engine/types/core';
+import { JsonSchema } from '@/lib/policy-engine/types/core';
 
 export interface SchemaDisplayFieldProps {
   name: string;
-  schema: JsonSchemaProperty;
+  schema: JsonSchema;
   value: any;
   required?: boolean;
 }
@@ -59,6 +59,7 @@ export function SchemaDisplayField({ name, schema, value, required }: SchemaDisp
           <ObjectDisplay
             value={value}
             properties={schema.properties!}
+            required={schema.required}
           />
         );
         
@@ -85,7 +86,7 @@ export function SchemaDisplayField({ name, schema, value, required }: SchemaDisp
 
 interface ArrayDisplayProps {
   value: any[];
-  itemSchema: JsonSchemaProperty;
+  itemSchema: JsonSchema;
 }
 
 function ArrayDisplay({ value, itemSchema }: ArrayDisplayProps) {
@@ -110,10 +111,11 @@ function ArrayDisplay({ value, itemSchema }: ArrayDisplayProps) {
 
 interface ObjectDisplayProps {
   value: Record<string, any>;
-  properties: Record<string, JsonSchemaProperty>;
+  properties: Record<string, JsonSchema>;
+  required?: string[];
 }
 
-function ObjectDisplay({ value, properties }: ObjectDisplayProps) {
+function ObjectDisplay({ value, properties, required }: ObjectDisplayProps) {
   return (
     <div className="bg-gray-50 rounded-lg p-3 space-y-2">
       {Object.entries(properties).map(([propertyName, propertySchema]) => (
@@ -122,7 +124,7 @@ function ObjectDisplay({ value, properties }: ObjectDisplayProps) {
           name={propertyName}
           schema={propertySchema}
           value={value[propertyName]}
-          required={propertySchema.required}
+          required={required?.includes(propertyName)}
         />
       ))}
     </div>

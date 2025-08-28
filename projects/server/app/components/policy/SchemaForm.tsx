@@ -23,7 +23,7 @@ export function SchemaForm({ schema, value, onChange, errors = {} }: SchemaFormP
           schema={propertySchema}
           value={value[propertyName]}
           onChange={(newValue) => onChange({ ...value, [propertyName]: newValue })}
-          required={propertySchema.required}
+          required={schema.required?.includes(propertyName)}
           error={errors[propertyName]}
         />
       ))}

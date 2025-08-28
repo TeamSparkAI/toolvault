@@ -12,22 +12,22 @@ export class PolicyActionError extends PolicyActionBase {
 
     get paramsSchema(): JsonSchema {
         return {
+            type: 'object',
             properties: {
                 code: {
                     type: 'number',
                     title: 'Error Code',
                     description: 'MCP error code',
-                    default: -32000,
-                    required: true
+                    default: -32000
                 },
                 message: {
                     type: 'string',
                     title: 'Error Message',
                     description: 'Error message to return',
-                    default: 'An error occurred',
-                    required: true
+                    default: 'An error occurred'
                 }
-            }
+            },
+            required: ['code', 'message']
         };
     }
 

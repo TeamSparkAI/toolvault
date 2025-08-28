@@ -1,9 +1,9 @@
 import React from 'react';
-import { JsonSchemaProperty } from '@/lib/policy-engine/types/core';
+import { JsonSchema } from '@/lib/policy-engine/types/core';
 
 export interface SchemaFormFieldProps {
   name: string;
-  schema: JsonSchemaProperty;
+  schema: JsonSchema;
   value: any;
   onChange: (value: any) => void;
   required?: boolean;
@@ -105,6 +105,7 @@ export function SchemaFormField({ name, schema, value, onChange, required, error
             value={displayValue || {}}
             onChange={onChange}
             properties={schema.properties!}
+            required={schema.required}
             error={error}
           />
         );
@@ -149,7 +150,7 @@ export function SchemaFormField({ name, schema, value, onChange, required, error
 interface ArrayFieldProps {
   value: any[];
   onChange: (value: any[]) => void;
-  itemSchema: JsonSchemaProperty;
+  itemSchema: JsonSchema;
   error?: string;
 }
 
@@ -207,11 +208,12 @@ function ArrayField({ value, onChange, itemSchema, error }: ArrayFieldProps) {
 interface ObjectFieldProps {
   value: Record<string, any>;
   onChange: (value: Record<string, any>) => void;
-  properties: Record<string, JsonSchemaProperty>;
+  properties: Record<string, JsonSchema>;
+  required?: string[];
   error?: string;
 }
 
-function ObjectField({ value, onChange, properties, error }: ObjectFieldProps) {
+function ObjectField({ value, onChange, properties, required, error }: ObjectFieldProps) {
   const updateField = (fieldName: string, fieldValue: any) => {
     onChange({ ...value, [fieldName]: fieldValue });
   };
@@ -225,14 +227,14 @@ function ObjectField({ value, onChange, properties, error }: ObjectFieldProps) {
           schema={fieldSchema}
           value={value[fieldName]}
           onChange={(newValue) => updateField(fieldName, newValue)}
-          required={fieldSchema.required}
+          required={required?.includes(fieldName)}
         />
       ))}
     </div>
   );
 }
 
-function getDefaultValue(schema: JsonSchemaProperty): any {
+function getDefaultValue(schema: JsonSchema): any {
   switch (schema.type) {
     case 'string':
       return '';

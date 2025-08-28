@@ -42,12 +42,12 @@ export class RegexCondition extends PolicyConditionBase {
 
     get paramsSchema(): JsonSchema {
         return {
+            type: 'object',
             properties: {
                 regex: {
                     type: 'string',
                     title: 'Match Pattern',
-                    description: 'Regular expression pattern to match',
-                    required: true
+                    description: 'Regular expression pattern to match'
                 },
                 keywords: {
                     type: 'array',
@@ -64,7 +64,8 @@ export class RegexCondition extends PolicyConditionBase {
                     enum: ['none', 'luhn'],
                     default: 'none'
                 }
-            }
+            },
+            required: ['regex']
         };
     }
 

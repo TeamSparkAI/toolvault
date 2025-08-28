@@ -25,12 +25,12 @@ export function SchemaDisplay({ schema, value }: SchemaDisplayProps) {
                  !(typeof fieldValue === 'object' && !Array.isArray(fieldValue) && Object.keys(fieldValue).length === 0);
         })
         .map(([propertyName, propertySchema]) => (
-          <SchemaDisplayField
-            key={propertyName}
-            name={propertySchema.title || propertyName}
-            schema={propertySchema}
-            value={value[propertyName]}
-            required={propertySchema.required}
+                  <SchemaDisplayField
+          key={propertyName}
+          name={propertySchema.title || propertyName}
+          schema={propertySchema}
+          value={value[propertyName]}
+          required={schema.required?.includes(propertyName)}
         />
         ))}
     </dl>

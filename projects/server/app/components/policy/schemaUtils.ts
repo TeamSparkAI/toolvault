@@ -1,6 +1,6 @@
-import { JsonSchemaProperty } from '@/lib/policy-engine/types/core';
+import { JsonSchema } from '@/lib/policy-engine/types/core';
 
-export function getDefaultValue(schema: JsonSchemaProperty): any {
+export function getDefaultValue(schema: JsonSchema): any {
   // Use schema's default if provided
   if (schema.default !== undefined) {
     return schema.default;
@@ -23,7 +23,7 @@ export function getDefaultValue(schema: JsonSchemaProperty): any {
   }
 }
 
-export function getDefaultParams(schema: JsonSchemaProperty): Record<string, any> {
+export function getDefaultParams(schema: JsonSchema): Record<string, any> {
   if (schema.type !== 'object' || !schema.properties) {
     return {};
   }

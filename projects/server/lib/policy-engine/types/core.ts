@@ -1,6 +1,6 @@
 // Core types
 
-export interface JsonSchemaProperty {
+export interface JsonSchema {
     type: 'string' | 'number' | 'boolean' | 'array' | 'object';
     title?: string; // Display name for the field
     description?: string;
@@ -11,13 +11,9 @@ export interface JsonSchemaProperty {
     minimum?: number;
     maximum?: number;
     multipleOf?: number; // For number step validation
-    required?: boolean;
-    items?: JsonSchemaProperty; // For arrays
-    properties?: Record<string, JsonSchemaProperty>; // For objects
-  }
-  
-  export interface JsonSchema {
-    properties: Record<string, JsonSchemaProperty>;
+    required?: string[]; // Array of required property names (JSON Schema standard)
+    items?: JsonSchema; // For arrays
+    properties?: Record<string, JsonSchema>; // For objects
   }
 
 export interface ValidationResult {
