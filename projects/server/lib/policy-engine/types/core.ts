@@ -2,13 +2,15 @@
 
 export interface JsonSchemaProperty {
     type: 'string' | 'number' | 'boolean' | 'array' | 'object';
-    name?: string; // Added back based on user feedback
+    title?: string; // Display name for the field
     description?: string;
     default?: any;
     enum?: string[];
     enumLabels?: Record<string, string>; // Maps enum values to human-readable labels
+    format?: string; // For string formatting (e.g., 'multiline', 'email', 'uri')
     minimum?: number;
     maximum?: number;
+    multipleOf?: number; // For number step validation
     required?: boolean;
     items?: JsonSchemaProperty; // For arrays
     properties?: Record<string, JsonSchemaProperty>; // For objects

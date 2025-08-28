@@ -35,7 +35,8 @@ CREATE TABLE policy_elements (
 INSERT INTO policy_elements (className, elementType)
 VALUES 
     ('regex', 'condition'),
-    ('rewrite', 'action');
+    ('rewrite', 'action'),
+    ('error', 'action');
 
 -- Create indexes for efficient querying
 CREATE INDEX idx_message_actions_message_id ON message_actions(messageId);

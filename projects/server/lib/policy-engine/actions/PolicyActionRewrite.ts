@@ -20,6 +20,7 @@ export class PolicyActionRewrite extends PolicyActionBase {
             properties: {
                 action: {
                     type: 'string',
+                    title: 'Action',
                     description: 'Type of modification to apply',
                     enum: ['remove', 'redact', 'redactPattern', 'replace'],
                     enumLabels: {
@@ -32,6 +33,7 @@ export class PolicyActionRewrite extends PolicyActionBase {
                 },
                 actionText: {
                     type: 'string',
+                    title: 'Action Text',
                     description: 'Text to use for redaction pattern or replacement',
                     required: false
                 }

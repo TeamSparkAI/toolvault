@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSeverityOptions } from '@/lib/severity';
-import { PolicyActionType, PolicyData } from '@/lib/models/types/policy';
+import { PolicyActionType, PolicyData, PolicyCondition, PolicyAction } from '@/lib/models/types/policy';
 import { useDialog } from '@/app/hooks/useDialog';
 import { useNavigationGuard } from '@/app/hooks/useNavigationGuard';
 import { MCP_METHODS_BY_CATEGORY, getMcpMethodCategories } from '@/lib/types/mcpMethod';
+import { ConditionEditor } from './ConditionEditor';
+import { ActionEditor } from './ActionEditor';
+import { AddConditionDialog, AddActionDialog } from './AddElementDialog';
+import { validatePolicyElementParams } from '@/app/lib/validation';
 
 type Filter = PolicyData['filters'][0];
 
@@ -29,6 +33,8 @@ export function PolicyDetails({
   const [editedPolicy, setEditedPolicy] = useState(policy);
   const [editingFilterIndex, setEditingFilterIndex] = useState<number | null>(null);
   const [showValidationAlert, setShowValidationAlert] = useState(false);
+  const [showAddConditionDialog, setShowAddConditionDialog] = useState(false);
+  const [showAddActionDialog, setShowAddActionDialog] = useState(false);
   const { confirm } = useDialog();
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +64,38 @@ export function PolicyDetails({
   const handleSave = async () => {
     // Validate required fields
     if (!editedPolicy.name) {
+      setShowValidationAlert(true);
+      return;
+    }
+
+    // Validate conditions
+    const conditionErrors: string[] = [];
+    for (let i = 0; i < editedPolicy.conditions.length; i++) {
+      const condition = editedPolicy.conditions[i];
+      if (!condition.name.trim()) {
+        conditionErrors.push(`Condition ${i + 1}: Name is required`);
+      }
+      
+      // Validate parameters via API
+      const validation = await validatePolicyElementParams(condition.elementConfigId, condition.params);
+      if (!validation.isValid) {
+        conditionErrors.push(`Condition ${i + 1}: ${validation.errors[0]}`);
+      }
+    }
+
+    // Validate actions
+    const actionErrors: string[] = [];
+    for (let i = 0; i < editedPolicy.actions.length; i++) {
+      const action = editedPolicy.actions[i];
+      
+      // Validate parameters via API
+      const validation = await validatePolicyElementParams(action.elementConfigId, action.params);
+      if (!validation.isValid) {
+        actionErrors.push(`Action ${i + 1}: ${validation.errors[0]}`);
+      }
+    }
+
+    if (conditionErrors.length > 0 || actionErrors.length > 0) {
       setShowValidationAlert(true);
       return;
     }
@@ -112,6 +150,52 @@ export function PolicyDetails({
     });
   };
 
+  const handleAddCondition = (condition: PolicyCondition) => {
+    setEditedPolicy({
+      ...editedPolicy,
+      conditions: [...editedPolicy.conditions, condition]
+    });
+  };
+
+  const handleUpdateCondition = (index: number, condition: PolicyCondition) => {
+    const newConditions = [...editedPolicy.conditions];
+    newConditions[index] = condition;
+    setEditedPolicy({
+      ...editedPolicy,
+      conditions: newConditions
+    });
+  };
+
+  const handleRemoveCondition = (index: number) => {
+    setEditedPolicy({
+      ...editedPolicy,
+      conditions: editedPolicy.conditions.filter((_, i) => i !== index)
+    });
+  };
+
+  const handleAddAction = (action: PolicyAction) => {
+    setEditedPolicy({
+      ...editedPolicy,
+      actions: [...editedPolicy.actions, action]
+    });
+  };
+
+  const handleUpdateAction = (index: number, action: PolicyAction) => {
+    const newActions = [...editedPolicy.actions];
+    newActions[index] = action;
+    setEditedPolicy({
+      ...editedPolicy,
+      actions: newActions
+    });
+  };
+
+  const handleRemoveAction = (index: number) => {
+    setEditedPolicy({
+      ...editedPolicy,
+      actions: editedPolicy.actions.filter((_, i) => i !== index)
+    });
+  };
+
   const handleDelete = async () => {
     const confirmed = await confirm(`Are you sure you want to delete policy "${policy.name}"?`, 'Delete Policy');
     if (confirmed) {
@@ -149,6 +233,27 @@ export function PolicyDetails({
                           </li>
                         );
                       }
+                      return null;
+                    }).filter(Boolean)}
+                    {editedPolicy.conditions.map((condition, index) => {
+                      const errors = [];
+                      if (!condition.name.trim()) errors.push('name is required');
+                      
+                      // Note: Parameter validation is handled in handleSave via API
+                      // This is just for display purposes
+                      
+                      if (errors.length > 0) {
+                        return (
+                          <li key={`condition-${index}`}>
+                            Condition {index + 1}: {errors.join(', ')}
+                          </li>
+                        );
+                      }
+                      return null;
+                    }).filter(Boolean)}
+                    {editedPolicy.actions.map((action, index) => {
+                      // Note: Parameter validation is handled in handleSave via API
+                      // This is just for display purposes
                       return null;
                     }).filter(Boolean)}
                   </ul>
@@ -321,131 +426,71 @@ export function PolicyDetails({
               </div>
             </dd>
           </div>
-          <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">Action</dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
-              <div className="space-y-2">
-                <select
-                  value={editedPolicy.action}
-                  onChange={(e) => setEditedPolicy({ ...editedPolicy, action: e.target.value as PolicyActionType })}
-                  className="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm w-auto min-w-[200px]"
-                >
-                  <option value="remove">Remove</option>
-                  <option value="redact">Redact</option>
-                  <option value="redactPattern">Redact Pattern</option>
-                  <option value="replace">Replace</option>
-                  <option value="none">None</option>
-                </select>
-                <input
-                  type="text"
-                  value={editedPolicy.actionText || ''}
-                  onChange={(e) => setEditedPolicy({ ...editedPolicy, actionText: e.target.value || undefined })}
-                  placeholder="Action text (optional)"
-                  className="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm w-full"
-                />
-              </div>
-            </dd>
-          </div>
           <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500">Filters</dt>
+            <dt className="text-sm font-medium text-gray-500">Conditions</dt>
             <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
               <div className="space-y-4">
-                {editedPolicy.filters.map((filter, index) => (
-                  <div key={index} className="border rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-grow space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Name <span className="text-red-500">*</span></label>
-                          <input
-                            type="text"
-                            value={filter.name}
-                            onChange={(e) => handleUpdateFilter(index, { ...filter, name: e.target.value })}
-                            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm ${
-                              filter.name.trim() === '' ? 'border-red-300' : ''
-                            }`}
-                            placeholder="Enter filter name"
-                            required
-                          />
-                          {filter.name.trim() === '' && (
-                            <p className="mt-1 text-sm text-red-600">Filter name is required</p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Regex Pattern <span className="text-red-500">*</span></label>
-                          <input
-                            type="text"
-                            value={filter.regex}
-                            onChange={(e) => handleUpdateFilter(index, { ...filter, regex: e.target.value })}
-                            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm ${
-                              filter.regex.trim() === '' ? 'border-red-300' : ''
-                            }`}
-                            placeholder="Enter regex pattern"
-                            required
-                          />
-                          {filter.regex.trim() === '' && (
-                            <p className="mt-1 text-sm text-red-600">Regex pattern is required</p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Notes</label>
-                          <textarea
-                            value={filter.notes || ''}
-                            onChange={(e) => handleUpdateFilter(index, { ...filter, notes: e.target.value || undefined })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                            rows={2}
-                            placeholder="Add notes about this filter"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Keywords</label>
-                          <input
-                            type="text"
-                            value={filter.keywords?.join(', ') || ''}
-                            onChange={(e) => handleUpdateFilter(index, { 
-                              ...filter, 
-                              keywords: e.target.value.split(',').map(k => k.trim()).filter(Boolean)
-                            })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                            placeholder="Enter keywords (comma-separated)"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Validator</label>
-                          <select
-                            value={filter.validator}
-                            onChange={(e) => handleUpdateFilter(index, { ...filter, validator: e.target.value as 'none' | 'luhn' })}
-                            className="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm w-auto min-w-[150px]"
-                          >
-                            <option value="none">None</option>
-                            <option value="luhn">Luhn</option>
-                          </select>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveFilter(index)}
-                        className="ml-4 p-2 text-red-600 hover:text-red-800"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+                {editedPolicy.conditions.map((condition, index) => (
+                  <ConditionEditor
+                    key={condition.instanceId}
+                    condition={condition}
+                    onUpdate={(updatedCondition) => handleUpdateCondition(index, updatedCondition)}
+                    onRemove={() => handleRemoveCondition(index)}
+                  />
                 ))}
                 <button
-                  onClick={handleAddFilter}
-                  className="mt-2 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  onClick={() => setShowAddConditionDialog(true)}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   <svg className="-ml-0.5 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
                   </svg>
-                  Add Filter
+                  Add Condition
+                </button>
+              </div>
+            </dd>
+          </div>
+          <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-[120px_1fr] sm:gap-4 sm:px-6">
+            <dt className="text-sm font-medium text-gray-500">Actions</dt>
+            <dd className="mt-1 text-sm text-gray-900 sm:mt-0">
+              <div className="space-y-4">
+                {editedPolicy.actions.map((action, index) => (
+                  <ActionEditor
+                    key={action.instanceId}
+                    action={action}
+                    onUpdate={(updatedAction) => handleUpdateAction(index, updatedAction)}
+                    onRemove={() => handleRemoveAction(index)}
+                  />
+                ))}
+                <button
+                  onClick={() => setShowAddActionDialog(true)}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <svg className="-ml-0.5 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Add Action
                 </button>
               </div>
             </dd>
           </div>
         </dl>
       </div>
+      
+      {/* Dialogs */}
+      <AddConditionDialog
+        isOpen={showAddConditionDialog}
+        onClose={() => setShowAddConditionDialog(false)}
+        onAdd={handleAddCondition}
+        title="Add Condition"
+      />
+      
+      <AddActionDialog
+        isOpen={showAddActionDialog}
+        onClose={() => setShowAddActionDialog(false)}
+        onAdd={handleAddAction}
+        title="Add Action"
+      />
     </div>
   );
 } 

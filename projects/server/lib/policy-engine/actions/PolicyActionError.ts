@@ -15,12 +15,16 @@ export class PolicyActionError extends PolicyActionBase {
             properties: {
                 code: {
                     type: 'number',
+                    title: 'Error Code',
                     description: 'MCP error code',
+                    default: -32000,
                     required: true
                 },
                 message: {
                     type: 'string',
+                    title: 'Error Message',
                     description: 'Error message to return',
+                    default: 'An error occurred',
                     required: true
                 }
             }

@@ -26,6 +26,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { logger } from '@/lib/logging/server';
 import { findStaticDir } from '@/lib/utils/static';
+import { generateBase32Id } from '@/lib/utils/id';
 
 // Use a global variable to ensure singleton persistence across module contexts
 declare global {
@@ -205,25 +206,70 @@ export class ModelFactory {
      */
     private async onDatabaseCreated() {
         const policyModel = await this.getPolicyModel();
+        const policyElementModel = await this.getPolicyElementModel();
         const dataDir = findStaticDir('data');
         const policiesPath = path.join(dataDir, 'policies.json');
         const json = await fs.readFile(policiesPath, 'utf-8');
         const policies = JSON.parse(json);
+
+        // Get pre-installed elements
+        const elements = await policyElementModel.list();
+
+        // Create mapping of className -> configId
+        const elementMap = new Map<string, number>();
+        elements.forEach(element => {
+            elementMap.set(element.className, element.configId);
+        });
+
+        // Import each policy
         for (const policy of policies) {
+            // Convert conditions - map class to configId
+            const conditions = policy.conditions?.map((condition: any) => {
+                const configId = elementMap.get(condition.class);
+                if (!configId) {
+                    throw new Error(`Unknown condition class: ${condition.class}`);
+                }
+                
+                return {
+                    elementClassName: condition.class,
+                    elementConfigId: configId,
+                    instanceId: generateBase32Id(),
+                    name: condition.name,
+                    notes: condition.notes,
+                    params: condition.params
+                };
+            }) || [];
+
+            // Convert actions - map class to configId
+            const actions = policy.actions?.map((action: any) => {
+                const configId = elementMap.get(action.class);
+                if (!configId) {
+                    throw new Error(`Unknown action class: ${action.class}`);
+                }
+                
+                return {
+                    elementClassName: action.class,
+                    elementConfigId: configId,
+                    instanceId: generateBase32Id(),
+                    params: action.params
+                };
+            }) || [];
+
+            // Create policy
             await policyModel.create({
                 name: policy.name,
                 description: policy.description,
                 severity: policy.severity,
                 origin: policy.origin,
                 methods: policy.methods,
-                conditions: policy.conditions,
-                actions: policy.actions,
-                filters: policy.filters,
-                action: policy.action,
-                actionText: policy.actionText,
+                conditions,
+                actions,
+                filters: [], // Empty for new format
+                action: 'none', // Default for new format
+                actionText: '', // Default for new format
                 enabled: policy.enabled
             });
         }
         logger.debug('Default policies imported.');
     }
-} 
+}

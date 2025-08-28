@@ -1,4 +1,4 @@
-export type PolicyElementType = 'filter' | 'action';
+export type PolicyElementType = 'condition' | 'action';
 
 export interface PolicyElementData {
     configId: number;
@@ -8,6 +8,11 @@ export interface PolicyElementData {
     enabled: boolean;
     createdAt: string;
     updatedAt: string;
+    // Metadata from element class (populated by API)
+    name?: string;
+    description?: string;
+    paramsSchema?: any;
+    configSchema?: any;
 }
 
 export interface PolicyElementCreateData {

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { ModelFactory } from '@/lib/models';
 import { JsonResponse } from '@/lib/jsonResponse';
 import { logger } from '@/lib/logging/server';
-import { PolicyElementType, PolicyElementFilter, PolicyElementCreateData } from '@/lib/models/types/policyElement';
+import { PolicyElementType, PolicyElementFilter } from '@/lib/models/types/policyElement';
 import { ConditionRegistry } from '@/lib/policy-engine/conditions/registry/ConditionRegistry';
 import { ActionRegistry } from '@/lib/policy-engine/actions/registry/ActionRegistry';
 
@@ -21,7 +21,25 @@ export async function GET(request: NextRequest) {
         const policyElementModel = await ModelFactory.getInstance().getPolicyElementModel();
         const elements = await policyElementModel.list(filter);
         
-        return JsonResponse.payloadResponse('policyElements', elements);
+        // Populate metadata from element classes
+        const elementsWithMetadata = elements.map(element => {
+            let elementClass = null;
+            if (element.elementType === 'condition') {
+                elementClass = ConditionRegistry.getCondition(element.className);
+            } else if (element.elementType === 'action') {
+                elementClass = ActionRegistry.getAction(element.className);
+            }
+            
+            return {
+                ...element,
+                name: elementClass?.name || element.className,
+                description: elementClass?.description || '',
+                paramsSchema: elementClass?.paramsSchema || null,
+                configSchema: elementClass?.configSchema || null
+            };
+        });
+        
+        return JsonResponse.payloadResponse('policyElements', elementsWithMetadata);
     } catch (error) {
         logger.error('Error listing policy elements:', error);
         return JsonResponse.errorResponse(500, 'Failed to list policy elements');

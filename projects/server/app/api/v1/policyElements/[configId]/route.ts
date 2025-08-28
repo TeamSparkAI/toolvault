@@ -65,7 +65,7 @@ export async function PUT(
             }
 
             let elementClass = null;
-            if (existingElement.elementType === 'filter') {
+            if (existingElement.elementType === 'condition') {
                 elementClass = ConditionRegistry.getCondition(existingElement.className);
             } else if (existingElement.elementType === 'action') {
                 elementClass = ActionRegistry.getAction(existingElement.className);

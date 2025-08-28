@@ -45,13 +45,13 @@ export class RegexCondition extends PolicyConditionBase {
             properties: {
                 regex: {
                     type: 'string',
-                    name: 'Regex',
+                    title: 'Match Pattern',
                     description: 'Regular expression pattern to match',
                     required: true
                 },
                 keywords: {
                     type: 'array',
-                    name: 'Keywords',
+                    title: 'Keywords',
                     description: 'Optional keywords that must be present near matches',
                     items: {
                         type: 'string'
@@ -59,7 +59,7 @@ export class RegexCondition extends PolicyConditionBase {
                 },
                 validator: {
                     type: 'string',
-                    name: 'Validator',
+                    title: 'Validator',
                     description: 'Validator function to apply to matches',
                     enum: ['none', 'luhn'],
                     default: 'none'
