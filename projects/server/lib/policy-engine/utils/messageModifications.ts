@@ -1,5 +1,6 @@
 import { JsonRpcMessageWrapper } from '@/lib/jsonrpc';
 import { FieldMatch } from '@/lib/models/types/alert';
+import { MessageData } from '@/lib/models/types/message';
 import { parseTree, ParseError, ParseOptions, applyEdits, modify, findNodeAtLocation, Node } from 'jsonc-parser';
 import { PolicyActions } from '../core/PolicyEngineResult';
 import { ActionEvent, FieldModification, MessageReplacement } from '../types/core';
@@ -401,4 +402,36 @@ export function applyModificationsFromActions(
 
     // No modifications, return original message
     return { modifiedMessage: originalMessage, appliedMessageReplacement: null };
+}
+
+/**
+ * Convert MessageData to JsonRpcMessageWrapper
+ * Reconstructs a JSON-RPC message from the flattened MessageData structure
+ */
+export function messageDataToJsonRpcWrapper(messageData: MessageData): JsonRpcMessageWrapper {
+    // Construct a basic JSON-RPC message from the stored data
+    const jsonRpcMessage: any = {
+        jsonrpc: '2.0'
+    };
+
+    if (messageData.payloadMessageId) {
+        jsonRpcMessage.id = messageData.payloadMessageId;
+    }
+    if (messageData.payloadMethod) {
+        jsonRpcMessage.method = messageData.payloadMethod;
+    }
+    if (messageData.payloadParams) {
+        jsonRpcMessage.params = messageData.payloadParams;
+    }
+    if (messageData.payloadResult) {
+        jsonRpcMessage.result = messageData.payloadResult;
+    }
+    if (messageData.payloadError) {
+        jsonRpcMessage.error = {
+            code: messageData.payloadError.code,
+            message: messageData.payloadError.message
+        };
+    }
+
+    return new JsonRpcMessageWrapper(messageData.origin, jsonRpcMessage);
 }

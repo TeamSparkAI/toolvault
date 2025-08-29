@@ -10,7 +10,10 @@ import { useDimensions } from '@/app/hooks/useDimensions';
 import { useLayout } from '@/app/contexts/LayoutContext';
 import { useAlerts } from '@/app/contexts/AlertsContext';
 import { getClientIcon } from '@/lib/client-icons';
-import { applyMatchesFromAlerts } from '@/lib/policy-engine/utils/messageModifications';
+import { applyMatchesFromAlerts, applyModificationsFromActions, messageDataToJsonRpcWrapper } from '@/lib/policy-engine/utils/messageModifications';
+import { MessageActionData } from '@/lib/models/types/messageAction';
+import { JsonRpcMessageWrapper } from '@/lib/jsonrpc';
+import { ActionEvent } from '@/lib/policy-engine/types/core';
 import { getServerIconUrl } from '@/lib/utils/githubImageUrl';
 import { Server } from '@/lib/types/server';
 import { AlertsMenu } from '@/app/components/alerts/AlertsMenu';
@@ -22,6 +25,7 @@ export default function MessageDetailsPage() {
   const messageId = params.messageId as string;
   const [message, setMessage] = useState<MessageData | null>(null);
   const [alerts, setAlerts] = useState<AlertReadData[]>([]);
+  const [messageActions, setMessageActions] = useState<MessageActionData | null>(null);
   const [server, setServer] = useState<Server | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null);
@@ -42,13 +46,15 @@ export default function MessageDetailsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [messageResponse, alertsResponse] = await Promise.all([
+        const [messageResponse, alertsResponse, messageActionsResponse] = await Promise.all([
           fetch(`/api/v1/messages/${messageId}`).then(r => r.json()),
-          fetch(`/api/v1/alerts?messageId=${messageId}`).then(r => r.json())
+          fetch(`/api/v1/alerts?messageId=${messageId}`).then(r => r.json()),
+          fetch(`/api/v1/messageActions/${messageId}`).then(r => r.json())
         ]);
 
         const messageData = new JsonResponseFetch<MessageData>(messageResponse, 'message');
         const alertsData = new JsonResponseFetch<AlertReadData[]>(alertsResponse, 'alerts');
+        const messageActionsData = new JsonResponseFetch<MessageActionData | null>(messageActionsResponse, 'messageAction');
         
         log.debug('messageData', messageData);
 
@@ -115,6 +121,11 @@ export default function MessageDetailsPage() {
             }
           }
         }
+
+        // Handle message actions
+        if (messageActionsData.isSuccess()) {
+          setMessageActions(messageActionsData.payload);
+        }
       } catch (error) {
         log.error('[MessageDetails] Error fetching message details:', error);
       } finally {
@@ -136,6 +147,15 @@ export default function MessageDetailsPage() {
   const getClientName = (clientId: string | undefined) => {
     if (!clientId) return '-';
     return dimensions.getLabel('clientId', clientId) || clientId;
+  };
+
+  const getModifiedMessage = (): { modifiedMessage: JsonRpcMessageWrapper | null; appliedMessageReplacement: ActionEvent | null } => {
+    if (!message || !messageActions) {
+      return { modifiedMessage: null, appliedMessageReplacement: null };
+    }
+
+    const originalMessage = messageDataToJsonRpcWrapper(message);
+    return applyModificationsFromActions(originalMessage, messageActions.actions);
   };
 
   const getHighlightedRedactedPayload = (payload: any, alerts: AlertReadData[], origin: 'client' | 'server', selectedAlert: AlertReadData | null) => {

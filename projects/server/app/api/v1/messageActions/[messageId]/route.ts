@@ -19,7 +19,7 @@ export async function GET(
         const messageAction = await messageActionModel.findByMessageId(messageId);
 
         if (!messageAction) {
-            return JsonResponse.errorResponse(404, 'Message actions not found');
+            return JsonResponse.payloadResponse('messageAction', null);
         }
 
         return JsonResponse.payloadResponse('messageAction', messageAction);
