@@ -10,7 +10,7 @@ import { useDimensions } from '@/app/hooks/useDimensions';
 import { useLayout } from '@/app/contexts/LayoutContext';
 import { useAlerts } from '@/app/contexts/AlertsContext';
 import { getClientIcon } from '@/lib/client-icons';
-import { applyMatchesFromAlerts } from '@/lib/utils/matches';
+import { applyMatchesFromAlerts } from '@/lib/policy-engine/utils/messageModifications';
 import { getServerIconUrl } from '@/lib/utils/githubImageUrl';
 import { Server } from '@/lib/types/server';
 import { AlertsMenu } from '@/app/components/alerts/AlertsMenu';

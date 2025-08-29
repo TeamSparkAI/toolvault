@@ -1,5 +1,8 @@
+import { JsonRpcMessageWrapper } from '@/lib/jsonrpc';
 import { FieldMatch } from '@/lib/models/types/alert';
 import { parseTree, ParseError, ParseOptions, applyEdits, modify, findNodeAtLocation, Node } from 'jsonc-parser';
+import { PolicyActions } from '../core/PolicyEngineResult';
+import { ActionEvent, FieldModification, MessageReplacement } from '../types/core';
 
 /**
  * Convert a JSON field path in the form "field1.field2[0].field3" to a JSONPath array for jsonc-parser in the form ["field1", "field2", 0, "field3"]
@@ -318,4 +321,84 @@ export function applyMatchesFromAlerts(
             finalEnd: match.resultEnd
         }))
     };
+}
+
+// New function extracted from PolicyEngine.applyModifications
+export function applyModificationsFromActions(
+    originalMessage: JsonRpcMessageWrapper,
+    policyActions: PolicyActions[]
+): { modifiedMessage: JsonRpcMessageWrapper; appliedMessageReplacement: ActionEvent | null } {
+    // Extract all content modifications from policy actions
+    const contentModifications: (ActionEvent & { policySeverity: number })[] = [];
+    
+    for (const policyAction of policyActions) {
+        for (const actionResult of policyAction.actionResults) {
+            // Collect only content modifications for coalescing
+            const contentEvents = actionResult.actionEvents.filter(e => e.contentModification);
+            contentModifications.push(...contentEvents.map(e => ({ 
+                ...e, 
+                policySeverity: policyAction.policy.severity 
+            })));
+        }
+    }
+
+    // Check for message replacement actions (error, replace)
+    const messageReplacements = contentModifications.filter(
+        e => e.contentModification?.type === 'message'
+    );
+
+    if (messageReplacements.length > 0) {
+        // Pick the highest priority one from the highest severity policy (lower severity = higher priority)
+        const highestPriority = messageReplacements.reduce((highest, current) => {
+            if (current.policySeverity < highest.policySeverity) return current;
+            if (current.policySeverity === highest.policySeverity) {
+                            // If same severity, error takes precedence over replace
+        if (current.action.elementClassName === 'error' && highest.action.elementClassName !== 'error') return current;
+        if (highest.action.elementClassName === 'error' && current.action.elementClassName !== 'error') return highest;
+                // If both same type, keep the first one
+            }
+            return highest;
+        });
+        
+        const messageReplacement = highestPriority.contentModification as MessageReplacement;
+        return { modifiedMessage: messageReplacement.payload, appliedMessageReplacement: highestPriority };
+    } else {
+        // No message replacement, handle field modifications
+        const fieldModifications = contentModifications.filter(
+            e => e.contentModification?.type === 'field'
+        );
+
+        if (fieldModifications.length > 0) {
+            // Convert ActionEvents to the format expected by existing coalescing logic
+            const fieldMatches = fieldModifications.map(event => {
+                const fieldMod = event.contentModification as FieldModification;
+                return {
+                    fieldPath: fieldMod.fieldPath,
+                    start: fieldMod.start,
+                    end: fieldMod.end,
+                    action: fieldMod.action,
+                    actionText: fieldMod.actionText || '',
+                    alertId: 0 // Not needed for coalescing
+                };
+            });
+            
+            // Use existing coalescing logic
+            const messagePayload = originalMessage.params || originalMessage.result;
+            const messagePayloadString = JSON.stringify(messagePayload, null, 2);
+            const appliedMatches = applyAllFieldMatches(messagePayloadString, fieldMatches);
+            
+            // Parse the result back to an object
+            const resultPayload = JSON.parse(appliedMatches.resultText);
+            
+            // Determine payload type and return modified message
+            if (originalMessage.origin === 'server' && originalMessage.messageId) {
+                return { modifiedMessage: originalMessage.withPayload('result', resultPayload), appliedMessageReplacement: null };
+            } else {
+                return { modifiedMessage: originalMessage.withPayload('params', resultPayload), appliedMessageReplacement: null };
+            }
+        }
+    }
+
+    // No modifications, return original message
+    return { modifiedMessage: originalMessage, appliedMessageReplacement: null };
 }

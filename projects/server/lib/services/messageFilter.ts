@@ -4,9 +4,8 @@ import { JsonRpcMessageWrapper } from '@/lib/jsonrpc';
 import { ProxyJwtPayload } from '../proxyJwt';
 import { MessageData } from '@/lib/models/types/message';
 import { FieldMatch } from '@/lib/models/types/alert';
-import { applyAllFieldMatches, FieldMatchWithAlertId } from '../utils/matches';
 import { logger } from '@/lib/logging/server';
-import { PolicyEngine, PolicyContext, PolicyEngineResult } from '../policy-engine/core';
+import { PolicyEngine, PolicyContext } from '../policy-engine/core';
 
 export interface MessageFilterResult {
     success: boolean;
@@ -73,7 +72,7 @@ function getStringFieldValues(obj: any, path: string = ''): StringFieldValue[] {
 
 // New policy engine (get serverId from jwtPayload in caller)
 //
-export async function applyPoliciesNew(messageData: MessageData, message: JsonRpcMessageWrapper, serverId: number): Promise<JsonRpcMessageWrapper> {
+export async function applyPolicies(messageData: MessageData, message: JsonRpcMessageWrapper, serverId: number): Promise<JsonRpcMessageWrapper> {
     const policyModel = await ModelFactory.getInstance().getPolicyModel();
     const policies = await policyModel.list();
 
@@ -148,114 +147,6 @@ export async function applyPoliciesNew(messageData: MessageData, message: JsonRp
     const modifiedMessage = PolicyEngine.applyModifications(message, result.policyActions);
     
     return modifiedMessage;
-}
-
-/**
- * Apply policy filters to individual JSON string values using jsonc-parser
- */
-async function applyPolicies(messageData: MessageData, message: JsonRpcMessageWrapper): Promise<JsonRpcMessageWrapper> {
-    const policyModel = await ModelFactory.getInstance().getPolicyModel();
-    const alertModel = await ModelFactory.getInstance().getAlertModel();
-
-    const matches: FieldMatchWithAlertId[] = [];
-
-    let payloadType: PayloadType = 'params';
-    if (message.origin === 'server' && message.messageId) {
-        // This is a server-to-client message with an ID, meaning it is a response to a previous client message
-        payloadType = 'result';
-    }
-
-    const messagePayload = message[payloadType];
-
-    // Find all string fields in the message payload
-    const stringFields = getStringFieldValues(messagePayload);
-
-    const policies = await policyModel.list();
-    for (const policy of policies) {
-        if (!policy.enabled) {
-            continue;
-        }
-
-        if (policy.origin !== 'either' && policy.origin !== message.origin) {
-            continue;
-        }
-
-        if (policy.methods && policy.methods.length > 0 && !policy.methods.includes(messageData.payloadMethod)) {
-            continue;
-        }
-
-        const filters = policy.filters;
-        for (const filter of filters) {
-            const regex = new RegExp(filter.regex, 'g');
-
-            const fieldMatches: FieldMatch[] = [];
-
-            // Apply filters to each string field individually
-            for (const stringField of stringFields) {
-                let match: RegExpExecArray | null;
-                while ((match = regex.exec(stringField.value)) !== null) {
-                    let shouldCreateAlert = true;
-
-                    // Apply keyword filters
-                    if (filter.keywords && filter.keywords.length > 0) {
-                        // Create a single regex that matches any of the keywords as complete words
-                        const keywordPattern = `\\b(?:${filter.keywords.join('|')})\\b`;
-                        const keywordRegex = new RegExp(keywordPattern, 'i');
-
-                        // Create a window around the match in the string value
-                        const windowStart = Math.max(0, match.index - KEYWORD_WINDOW_SIZE);
-                        const windowEnd = Math.min(stringField.value.length, match.index + match[0].length + KEYWORD_WINDOW_SIZE);
-                        const window = stringField.value.substring(windowStart, windowEnd);
-
-                        shouldCreateAlert = keywordRegex.test(window);
-                    }
-
-                    // Apply validator
-                    if (shouldCreateAlert && filter.validator === 'luhn') {
-                        shouldCreateAlert = await isLuhnValid(match[0]);
-                    }
-
-                    if (shouldCreateAlert) {
-                        fieldMatches.push({
-                            fieldPath: stringField.path,
-                            start: match.index,
-                            end: match.index + match[0].length,
-                            action: policy.action,
-                            actionText: policy.actionText || ''
-                        });
-                    }
-                }
-            }
-
-            // Process any field matches for this filter (create alert and add to matches for later application to the message payload)
-            if (fieldMatches.length > 0) {
-                const alert = await alertModel.create({
-                    messageId: messageData.messageId,
-                    timestamp: messageData.timestamp,
-                    policyId: policy.policyId,
-                    filterName: filter.name,
-                    origin: message.origin,
-                    matches: fieldMatches,
-                    condition: null, // Old filter-based logic doesn't have condition data
-                    findings: null   // Old filter-based logic doesn't have findings data
-                });
-                matches.push(...fieldMatches.map(match => ({
-                    ...match,
-                    alertId: alert.alertId
-                })));
-            }
-        }
-    }
-
-    // Apply matches to the original content
-    if (matches.length > 0) {
-        const messagePayloadString = JSON.stringify(messagePayload, null, 2);
-        const appliedFieldMatches = applyAllFieldMatches(messagePayloadString, matches);
-        const resultPayload = JSON.parse(appliedFieldMatches.resultText);
-        message = message.withPayload(payloadType, resultPayload);
-    }
-
-    return message;
 }
 
 export class MessageFilterService {
@@ -338,7 +229,7 @@ export class MessageFilterService {
                 });
             }
 
-            const filteredMessage = await applyPolicies(messageData, message);
+            const filteredMessage = await applyPolicies(messageData, message, jwtPayload.serverId);
 
             return {
                 success: true,

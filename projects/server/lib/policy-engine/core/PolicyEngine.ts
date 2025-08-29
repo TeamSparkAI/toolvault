@@ -5,7 +5,7 @@ import { ConditionRegistry } from "../conditions/registry/ConditionRegistry";
 import { ActionRegistry } from "../actions/registry/ActionRegistry";
 import { PolicyContext } from "./PolicyContext";
 import { PolicyEngineResult, PolicyFindings, ConditionFindings, PolicyActions, ActionResults, PolicyActionInstance, PolicyConditionInstance } from "./PolicyEngineResult";
-import { applyAllFieldMatches } from "@/lib/utils/matches";
+import { applyModificationsFromActions } from "../utils/messageModifications";
 
 export class PolicyEngine {
     static async processMessage(
@@ -110,78 +110,7 @@ export class PolicyEngine {
         originalMessage: JsonRpcMessageWrapper,
         policyActions: PolicyActions[]
     ): JsonRpcMessageWrapper {
-        // Extract all content modifications from policy actions
-        const contentModifications: (ActionEvent & { policySeverity: number })[] = [];
-        
-        for (const policyAction of policyActions) {
-            for (const actionResult of policyAction.actionResults) {
-                // Collect only content modifications for coalescing
-                const contentEvents = actionResult.actionEvents.filter(e => e.contentModification);
-                contentModifications.push(...contentEvents.map(e => ({ 
-                    ...e, 
-                    policySeverity: policyAction.policy.severity 
-                })));
-            }
-        }
-
-        // Check for message replacement actions (error, replace)
-        const messageReplacements = contentModifications.filter(
-            e => e.contentModification?.type === 'message'
-        );
-
-        if (messageReplacements.length > 0) {
-            // Pick the highest priority one from the highest severity policy (lower severity = higher priority)
-            const highestPriority = messageReplacements.reduce((highest, current) => {
-                if (current.policySeverity < highest.policySeverity) return current;
-                if (current.policySeverity === highest.policySeverity) {
-                                // If same severity, error takes precedence over replace
-            if (current.action.elementClassName === 'error' && highest.action.elementClassName !== 'error') return current;
-            if (highest.action.elementClassName === 'error' && current.action.elementClassName !== 'error') return highest;
-                    // If both same type, keep the first one
-                }
-                return highest;
-            });
-            
-            const messageReplacement = highestPriority.contentModification as MessageReplacement;
-            return messageReplacement.payload;
-        } else {
-            // No message replacement, handle field modifications
-            const fieldModifications = contentModifications.filter(
-                e => e.contentModification?.type === 'field'
-            );
-
-            if (fieldModifications.length > 0) {
-                // Convert ActionEvents to the format expected by existing coalescing logic
-                const fieldMatches = fieldModifications.map(event => {
-                    const fieldMod = event.contentModification as FieldModification;
-                    return {
-                        fieldPath: fieldMod.fieldPath,
-                        start: fieldMod.start,
-                        end: fieldMod.end,
-                        action: fieldMod.action,
-                        actionText: fieldMod.actionText || '',
-                        alertId: 0 // Not needed for coalescing
-                    };
-                });
-                
-                // Use existing coalescing logic
-                const messagePayload = originalMessage.params || originalMessage.result;
-                const messagePayloadString = JSON.stringify(messagePayload, null, 2);
-                const appliedMatches = applyAllFieldMatches(messagePayloadString, fieldMatches);
-                
-                // Parse the result back to an object
-                const resultPayload = JSON.parse(appliedMatches.resultText);
-                
-                // Determine payload type and return modified message
-                if (originalMessage.origin === 'server' && originalMessage.messageId) {
-                    return originalMessage.withPayload('result', resultPayload);
-                } else {
-                    return originalMessage.withPayload('params', resultPayload);
-                }
-            }
-        }
-
-        // No modifications, return original message
-        return originalMessage;
+        const result = applyModificationsFromActions(originalMessage, policyActions);
+        return result.modifiedMessage;
     }
 }
