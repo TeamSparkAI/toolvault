@@ -411,7 +411,7 @@ export default function MessageDetailsPage() {
                     Policy
                   </th>
                   <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Matched Filter
+                    Condition
                   </th>
                   <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Action
@@ -465,7 +465,7 @@ export default function MessageDetailsPage() {
                       </a>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {alert.filterName}
+                      {alert.condition.name}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                       {alert.matches && alert.matches.length > 0 ? (
@@ -475,7 +475,7 @@ export default function MessageDetailsPage() {
                       )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {alert.matches ? alert.matches.length : 0}
+                      {alert.findings ? alert.findings.length : 0}
                     </td>
                   </tr>
                 ))}

@@ -21,8 +21,8 @@ export interface AlertData {
     filterName: string;
     matches: FieldMatch[] | null;
     // NEW FIELDS:
-    condition: PolicyCondition | null;  // The condition that triggered this alert
-    findings: Finding[] | null;         // The findings from the condition
+    condition: PolicyCondition;  // The condition that triggered this alert
+    findings: Finding[];         // The findings from the condition
     timestamp: string;
     createdAt: string;
     seenAt: string | null;

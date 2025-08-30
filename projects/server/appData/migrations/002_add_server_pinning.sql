@@ -8,8 +8,8 @@ ALTER TABLE policies ADD COLUMN conditions JSON;
 ALTER TABLE policies ADD COLUMN actions JSON;
 
 -- Add new condition and findings columns to alerts table
-ALTER TABLE alerts ADD COLUMN condition JSON;
-ALTER TABLE alerts ADD COLUMN findings JSON;
+ALTER TABLE alerts ADD COLUMN condition JSON NOT NULL;
+ALTER TABLE alerts ADD COLUMN findings JSON NOT NULL;
 
 -- Create message_actions table for storing actions taken on messages
 CREATE TABLE message_actions (

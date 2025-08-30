@@ -436,7 +436,7 @@ Policy
 
 From the UX, if I click an alert that is a text match with a content mod action, and the mod was applied, I want to see it in the output
 Any other alert (finding) doesn't directly drive output.  It is the actions driving the output.  If we wanted to see the reasons for other 
-changes it would be in response to those actions.
+changes it would be in response to those actions.  One or more contions/alerts caused one or more actions/actionEvents.
 
 Our message details should probably show alerts and actions (we'd want to see if a SIEM event as created, etc).  How/where else would we even
 see action details?
