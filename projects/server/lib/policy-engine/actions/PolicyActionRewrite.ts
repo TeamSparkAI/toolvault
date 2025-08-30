@@ -1,7 +1,8 @@
 import { PolicyActionBase } from "./PolicyActionBase";
-import { JsonSchema, ValidationResult, Finding, ActionEvent, ContentModificationAction } from "../types/core";
+import { JsonSchema, ValidationResult, Finding, ActionEvent, FieldModificationAction } from "../types/core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { PolicyAction } from "@/lib/models/types/policy";
+import { ConditionFindings } from "../core";
 
 export class PolicyActionRewrite extends PolicyActionBase {
     constructor() {
@@ -71,32 +72,32 @@ export class PolicyActionRewrite extends PolicyActionBase {
         };
     }
 
-    async applyAction(message: JsonRpcMessageWrapper, findings: Finding[], config: any, action: PolicyAction): Promise<ActionEvent[]> {
+    async applyAction(message: JsonRpcMessageWrapper, conditionFindings: ConditionFindings[], config: any, action: PolicyAction): Promise<ActionEvent[]> {
         const events: ActionEvent[] = [];
 
-        // Filter findings that have matches suitable for rewriting
-        const findingsWithMatches = findings.filter(finding => finding.match);
-        
-        if (findingsWithMatches.length === 0) {
+        const anyFindingsWithMatch = conditionFindings.some(conditionFinding => conditionFinding.findings.some(finding => finding.location));
+        if (!anyFindingsWithMatch) {
             return events; // No matches to rewrite
         }
 
-        // Create action events for each finding with a match
-        for (const finding of findingsWithMatches) {
-            if (finding.match) {
-                events.push({
-                    action: action,
-                    description: `Applied ${action.params.action} to: ${finding.details}`,
-                    metadata: finding.metadata,
-                    contentModification: {
-                        type: 'field',
-                        fieldPath: finding.match.fieldPath,
-                        start: finding.match.start,
-                        end: finding.match.end,
-                        action: action.params.action as ContentModificationAction,
-                        actionText: action.params.actionText
-                    }
-                });
+        for (const conditionFinding of conditionFindings) {
+            for (const finding of conditionFinding.findings) {
+                if (finding.match && finding.location) {
+                    // We have this to add to our action event content
+                    events.push({
+                        details: `Applied ${action.params.action} to: ${finding.details}`,
+                        metadata: finding.metadata,
+                        contentModification: {
+                            type: 'field',
+                            fieldPath: finding.location.fieldPath, 
+                            start: finding.location.start,
+                            end: finding.location.end,
+                            action: action.params.action as FieldModificationAction,
+                            actionText: action.params.actionText,
+                            conditionInstanceId: conditionFinding.condition.instanceId
+                        }
+                    });
+                }
             }
         }
 

@@ -2,8 +2,9 @@ import { JsonRpcMessageWrapper } from '@/lib/jsonrpc';
 import { FieldMatch } from '@/lib/models/types/alert';
 import { MessageData } from '@/lib/models/types/message';
 import { parseTree, ParseError, ParseOptions, applyEdits, modify, findNodeAtLocation, Node } from 'jsonc-parser';
-import { PolicyActions } from '../core/PolicyEngineResult';
 import { ActionEvent, FieldModification, MessageReplacement } from '../types/core';
+import { MessageActionData } from '@/lib/models/types/messageAction';
+import { MessageOrigin } from '@/lib/jsonrpc';
 
 /**
  * Convert a JSON field path in the form "field1.field2[0].field3" to a JSONPath array for jsonc-parser in the form ["field1", "field2", 0, "field3"]
@@ -94,11 +95,11 @@ export interface AppliedFieldMatch {
 
 // Indiviual field match applied to a field (from an alert)
 export interface AppliedFieldMatchWithAlert extends AppliedFieldMatch {
-    alertId: number;
+    alertId?: number;
 }
 
 export interface FieldMatchWithAlertId extends FieldMatch {
-    alertId: number;
+    alertId?: number;
 }
 
 // !!! We should probably export this method and unit test it (with the unit tests serving as the docs).  This is the trickiest part
@@ -295,7 +296,7 @@ export interface AppliedMatch {
     finalEnd: number;
     action: string;
     actionText: string;
-    alertId: number;
+    alertId?: number;
 }
   
 export interface MatchResult {
@@ -324,21 +325,23 @@ export function applyMatchesFromAlerts(
     };
 }
 
-// New function extracted from PolicyEngine.applyModifications
-export function applyModificationsFromActions(
-    originalMessage: JsonRpcMessageWrapper,
-    policyActions: PolicyActions[]
-): { modifiedMessage: JsonRpcMessageWrapper; appliedMessageReplacement: ActionEvent | null } {
-    // Extract all content modifications from policy actions
-    const contentModifications: (ActionEvent & { policySeverity: number })[] = [];
+// New function that applies modifications directly to a payload
+export function applyModificationsToPayload(
+    payload: any,
+    origin: MessageOrigin,
+    messageActions: MessageActionData[]
+): { modifiedPayload: any; appliedMessageReplacement: ActionEvent | null } {
+    // Extract all content modifications from message actions
+    const contentModifications: (ActionEvent & { policySeverity: number, elementClassName: string })[] = [];
     
-    for (const policyAction of policyActions) {
-        for (const actionResult of policyAction.actionResults) {
+    for (const messageAction of messageActions) {
+        for (const actionResult of messageAction.actionResults) {
             // Collect only content modifications for coalescing
             const contentEvents = actionResult.actionEvents.filter(e => e.contentModification);
-            contentModifications.push(...contentEvents.map(e => ({ 
+            contentModifications.push(...contentEvents.map((e: ActionEvent) => ({ 
                 ...e, 
-                policySeverity: policyAction.policy.severity 
+                policySeverity: messageAction.severity,
+                elementClassName: actionResult.action.elementClassName
             })));
         }
     }
@@ -353,16 +356,16 @@ export function applyModificationsFromActions(
         const highestPriority = messageReplacements.reduce((highest, current) => {
             if (current.policySeverity < highest.policySeverity) return current;
             if (current.policySeverity === highest.policySeverity) {
-                            // If same severity, error takes precedence over replace
-        if (current.action.elementClassName === 'error' && highest.action.elementClassName !== 'error') return current;
-        if (highest.action.elementClassName === 'error' && current.action.elementClassName !== 'error') return highest;
+                // If same severity, error takes precedence over replace (assuming we had a non-error message replace action someday)
+                if (current.elementClassName === 'error' && highest.elementClassName !== 'error') return current;
+                if (highest.elementClassName === 'error' && current.elementClassName !== 'error') return highest;
                 // If both same type, keep the first one
             }
             return highest;
         });
         
         const messageReplacement = highestPriority.contentModification as MessageReplacement;
-        return { modifiedMessage: messageReplacement.payload, appliedMessageReplacement: highestPriority };
+        return { modifiedPayload: messageReplacement.payload, appliedMessageReplacement: highestPriority };
     } else {
         // No message replacement, handle field modifications
         const fieldModifications = contentModifications.filter(
@@ -379,59 +382,21 @@ export function applyModificationsFromActions(
                     end: fieldMod.end,
                     action: fieldMod.action,
                     actionText: fieldMod.actionText || '',
-                    alertId: 0 // Not needed for coalescing
+                    alertId: undefined // Not needed for coalescing - !!! Remove this at some point?
                 };
             });
             
             // Use existing coalescing logic
-            const messagePayload = originalMessage.params || originalMessage.result;
-            const messagePayloadString = JSON.stringify(messagePayload, null, 2);
-            const appliedMatches = applyAllFieldMatches(messagePayloadString, fieldMatches);
+            const payloadString = JSON.stringify(payload, null, 2);
+            const appliedMatches = applyAllFieldMatches(payloadString, fieldMatches);
             
             // Parse the result back to an object
             const resultPayload = JSON.parse(appliedMatches.resultText);
             
-            // Determine payload type and return modified message
-            if (originalMessage.origin === 'server' && originalMessage.messageId) {
-                return { modifiedMessage: originalMessage.withPayload('result', resultPayload), appliedMessageReplacement: null };
-            } else {
-                return { modifiedMessage: originalMessage.withPayload('params', resultPayload), appliedMessageReplacement: null };
-            }
+            return { modifiedPayload: resultPayload, appliedMessageReplacement: null };
         }
     }
 
-    // No modifications, return original message
-    return { modifiedMessage: originalMessage, appliedMessageReplacement: null };
-}
-
-/**
- * Convert MessageData to JsonRpcMessageWrapper
- * Reconstructs a JSON-RPC message from the flattened MessageData structure
- */
-export function messageDataToJsonRpcWrapper(messageData: MessageData): JsonRpcMessageWrapper {
-    // Construct a basic JSON-RPC message from the stored data
-    const jsonRpcMessage: any = {
-        jsonrpc: '2.0'
-    };
-
-    if (messageData.payloadMessageId) {
-        jsonRpcMessage.id = messageData.payloadMessageId;
-    }
-    if (messageData.payloadMethod) {
-        jsonRpcMessage.method = messageData.payloadMethod;
-    }
-    if (messageData.payloadParams) {
-        jsonRpcMessage.params = messageData.payloadParams;
-    }
-    if (messageData.payloadResult) {
-        jsonRpcMessage.result = messageData.payloadResult;
-    }
-    if (messageData.payloadError) {
-        jsonRpcMessage.error = {
-            code: messageData.payloadError.code,
-            message: messageData.payloadError.message
-        };
-    }
-
-    return new JsonRpcMessageWrapper(messageData.origin, jsonRpcMessage);
+    // No modifications, return original payload
+    return { modifiedPayload: payload, appliedMessageReplacement: null };
 }

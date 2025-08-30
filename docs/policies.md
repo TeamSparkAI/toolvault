@@ -420,3 +420,82 @@ ALTER TABLE alerts REMOVE COLUMN matches;
 Implement the new policy model and types (conditions/actions)
 Implement policy config (condition/action) UX
 At this point conditions/actions will have configId and everything should work end-to-end
+
+## Policy/Alert/Action Data relationship
+
+Note: Made action event alertId optional, and set it only for actions related to specific conditions (text match condition alerts, and rewrite actions)
+
+Policy
+- Conditions
+  - Generates alert on match
+    - Polulates alert with condition and findings
+- Actions
+  - Genete ActionEvents when any condition matches
+    - Some action events may be correlated to findings (text modification) - and thus indirectly the alerts/conditions which produced the findings
+      - This is the "highlight the redacted text in the final message" functionality
+
+From the UX, if I click an alert that is a text match with a content mod action, and the mod was applied, I want to see it in the output
+Any other alert (finding) doesn't directly drive output.  It is the actions driving the output.  If we wanted to see the reasons for other 
+changes it would be in response to those actions.
+
+Our message details should probably show alerts and actions (we'd want to see if a SIEM event as created, etc).  How/where else would we even
+see action details?
+
+Alert
+- alertId
+- messageId
+- policyId
+- origin
+- conditions - PolicyCondition
+- findings - Finding[]
+
+export interface PolicyCondition {
+    elementClassName: string;  // e.g., "regex"
+    elementConfigId: number;   // references policy_elements table
+    instanceId: string;        // instance of condition in policy (random base32 id)
+    name: string;              // display name
+    notes?: string;            // optional description
+    params: any;               // configuration
+}
+
+// Incident of data produced by policy condition
+export interface Finding {
+    details: string;
+    metadata?: any;
+    match?: boolean // suitable for item replacement, redaction, etc
+    location?: {
+        fieldPath: string;
+        start: number;
+        end: number;
+    };
+}
+
+ActionEvent
+- messageId
+- policyId
+- alertId (optional, ActionEvent will only be related to an alertId of it's a rewrite of an alert finding)
+- origin
+- severity
+- actionResults
+
+// Action event types for policy engine
+export interface ActionEvent {
+    action: PolicyAction; // The policy action that triggered this event
+    description: string;  // details?
+    metadata?: any;
+    contentModification?: ContentModification; // field or message type - added conditionInstanceId to field modification details for correlation
+}
+
+// A collection of actions resulting from a given policy action
+export interface ActionResults {
+    action: PolicyActionInstance;
+    actionEvents: ActionEvent[];
+}
+
+// Defines the policy action (the instance on the policy) that triggered the resilts
+export interface PolicyActionInstance {
+    elementClassName: string;
+    elementConfigId: number;
+    instanceId: string; // The is the instance of the action in the policy
+    params: any;
+}

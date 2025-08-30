@@ -3,7 +3,8 @@ import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
 import { JsonRpcMessageWrapper } from '@/lib/jsonrpc';
 import { ProxyJwtPayload } from '../proxyJwt';
 import { MessageData } from '@/lib/models/types/message';
-import { FieldMatch } from '@/lib/models/types/alert';
+import { AlertReadData, FieldMatch } from '@/lib/models/types/alert';
+import { MessageActionData } from '@/lib/models/types/messageAction';
 import { logger } from '@/lib/logging/server';
 import { PolicyEngine, PolicyContext } from '../policy-engine/core';
 
@@ -98,24 +99,28 @@ export async function applyPolicies(messageData: MessageData, message: JsonRpcMe
     // Use new Policy Engine (static method)
     const result = await PolicyEngine.processMessage(message, applicablePolicies, context);
 
-    // Create alerts from hierarchical findings
+    // Create alerts from processMessage results (policy findings)
+
+    // Map of alerts by condition instanceId
+    const alertMap = new Map<string, AlertReadData>();
+
     const alertModel = await ModelFactory.getInstance().getAlertModel();
     for (const policyFinding of result.policyFindings) {
         for (const filterFinding of policyFinding.conditionFindings) {
             if (filterFinding.findings.length > 0) {
                 // Convert findings to field matches for alert creation
                 const fieldMatches: FieldMatch[] = filterFinding.findings
-                    .filter(finding => finding.match) // Only findings with text matches
+                    .filter(finding => finding.location) // Only findings with text matches
                     .map(finding => ({
-                        fieldPath: finding.match!.fieldPath,
-                        start: finding.match!.start,
-                        end: finding.match!.end,
+                        fieldPath: finding.location!.fieldPath,
+                        start: finding.location!.start,
+                        end: finding.location!.end,
                         action: 'none', // Will be determined by policy actions
                         actionText: ''
                     }));
                 
                 if (fieldMatches.length > 0) {
-                    await alertModel.create({
+                    const alert = await alertModel.create({
                         messageId: messageData.messageId,
                         timestamp: messageData.timestamp,
                         policyId: policyFinding.policy.policyId,
@@ -127,24 +132,40 @@ export async function applyPolicies(messageData: MessageData, message: JsonRpcMe
                         condition: filterFinding.condition,
                         findings: filterFinding.findings
                     });
+                    alertMap.set(filterFinding.condition.instanceId, alert);
                 }
             }
         }
     }
 
-    // Store message actions
-    if (result.policyActions.length > 0) {
-        const messageActionModel = await ModelFactory.getInstance().getMessageActionModel();
-        
-        await messageActionModel.create({
+    // Create message actions from processMessage results (policy actions)
+
+    const messageActions: MessageActionData[] = [];
+    const messageActionModel = await ModelFactory.getInstance().getMessageActionModel();
+    for (const policyAction of result.policyActions) {
+        let alertId: number | undefined = undefined;
+        // If any action event has a content modification with a conditionInstanceId, correlate to an alert (safe to assume they all correlate to the same alert)
+        for (const actionResult of policyAction.actionResults) {
+            for (const actionEvent of actionResult.actionEvents) {
+                if (actionEvent.contentModification?.type === 'field') {
+                    alertId = alertMap.get(actionEvent.contentModification.conditionInstanceId)?.alertId;
+                }
+            }
+        }
+        const messageAction = await messageActionModel.create({
             messageId: messageData.messageId,
-            actions: result.policyActions,
+            policyId: policyAction.policy.policyId,
+            alertId: alertId,
+            origin: message.origin,
+            severity: policyAction.policy.severity,
+            actionResults: policyAction.actionResults,
             timestamp: messageData.timestamp
         });
+        messageActions.push(messageAction);
     }
     
-    // Apply modifications separately
-    const modifiedMessage = PolicyEngine.applyModifications(message, result.policyActions);
+    // Apply modifications and return the modified message
+    const modifiedMessage = PolicyEngine.applyModifications(message, messageActions);
     
     return modifiedMessage;
 }

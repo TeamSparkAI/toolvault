@@ -10,9 +10,9 @@ import { useDimensions } from '@/app/hooks/useDimensions';
 import { useLayout } from '@/app/contexts/LayoutContext';
 import { useAlerts } from '@/app/contexts/AlertsContext';
 import { getClientIcon } from '@/lib/client-icons';
-import { applyMatchesFromAlerts, applyModificationsFromActions, messageDataToJsonRpcWrapper } from '@/lib/policy-engine/utils/messageModifications';
-import { MessageActionData } from '@/lib/models/types/messageAction';
-import { JsonRpcMessageWrapper } from '@/lib/jsonrpc';
+import { applyMatchesFromAlerts, applyModificationsToPayload } from '@/lib/policy-engine/utils/messageModifications';
+import { MessageActionData, MessageActionsData } from '@/lib/models/types/messageAction';
+import { JsonRpcMessageWrapper, MessageOrigin } from '@/lib/jsonrpc';
 import { ActionEvent } from '@/lib/policy-engine/types/core';
 import { getServerIconUrl } from '@/lib/utils/githubImageUrl';
 import { Server } from '@/lib/types/server';
@@ -25,7 +25,7 @@ export default function MessageDetailsPage() {
   const messageId = params.messageId as string;
   const [message, setMessage] = useState<MessageData | null>(null);
   const [alerts, setAlerts] = useState<AlertReadData[]>([]);
-  const [messageActions, setMessageActions] = useState<MessageActionData | null>(null);
+  const [messageActions, setMessageActions] = useState<MessageActionsData | null>(null);
   const [server, setServer] = useState<Server | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null);
@@ -54,7 +54,7 @@ export default function MessageDetailsPage() {
 
         const messageData = new JsonResponseFetch<MessageData>(messageResponse, 'message');
         const alertsData = new JsonResponseFetch<AlertReadData[]>(alertsResponse, 'alerts');
-        const messageActionsData = new JsonResponseFetch<MessageActionData | null>(messageActionsResponse, 'messageAction');
+        const messageActionsData = new JsonResponseFetch<MessageActionsData | null>(messageActionsResponse, 'messageAction');
         
         log.debug('messageData', messageData);
 
@@ -149,16 +149,28 @@ export default function MessageDetailsPage() {
     return dimensions.getLabel('clientId', clientId) || clientId;
   };
 
-  const getModifiedMessage = (): { modifiedMessage: JsonRpcMessageWrapper | null; appliedMessageReplacement: ActionEvent | null } => {
+  const getModifiedMessage = (origin: MessageOrigin): { modifiedPayload: any | null; appliedMessageReplacement: ActionEvent | null } => {
     if (!message || !messageActions) {
-      return { modifiedMessage: null, appliedMessageReplacement: null };
+      return { modifiedPayload: null, appliedMessageReplacement: null };
     }
 
-    const originalMessage = messageDataToJsonRpcWrapper(message);
-    return applyModificationsFromActions(originalMessage, messageActions.actions);
+    // Filter actions for the specific origin
+    const originActions = messageActions.actions.filter(action => action.origin === origin);
+    
+    if (originActions.length === 0) {
+      return { modifiedPayload: null, appliedMessageReplacement: null };
+    }
+
+    // Get the payload for the requested origin
+    const originalPayload = origin === 'client' ? message.payloadParams : message.payloadResult;
+    
+    // Apply modifications directly to the payload
+    const { modifiedPayload, appliedMessageReplacement } = applyModificationsToPayload(originalPayload, origin, originActions);
+    
+    return { modifiedPayload, appliedMessageReplacement };
   };
 
-  const getHighlightedRedactedPayload = (payload: any, alerts: AlertReadData[], origin: 'client' | 'server', selectedAlert: AlertReadData | null) => {
+  const getHighlightedRedactedPayload = (payload: any, alerts: AlertReadData[], origin: MessageOrigin, selectedAlert: AlertReadData | null) => {
     const formattedPayload = JSON.stringify(payload, null, 2);
     if (!alerts || alerts.length === 0) {
       return formattedPayload;

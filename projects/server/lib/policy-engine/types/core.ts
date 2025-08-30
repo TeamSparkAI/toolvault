@@ -26,8 +26,8 @@ export interface ValidationResult {
 export interface Finding {
     details: string;
     metadata?: any;
-    // !!! Maybe we rename "match" to "location" and add a bool for "textMatch" (suitable for item replacement, redaction, etc)
-    match?: {
+    match?: boolean; // This is a text match suitable for field-level item replacement, redaction, etc
+    location?: {
         fieldPath: string;
         start: number;
         end: number;
@@ -35,12 +35,11 @@ export interface Finding {
 }
 
 // Content modification action types (shared between actions and events)
-export type ContentModificationAction = 'remove' | 'redact' | 'redactPattern' | 'replace';
+export type FieldModificationAction = 'remove' | 'redact' | 'redactPattern' | 'replace';
 
 // Action event types for policy engine
 export interface ActionEvent {
-    action: PolicyAction; // The policy action that triggered this event
-    description: string;
+    details: string;
     metadata?: any;
     contentModification?: ContentModification;
 }
@@ -54,8 +53,9 @@ export interface FieldModification {
     fieldPath: string;
     start: number;
     end: number;
-    action: ContentModificationAction;
+    action: FieldModificationAction;
     actionText?: string;
+    conditionInstanceId: string;
 }
 
 export interface MessageReplacement {
