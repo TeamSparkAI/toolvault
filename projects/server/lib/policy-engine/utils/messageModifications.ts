@@ -1,6 +1,4 @@
-import { JsonRpcMessageWrapper } from '@/lib/jsonrpc';
 import { FieldMatch } from '@/lib/models/types/alert';
-import { MessageData } from '@/lib/models/types/message';
 import { parseTree, ParseError, ParseOptions, applyEdits, modify, findNodeAtLocation, Node } from 'jsonc-parser';
 import { ActionEvent, FieldModification, Finding, MessageReplacement } from '../types/core';
 import { MessageActionData } from '@/lib/models/types/messageAction';
@@ -37,8 +35,8 @@ interface StringFieldPosition {
 /**
  * Find string field positions for specific paths using jsonc-parser
  */
-function findStringFieldPositions(ast: Node, fieldPaths: string[]): StringFieldPosition[] {
-    const results: StringFieldPosition[] = [];
+function findStringFieldPositions(ast: Node, fieldPaths: string[]): Map<string, StringFieldPosition> {
+    const results = new Map<string, StringFieldPosition>();
 
     for (const fieldPath of fieldPaths) {
         // Convert dot notation path to JSONPath array
@@ -47,7 +45,7 @@ function findStringFieldPositions(ast: Node, fieldPaths: string[]): StringFieldP
         // Find the node at this path
         const node = findNodeAtLocation(ast, jsonPath);
         if (node && node.type === 'string') {
-            results.push({
+            results.set(fieldPath, {
                 path: fieldPath,
                 value: node.value,
                 startOffset: node.offset + 1, // Skip opening quote
@@ -68,20 +66,68 @@ function getFieldValue(ast: Node, fieldPath: string): string | null {
     return null;
 }
 
-export interface AppliedFieldMatches {
-    resultText: string;
-    appliedMatches: AppliedMatchWithAlert[];
+function parseJsonToAst(messagePayloadString: string): Node {
+    const parseOptions: ParseOptions = {
+        disallowComments: false,
+        allowTrailingComma: true,
+        allowEmptyContent: true,
+    };
+    const errors: ParseError[] = [];
+    const ast = parseTree(messagePayloadString, errors, parseOptions);
+    if (errors.length > 0) {
+        throw new Error(`Failed to parse JSON for field matching: ${errors.map(e => e.error).join(', ')}`);
+    }
+    if (!ast) {
+        throw new Error('Failed to parse JSON: parseTree returned undefined');
+    }
+    return ast;
+ }
+
+export interface ResolvedFinding extends Finding {
+    resolvedStart: number;
+    resolvedEnd: number;
 }
 
-export interface AppliedMatchWithAlert extends AppliedFieldMatchWithAlert {
-    fieldPath: string;
+/*
+ * Resolve the start and end positions of findings based on the field paths and offsets in the AST
+ */
+export function resolveFindings(messagePayloadString: string, findings: Finding[]): ResolvedFinding[] {
+    const ast = parseJsonToAst(messagePayloadString);
+
+    const fieldFindingsByPath = new Map<string, Finding[]>();
+    for (const finding of findings) {
+        if (finding.location) {
+            if (!fieldFindingsByPath.has(finding.location.fieldPath)) {
+                fieldFindingsByPath.set(finding.location.fieldPath, []);
+            }
+            fieldFindingsByPath.get(finding.location.fieldPath)!.push(finding);
+        }
+    }
+    const allFieldPaths = Array.from(fieldFindingsByPath.keys());
+    const fieldOffsets = findStringFieldPositions(ast, allFieldPaths);
+
+    const resolvedFindings: ResolvedFinding[] = [];
+    for (const finding of findings) {
+        if (finding.location) {
+            const fieldOffset = fieldOffsets.get(finding.location.fieldPath);
+            if (fieldOffset) {
+                resolvedFindings.push({
+                    ...finding,
+                    resolvedStart: fieldOffset.startOffset + finding.location.start,
+                    resolvedEnd: fieldOffset.startOffset + finding.location.end
+                });
+            }
+        }
+    }
+
+    return resolvedFindings;
 }
 
-export interface AppliedFieldMatchesForField {
-    fieldPath: string;
-    resultText: string;
-    appliedMatches: AppliedFieldMatchWithAlert[];
-}
+//
+// NOTE: Everything below this is about applying modifications to a message payload
+//
+
+// !!! This seems like a lot of types for what it does - we need to map these more directly the ActionEvent (and associated types) and streamline
 
 // Indiviual field match applied to a field (from an alert)
 export interface AppliedFieldMatch {
@@ -96,6 +142,21 @@ export interface AppliedFieldMatch {
 // Indiviual field match applied to a field (from an alert)
 export interface AppliedFieldMatchWithAlert extends AppliedFieldMatch {
     alertId?: number;
+}
+
+export interface AppliedMatchWithAlert extends AppliedFieldMatchWithAlert {
+    fieldPath: string;
+}
+
+export interface AppliedFieldMatches {
+    resultText: string;
+    appliedMatches: AppliedMatchWithAlert[];
+}
+
+export interface AppliedFieldMatchesForField {
+    fieldPath: string;
+    resultText: string;
+    appliedMatches: AppliedFieldMatchWithAlert[];
 }
 
 export interface FieldMatchWithAlertId extends FieldMatch {
@@ -194,58 +255,6 @@ function applyMatchesToField(fieldPath: string, fieldValue: string, matches: Fie
     };
 }
 
-function parseMessagePayload(messagePayloadString: string): Node {
-    const parseOptions: ParseOptions = {
-        disallowComments: false,
-        allowTrailingComma: true,
-        allowEmptyContent: true,
-    };
-    const errors: ParseError[] = [];
-    const ast = parseTree(messagePayloadString, errors, parseOptions);
-    if (errors.length > 0) {
-        throw new Error(`Failed to parse JSON for field matching: ${errors.map(e => e.error).join(', ')}`);
-    }
-    if (!ast) {
-        throw new Error('Failed to parse JSON: parseTree returned undefined');
-    }
-    return ast;
- }
-
-export interface ResolvedFinding extends Finding {
-    resolvedStart: number;
-    resolvedEnd: number;
-}
-
-export function resolveFindings(messagePayloadString: string, findings: Finding[]): ResolvedFinding[] {
-    const ast = parseMessagePayload(messagePayloadString);
-
-    const fieldFindingsByPath = new Map<string, Finding[]>();
-    for (const finding of findings) {
-        if (finding.location) {
-            if (!fieldFindingsByPath.has(finding.location.fieldPath)) {
-                fieldFindingsByPath.set(finding.location.fieldPath, []);
-            }
-            fieldFindingsByPath.get(finding.location.fieldPath)!.push(finding);
-        }
-    }
-    const allFieldPaths = Array.from(fieldFindingsByPath.keys());
-    const fieldOffsets = findStringFieldPositions(ast, allFieldPaths);
-
-    const resolvedFindings: ResolvedFinding[] = [];
-    for (const finding of findings) {
-        if (finding.location) {
-            const fieldOffset = fieldOffsets.find(field => field.path === finding.location!.fieldPath)!.startOffset;
-            resolvedFindings.push({
-                ...finding,
-                resolvedStart: fieldOffset + finding.location.start,
-                resolvedEnd: fieldOffset + finding.location.end
-            });
-        }
-    }
-
-    return resolvedFindings;
-}
-
 // We use this function to apply all field matches to a message payload and get the resulting payload for the message processor output
 //
 // We also use this function to get the resulting text, along with the applied matches for each alert so that we can highlight the original
@@ -255,7 +264,7 @@ export function resolveFindings(messagePayloadString: string, findings: Finding[
 //
 export function applyAllFieldMatches(messagePayloadString: string, fieldMatches: FieldMatchWithAlertId[]): AppliedFieldMatches {
 
-    const ast = parseMessagePayload(messagePayloadString);
+    const ast = parseJsonToAst(messagePayloadString);
     
     // Group field matches by field path to avoid duplicate edits
     const fieldMatchGroups = new Map<string, FieldMatchWithAlertId[]>();
@@ -291,14 +300,14 @@ export function applyAllFieldMatches(messagePayloadString: string, fieldMatches:
         allAppliedFieldMatches.push(appliedFieldMatches);
     }
 
-    const processedAst = parseMessagePayload(processedText);
+    const processedAst = parseJsonToAst(processedText);
 
     const processedStringFieldPositions = findStringFieldPositions(processedAst, allFieldPaths);
 
     // Update match positions to use json object indexes instead of field indexes
     for (const appliedFieldMatch of allAppliedFieldMatches) {
-        const originalStringField = originalStringFieldPositions.find(field => field.path === appliedFieldMatch.fieldPath);
-        const processedStringField = processedStringFieldPositions.find(field => field.path === appliedFieldMatch.fieldPath);
+        const originalStringField = originalStringFieldPositions.get(appliedFieldMatch.fieldPath);
+        const processedStringField = processedStringFieldPositions.get(appliedFieldMatch.fieldPath);
         if (originalStringField && processedStringField) {
             appliedFieldMatch.appliedMatches.forEach(match => {
                 match.originalStart = originalStringField.startOffset + match.originalStart;
@@ -317,44 +326,6 @@ export function applyAllFieldMatches(messagePayloadString: string, fieldMatches:
                 ...match
             }))
         )
-    };
-}
-
-// Backward compatibility with old function
-
-export interface AppliedMatch {
-    originalStart: number;
-    originalEnd: number;
-    finalStart: number;
-    finalEnd: number;
-    action: string;
-    actionText: string;
-    alertId?: number;
-}
-  
-export interface MatchResult {
-    processedText: string;
-    appliedMatches: AppliedMatch[];
-}
-
-export function applyMatchesFromAlerts(
-    messagePayloadString: string,
-    alerts: Array<{ alertId: number; matches: FieldMatch[] | null }>
-): MatchResult {
-    // Convert alerts param to FieldMatchWithAlertId[]
-    const fieldMatches: FieldMatchWithAlertId[] = alerts.flatMap(alert => alert.matches?.map(match => ({
-        ...match,
-        alertId: alert.alertId
-    })) || []);
-    const appliedFieldMatches = applyAllFieldMatches(messagePayloadString, fieldMatches);
-    // Convert appliedFieldMatches to MatchResult
-    return {
-        processedText: appliedFieldMatches.resultText,
-        appliedMatches: appliedFieldMatches.appliedMatches.map(match => ({
-            ...match,
-            finalStart: match.resultStart,
-            finalEnd: match.resultEnd
-        }))
     };
 }
 
@@ -422,6 +393,9 @@ export function applyModificationsToPayload(
             // Use existing coalescing logic
             const payloadString = JSON.stringify(payload, null, 2);
             const appliedMatches = applyAllFieldMatches(payloadString, fieldMatches);
+
+            // !!! We're going to have to return appliedMatches (maybe with more context) so that we can highlight the modifications
+            //     in the UX - for context we need to correlate them to an ActionResults (which is much higher level).
             
             // Parse the result back to an object
             const resultPayload = JSON.parse(appliedMatches.resultText);
@@ -432,4 +406,42 @@ export function applyModificationsToPayload(
 
     // No modifications, return original payload
     return { modifiedPayload: payload, appliedMessageReplacement: null };
+}
+
+// Backward compatibility with old function
+
+export interface AppliedMatch {
+    originalStart: number;
+    originalEnd: number;
+    finalStart: number;
+    finalEnd: number;
+    action: string;
+    actionText: string;
+    alertId?: number;
+}
+  
+export interface MatchResult {
+    processedText: string;
+    appliedMatches: AppliedMatch[];
+}
+
+export function applyMatchesFromAlerts(
+    messagePayloadString: string,
+    alerts: Array<{ alertId: number; matches: FieldMatch[] | null }>
+): MatchResult {
+    // Convert alerts param to FieldMatchWithAlertId[]
+    const fieldMatches: FieldMatchWithAlertId[] = alerts.flatMap(alert => alert.matches?.map(match => ({
+        ...match,
+        alertId: alert.alertId
+    })) || []);
+    const appliedFieldMatches = applyAllFieldMatches(messagePayloadString, fieldMatches);
+    // Convert appliedFieldMatches to MatchResult
+    return {
+        processedText: appliedFieldMatches.resultText,
+        appliedMatches: appliedFieldMatches.appliedMatches.map(match => ({
+            ...match,
+            finalStart: match.resultStart,
+            finalEnd: match.resultEnd
+        }))
+    };
 }

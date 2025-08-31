@@ -11,8 +11,8 @@ import { useLayout } from '@/app/contexts/LayoutContext';
 import { useAlerts } from '@/app/contexts/AlertsContext';
 import { getClientIcon } from '@/lib/client-icons';
 import { applyMatchesFromAlerts, applyModificationsToPayload, resolveFindings } from '@/lib/policy-engine/utils/messageModifications';
-import { MessageActionData, MessageActionsData } from '@/lib/models/types/messageAction';
-import { JsonRpcMessageWrapper, MessageOrigin } from '@/lib/jsonrpc';
+import { MessageActionsData } from '@/lib/models/types/messageAction';
+import { MessageOrigin } from '@/lib/jsonrpc';
 import { ActionEvent } from '@/lib/policy-engine/types/core';
 import { getServerIconUrl } from '@/lib/utils/githubImageUrl';
 import { Server } from '@/lib/types/server';
@@ -170,6 +170,48 @@ export default function MessageDetailsPage() {
     return { modifiedPayload, appliedMessageReplacement };
   };
 
+  // If alert is selectged, the selected context is the MessageActionData correlated to that alert (could be ActionEvents from multiple actions)
+  // If an action is selected, the selected context is the ActionResults (under MessageActionData.actionResults) that are the ActionEvents for a given action (PolicyActionInstance)
+  //
+  // The "actions" list is going to be the ActionResults from all MessagesActionData message actions (across policies, and including both origins).
+  //
+  // Maybe for selectedAction we pass in an array of ActionResults - either all ActionResults associated with a given alertId when an
+  // alert is selected or the selected action when an action is selected.
+  //
+  // NOTE: Right now if we call this with null for the selectedAction, it should display the correct modificed payload, but it won't
+  //       highlight the selected action modifications
+  //
+  const newGetHighlightedRedactedPayload = (payload: any, origin: MessageOrigin, messageActions: MessageActionsData, selectedAction: ActionEvent | null) => {
+    const formattedPayload = JSON.stringify(payload, null, 2);
+    if (!messageActions) {
+      return formattedPayload;
+    }
+
+    const messagActionsForOrigin = messageActions.actions.filter(a => a.origin === origin);
+    const contentModificationMessageActions = messagActionsForOrigin.filter(a => a.actionResults.some(r => r.actionEvents.some(e => e.contentModification)));
+    if (contentModificationMessageActions.length === 0) {
+      return formattedPayload;
+    }
+
+    // Apply modifications to the payload
+    const { modifiedPayload, appliedMessageReplacement } = applyModificationsToPayload(payload, origin, contentModificationMessageActions);
+
+    // !!! We need to get the applied actions back (need to modify applyModificationsToPayload to return the applied actions with appropriate context)
+
+    // Highlight the selectedAction if it exists
+    if (selectedAction) {
+      if (appliedMessageReplacement) {
+        // The message was replaced and the appliedMessageReplacement is the replacement ActionEvent - was it the selectedAction?
+        // !!! The appliedMessageReplacement ActionEvent isn't enough detail to determine if it's the selectedAction (we need more context about it's owner)
+      } else {
+        // !!! The message applied all content modification ActionEvents - we need to get the ones that belong to the selectedAction
+        //     from the applied actions so we can highlight them...
+      }
+    }
+
+    return modifiedPayload;
+  };
+
   const getHighlightedRedactedPayload = (payload: any, alerts: AlertReadData[], origin: MessageOrigin, selectedAlert: AlertReadData | null) => {
     const formattedPayload = JSON.stringify(payload, null, 2);
     if (!alerts || alerts.length === 0) {
@@ -223,7 +265,7 @@ export default function MessageDetailsPage() {
     }
   };
 
-  const highlightMatchedText = (payload: any, alert: AlertReadData | null) => {4
+  const highlightMatchedText = (payload: any, alert: AlertReadData | null) => {
     // First format the JSON with proper indentation
     const formattedPayload = JSON.stringify(payload, null, 2);
 
@@ -522,6 +564,10 @@ export default function MessageDetailsPage() {
             
             {/* Check if any client-side actions were applied */}
             {(() => {
+              // !!! hasActions needs to look at messageActions, see if it's not null, and if any actions are content modifications
+              // !!! We need to see of the selectedAlert has a corresponding content modification action, and if so, pass that to getHighlightedRedactedPayload
+              // !!! There could theoretically be multiple content modification actions for a given alert - LATER
+              // !!! We will have a list of actions also, and if one of those is selected, then that's the focussed action (duh)
               const clientAlerts = alerts.filter(a => a.origin === 'client');
               const hasActions = clientAlerts.some(alert => 
                 alert.matches && alert.matches.some(match => match.action !== 'none')
@@ -586,6 +632,7 @@ export default function MessageDetailsPage() {
               ) : (
                 /* Check if any server-side actions were applied */
                 (() => {
+                  // !!! See hasActions comments above
                   const serverAlerts = alerts.filter(a => a.origin === 'server');
                   const hasActions = serverAlerts.some(alert => 
                     alert.matches && alert.matches.some(match => match.action !== 'none')
