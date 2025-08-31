@@ -499,3 +499,12 @@ export interface PolicyActionInstance {
     instanceId: string; // The is the instance of the action in the policy
     params: any;
 }
+
+## Notes
+
+Perf seems slower (maybe 50%) on import
+- Review log output
+- Review algo
+  - Did we introduce any new per-message db reads?
+  - It doens't seem like adding ActionEvents writes would slow us down that much (maybe), but there might be room to make it more efficient.
+  - Would be interesting to profile policy evaluation-only (no match) versus match (less concerned about action perf as it's way less frequent).

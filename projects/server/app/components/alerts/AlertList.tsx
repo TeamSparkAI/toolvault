@@ -64,7 +64,7 @@ export function AlertList({
             )}
             {!('filterName' in initialFilters) && (
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Filter
+                Condition
               </th>
             )}
             {!('serverId' in initialFilters) && (
@@ -115,7 +115,7 @@ export function AlertList({
                 )}
                 {!('filterName' in initialFilters) && (
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {alert.filterName}
+                    {alert.condition.name}
                   </td>
                 )}
                 {!('serverId' in initialFilters) && (

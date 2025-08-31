@@ -10,7 +10,7 @@ import { useDimensions } from '@/app/hooks/useDimensions';
 import { useLayout } from '@/app/contexts/LayoutContext';
 import { useAlerts } from '@/app/contexts/AlertsContext';
 import { getClientIcon } from '@/lib/client-icons';
-import { applyMatchesFromAlerts, applyModificationsToPayload } from '@/lib/policy-engine/utils/messageModifications';
+import { applyMatchesFromAlerts, applyModificationsToPayload, resolveFindings } from '@/lib/policy-engine/utils/messageModifications';
 import { MessageActionData, MessageActionsData } from '@/lib/models/types/messageAction';
 import { JsonRpcMessageWrapper, MessageOrigin } from '@/lib/jsonrpc';
 import { ActionEvent } from '@/lib/policy-engine/types/core';
@@ -227,28 +227,28 @@ export default function MessageDetailsPage() {
     // First format the JSON with proper indentation
     const formattedPayload = JSON.stringify(payload, null, 2);
 
-    if (!alert || !alert.matches || alert.matches.length === 0) {
+    if (!alert || !alert.findings || alert.findings.length === 0) {
       return formattedPayload;
     }
 
-    const result = applyMatchesFromAlerts(formattedPayload, [alert]);
-        
-    // Sort redactions by start position in reverse order to avoid position shifts
-    const sortedMatches = [...result.appliedMatches].sort((a, b) => b.originalEnd - a.originalStart);
+    const resolvedFindings = resolveFindings(formattedPayload, alert.findings);
+
+    // Sort findings by start position in reverse order to avoid position shifts
+    const sortedFindings = [...resolvedFindings].sort((a, b) => b.resolvedStart - a.resolvedStart);
 
     let highlightedString = formattedPayload;
     let offset = 0;
 
-    for (const match of sortedMatches) {
+    for (const finding of sortedFindings) {
       // Find the corresponding position in the formatted JSON
-      let formattedStart = match.originalStart;
-      let formattedEnd = match.originalEnd;
+      let formattedStart = finding.resolvedStart;
+      let formattedEnd = finding.resolvedEnd;
       
       if (formattedStart !== -1 && formattedEnd !== -1) {
         const before = highlightedString.substring(0, formattedStart + offset);
-        const match = highlightedString.substring(formattedStart + offset, formattedEnd + offset);
+        const finding = highlightedString.substring(formattedStart + offset, formattedEnd + offset);
         const after = highlightedString.substring(formattedEnd + offset);
-        highlightedString = `${before}<mark class="bg-yellow-200">${match}</mark>${after}`;
+        highlightedString = `${before}<mark class="bg-yellow-200">${finding}</mark>${after}`;
         offset += '<mark class="bg-yellow-200"></mark>'.length;
       }
     }

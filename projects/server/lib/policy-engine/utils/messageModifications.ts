@@ -2,7 +2,7 @@ import { JsonRpcMessageWrapper } from '@/lib/jsonrpc';
 import { FieldMatch } from '@/lib/models/types/alert';
 import { MessageData } from '@/lib/models/types/message';
 import { parseTree, ParseError, ParseOptions, applyEdits, modify, findNodeAtLocation, Node } from 'jsonc-parser';
-import { ActionEvent, FieldModification, MessageReplacement } from '../types/core';
+import { ActionEvent, FieldModification, Finding, MessageReplacement } from '../types/core';
 import { MessageActionData } from '@/lib/models/types/messageAction';
 import { MessageOrigin } from '@/lib/jsonrpc';
 
@@ -194,16 +194,7 @@ function applyMatchesToField(fieldPath: string, fieldValue: string, matches: Fie
     };
 }
 
-// We use this function to apply all field matches to a message payload and get the resulting payload for the message processor output
-//
-// We also use this function to get the resutling text, along with the applied matches for each alert so that we can highlight the original
-// match in the original text and the resulting match in the resulting text in the UI (typically by alert ID, which could be multiple matches)
-//
-// NOTE: The fact that we call this from both the front end and the back end makes logging complicated - we can't use either log (console) or logger (winston).
-//
-export function applyAllFieldMatches(messagePayloadString: string, fieldMatches: FieldMatchWithAlertId[]): AppliedFieldMatches {
-
-    // Parse the JSON content using jsonc-parser
+function parseMessagePayload(messagePayloadString: string): Node {
     const parseOptions: ParseOptions = {
         disallowComments: false,
         allowTrailingComma: true,
@@ -217,6 +208,54 @@ export function applyAllFieldMatches(messagePayloadString: string, fieldMatches:
     if (!ast) {
         throw new Error('Failed to parse JSON: parseTree returned undefined');
     }
+    return ast;
+ }
+
+export interface ResolvedFinding extends Finding {
+    resolvedStart: number;
+    resolvedEnd: number;
+}
+
+export function resolveFindings(messagePayloadString: string, findings: Finding[]): ResolvedFinding[] {
+    const ast = parseMessagePayload(messagePayloadString);
+
+    const fieldFindingsByPath = new Map<string, Finding[]>();
+    for (const finding of findings) {
+        if (finding.location) {
+            if (!fieldFindingsByPath.has(finding.location.fieldPath)) {
+                fieldFindingsByPath.set(finding.location.fieldPath, []);
+            }
+            fieldFindingsByPath.get(finding.location.fieldPath)!.push(finding);
+        }
+    }
+    const allFieldPaths = Array.from(fieldFindingsByPath.keys());
+    const fieldOffsets = findStringFieldPositions(ast, allFieldPaths);
+
+    const resolvedFindings: ResolvedFinding[] = [];
+    for (const finding of findings) {
+        if (finding.location) {
+            const fieldOffset = fieldOffsets.find(field => field.path === finding.location!.fieldPath)!.startOffset;
+            resolvedFindings.push({
+                ...finding,
+                resolvedStart: fieldOffset + finding.location.start,
+                resolvedEnd: fieldOffset + finding.location.end
+            });
+        }
+    }
+
+    return resolvedFindings;
+}
+
+// We use this function to apply all field matches to a message payload and get the resulting payload for the message processor output
+//
+// We also use this function to get the resulting text, along with the applied matches for each alert so that we can highlight the original
+// match in the original text and the resulting match in the resulting text in the UI (typically by alert ID, which could be multiple matches)
+//
+// NOTE: The fact that we call this from both the front end and the back end makes logging complicated - we can't use either log (console) or logger (winston).
+//
+export function applyAllFieldMatches(messagePayloadString: string, fieldMatches: FieldMatchWithAlertId[]): AppliedFieldMatches {
+
+    const ast = parseMessagePayload(messagePayloadString);
     
     // Group field matches by field path to avoid duplicate edits
     const fieldMatchGroups = new Map<string, FieldMatchWithAlertId[]>();
@@ -252,13 +291,7 @@ export function applyAllFieldMatches(messagePayloadString: string, fieldMatches:
         allAppliedFieldMatches.push(appliedFieldMatches);
     }
 
-    const processedAst = parseTree(processedText, errors, parseOptions);
-    if (errors.length > 0) {
-        throw new Error(`Failed to parse JSON for field matching: ${errors.map(e => e.error).join(', ')}`);
-    }
-    if (!processedAst) {
-        throw new Error('Failed to parse processed JSON: parseTree returned undefined');
-    }
+    const processedAst = parseMessagePayload(processedText);
 
     const processedStringFieldPositions = findStringFieldPositions(processedAst, allFieldPaths);
 
