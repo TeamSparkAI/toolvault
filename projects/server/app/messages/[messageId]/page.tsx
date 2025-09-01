@@ -188,7 +188,7 @@ export default function MessageDetailsPage() {
     }
 
     const messagActionsForOrigin = messageActions.actions.filter(a => a.origin === origin);
-    const contentModificationMessageActions = messagActionsForOrigin.filter(a => a.actionResults.some(r => r.actionEvents.some(e => e.contentModification)));
+    const contentModificationMessageActions = messagActionsForOrigin.filter(a => a.actionEvents.some(e => e.contentModification));
     if (contentModificationMessageActions.length === 0) {
       return formattedPayload;
     }

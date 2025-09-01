@@ -339,15 +339,13 @@ export function applyModificationsToPayload(
     const contentModifications: (ActionEvent & { policySeverity: number, elementClassName: string })[] = [];
     
     for (const messageAction of messageActions) {
-        for (const actionResult of messageAction.actionResults) {
-            // Collect only content modifications for coalescing
-            const contentEvents = actionResult.actionEvents.filter(e => e.contentModification);
-            contentModifications.push(...contentEvents.map((e: ActionEvent) => ({ 
-                ...e, 
-                policySeverity: messageAction.severity,
-                elementClassName: actionResult.action.elementClassName
-            })));
-        }
+        // Collect only content modifications for coalescing
+        const contentEvents = messageAction.actionEvents.filter(e => e.contentModification);
+        contentModifications.push(...contentEvents.map((e: ActionEvent) => ({ 
+            ...e, 
+            policySeverity: messageAction.severity,
+            elementClassName: messageAction.action.elementClassName
+        })));
     }
 
     // Check for message replacement actions (error, replace)

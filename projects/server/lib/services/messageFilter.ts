@@ -148,20 +148,20 @@ export async function applyPolicies(messageData: MessageData, message: JsonRpcMe
         for (const actionResult of policyAction.actionResults) {
             for (const actionEvent of actionResult.actionEvents) {
                 if (actionEvent.contentModification?.type === 'field') {
-                    alertId = alertMap.get(actionEvent.contentModification.conditionInstanceId)?.alertId;
+                    actionEvent.alertId = alertMap.get(actionEvent.contentModification.conditionInstanceId)?.alertId;
                 }
             }
+            const messageAction = await messageActionModel.create({
+                messageId: messageData.messageId,
+                policyId: policyAction.policy.policyId,
+                origin: message.origin,
+                severity: policyAction.policy.severity,
+                action: actionResult.action,
+                actionEvents: actionResult.actionEvents,
+                timestamp: messageData.timestamp
+            });
+            messageActions.push(messageAction);    
         }
-        const messageAction = await messageActionModel.create({
-            messageId: messageData.messageId,
-            policyId: policyAction.policy.policyId,
-            alertId: alertId,
-            origin: message.origin,
-            severity: policyAction.policy.severity,
-            actionResults: policyAction.actionResults,
-            timestamp: messageData.timestamp
-        });
-        messageActions.push(messageAction);
     }
     
     // Apply modifications and return the modified message

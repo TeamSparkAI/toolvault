@@ -11,9 +11,26 @@ export class SqliteMessageActionModel extends MessageActionModel {
         this.db = db;
     }
 
+    async findById(messageActionId: number): Promise<MessageActionData | null> {
+        const result = await this.db.queryOne<MessageActionData & { action: string; actionEvents: string }>(
+            'SELECT messageActionId, messageId, policyId, origin, severity, action, actionEvents, timestamp, createdAt FROM message_actions WHERE messageActionId = ?',
+            [messageActionId]
+        );
+
+        if (!result) {
+            return null;
+        }
+
+        return {
+            ...result,
+            action: result.action ? JSON.parse(result.action) : null,
+            actionEvents: result.actionEvents ? JSON.parse(result.actionEvents) : []
+        };
+    }
+
     async findByMessageId(messageId: number): Promise<MessageActionsData | null> {
-        const result = await this.db.query<MessageActionData & { actionResults: string }>(
-            'SELECT messageId, policyId, alertId, origin, severity, actionResults, timestamp, createdAt FROM message_actions WHERE messageId = ?',
+        const result = await this.db.query<MessageActionData & { action: string; actionEvents: string }>(
+            'SELECT messageActionId, messageId, policyId, origin, severity, action, actionEvents, timestamp, createdAt FROM message_actions WHERE messageId = ?',
             [messageId]
         );
         
@@ -22,12 +39,13 @@ export class SqliteMessageActionModel extends MessageActionModel {
         }
 
         const actions = result.rows.map(row => ({
+            messageActionId: row.messageActionId,
             messageId: row.messageId,
             policyId: row.policyId,
-            alertId: row.alertId,
             origin: row.origin as MessageOrigin,
             severity: row.severity,
-            actionResults: row.actionResults ? JSON.parse(row.actionResults) : [],
+            action: row.action ? JSON.parse(row.action) : null,
+            actionEvents: row.actionEvents ? JSON.parse(row.actionEvents) : [],
             timestamp: row.timestamp,
             createdAt: row.createdAt
         }));
@@ -39,51 +57,52 @@ export class SqliteMessageActionModel extends MessageActionModel {
     }
 
     async findByMessageIdAndOrigin(messageId: number, origin: MessageOrigin): Promise<MessageActionData[]> {
-        const result = await this.db.query<MessageActionData & { actionResults: string }>(
-            'SELECT messageId, policyId, alertId, origin, severity, actionResults, timestamp, createdAt FROM message_actions WHERE messageId = ? AND origin = ?',
+        const result = await this.db.query<MessageActionData & { action: string; actionEvents: string }>(
+            'SELECT messageActionId, messageId, policyId, origin, severity, action, actionEvents, timestamp, createdAt FROM message_actions WHERE messageId = ? AND origin = ?',
             [messageId, origin]
         );
         
         return result.rows.map(row => ({
+            messageActionId: row.messageActionId,
             messageId: row.messageId,
             policyId: row.policyId,
-            alertId: row.alertId,
             origin: row.origin as MessageOrigin,
             severity: row.severity,
-            actionResults: row.actionResults ? JSON.parse(row.actionResults) : [],
+            action: row.action ? JSON.parse(row.action) : null,
+            actionEvents: row.actionEvents ? JSON.parse(row.actionEvents) : [],
             timestamp: row.timestamp,
             createdAt: row.createdAt
         }));
     }
 
     async findByAlertId(alertId: number): Promise<MessageActionData[]> {
-        const result = await this.db.query<MessageActionData & { actionResults: string }>(
-            'SELECT messageId, policyId, alertId, origin, severity, actionResults, timestamp, createdAt FROM message_actions WHERE alertId = ?',
-            [alertId]
+        const result = await this.db.query<MessageActionData & { action: string; actionEvents: string }>(
+            'SELECT messageActionId, messageId, policyId, origin, severity, action, actionEvents, timestamp, createdAt FROM message_actions WHERE actionEvents LIKE ?',
+            [`%${alertId}%`]
         );
         
         return result.rows.map(row => ({
+            messageActionId: row.messageActionId,
             messageId: row.messageId,
             policyId: row.policyId,
-            alertId: row.alertId,
             origin: row.origin as MessageOrigin,
             severity: row.severity,
-            actionResults: row.actionResults ? JSON.parse(row.actionResults) : [],
+            action: row.action ? JSON.parse(row.action) : null,
+            actionEvents: row.actionEvents ? JSON.parse(row.actionEvents) : [],
             timestamp: row.timestamp,
             createdAt: row.createdAt
         }));
     }
 
-    async create(data: Omit<MessageActionData, 'createdAt'>): Promise<MessageActionData> {
-        const actionResultsJson = JSON.stringify(data.actionResults);
-        await this.db.execute(
-            'INSERT INTO message_actions (messageId, policyId, alertId, origin, severity, actionResults, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [data.messageId, data.policyId, data.alertId ?? null, data.origin, data.severity, actionResultsJson, data.timestamp]
+    async create(data: Omit<MessageActionData, 'createdAt' | 'messageActionId'>): Promise<MessageActionData> {
+        const actionJson = JSON.stringify(data.action);
+        const actionEventsJson = JSON.stringify(data.actionEvents);
+        const result = await this.db.query<MessageActionData>(
+            'INSERT INTO message_actions (messageId, policyId, origin, severity, action, actionEvents, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [data.messageId, data.policyId, data.origin, data.severity, actionJson, actionEventsJson, data.timestamp]
         );
 
-        return {
-            ...data,
-            createdAt: new Date().toISOString()
-        };
+        // After creating, fetch the full record
+        return this.findById(result.rows[0].messageActionId) as Promise<MessageActionData>;
     }
 }

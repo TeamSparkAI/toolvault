@@ -31,7 +31,7 @@ export interface PolicyConditionInstance {
     params: any;
 }
 
-// A collection of actions results grouped by policy
+// A collection of actions results grouped by policy (only used to return actions from policy engine, not stored anywhere)
 export interface PolicyActions {
     policy: PolicyData; // !!! Do we need this, or is policyId sufficient?  What if policy has changed or been deleted?
     actionResults: ActionResults[];

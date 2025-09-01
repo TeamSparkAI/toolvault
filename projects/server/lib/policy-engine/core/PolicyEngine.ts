@@ -51,7 +51,6 @@ export class PolicyEngine {
                     policy: policy,
                     conditionFindings: conditionFindings
                 });
-                const actionResults: ActionResults[] = [];
                 
                 if (policy.actions && policy.actions.length > 0) {
                     for (const action of policy.actions) {
@@ -66,21 +65,17 @@ export class PolicyEngine {
                                 params: action.params
                             };
                             
-                            // Store all events in hierarchical structure
-                            actionResults.push({
-                                action: actionInstance,
-                                actionEvents: events
+                            // Store action with its events in flattened structure
+                            policyActions.push({
+                                policy: policy,
+                                actionResults: [{
+                                    action: actionInstance,
+                                    actionEvents: events
+                                }]
                             });
                         }
                     }
                 }
-                
-                if (actionResults.length > 0) {
-                    policyActions.push({
-                        policy: policy,
-                        actionResults: actionResults
-                    });
-                }    
             }
         }
         

@@ -13,15 +13,15 @@ ALTER TABLE alerts ADD COLUMN findings JSON NOT NULL;
 
 -- Create message_actions table for storing actions taken on messages
 CREATE TABLE message_actions (
+    messageActionId INTEGER PRIMARY KEY AUTOINCREMENT,
     messageId INTEGER NOT NULL,
     policyId INTEGER NOT NULL,
-    alertId INTEGER,
     origin TEXT NOT NULL CHECK (origin IN ('client', 'server')),
     severity INTEGER NOT NULL,
-    actionResults JSON NOT NULL,
+    action JSON NOT NULL,
+    actionEvents JSON NOT NULL,
     timestamp TIMESTAMP NOT NULL,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (messageId, policyId, alertId),
     FOREIGN KEY (messageId) REFERENCES messages(messageId) ON DELETE CASCADE,
     FOREIGN KEY (policyId) REFERENCES policies(policyId) ON DELETE CASCADE
 );

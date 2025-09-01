@@ -446,7 +446,7 @@ Alert
 - messageId
 - policyId
 - origin
-- conditions - PolicyCondition
+- condition - PolicyCondition
 - findings - Finding[]
 
 export interface PolicyCondition {
@@ -470,17 +470,17 @@ export interface Finding {
     };
 }
 
-ActionEvent
+MessageAction
+- messageActionId
 - messageId
 - policyId
-- alertId (optional, ActionEvent will only be related to an alertId of it's a rewrite of an alert finding)
 - origin
 - severity
-- actionResults
+- action: PolicyActionInstance;
+- actionEvents: ActionEvent[];
 
 // Action event types for policy engine
 export interface ActionEvent {
-    action: PolicyAction; // The policy action that triggered this event
     description: string;  // details?
     metadata?: any;
     contentModification?: ContentModification; // field or message type - added conditionInstanceId to field modification details for correlation

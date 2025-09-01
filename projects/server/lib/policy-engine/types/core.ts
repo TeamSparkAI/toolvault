@@ -42,6 +42,7 @@ export interface ActionEvent {
     details: string;
     metadata?: any;
     contentModification?: ContentModification;
+    alertId?: number;  // Correlates to specific alert via conditionInstanceId
 }
 
 export type ContentModification = 

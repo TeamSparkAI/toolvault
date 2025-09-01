@@ -1,13 +1,15 @@
-import { ActionResults } from "@/lib/policy-engine/core/PolicyEngineResult";
+import { PolicyActionInstance } from "@/lib/policy-engine/core/PolicyEngineResult";
+import { ActionEvent } from "@/lib/policy-engine/types/core";
 import { MessageOrigin } from "@/lib/jsonrpc";
 
 export interface MessageActionData {
+    messageActionId: number;
     messageId: number;
     policyId: number;
-    alertId?: number;
     origin: MessageOrigin;
     severity: number;
-    actionResults: ActionResults[];
+    action: PolicyActionInstance;
+    actionEvents: ActionEvent[];
     timestamp: string;
     createdAt: string;
 }
