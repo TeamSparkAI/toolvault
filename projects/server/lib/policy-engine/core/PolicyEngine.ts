@@ -3,7 +3,7 @@ import { PolicyData } from "@/lib/models/types/policy";
 import { ConditionRegistry } from "../conditions/registry/ConditionRegistry";
 import { ActionRegistry } from "../actions/registry/ActionRegistry";
 import { PolicyContext } from "./PolicyContext";
-import { PolicyEngineResult, PolicyFindings, ConditionFindings, PolicyActions, ActionResults, PolicyActionInstance, PolicyConditionInstance } from "./PolicyEngineResult";
+import { PolicyEngineResult, PolicyFindings, ConditionFindings, PolicyActions, PolicyActionInstance, PolicyConditionInstance } from "./PolicyEngineResult";
 import { applyModificationsToPayload } from "../utils/messageModifications";
 import { MessageActionData } from "@/lib/models/types/messageAction";
 

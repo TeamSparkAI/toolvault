@@ -129,6 +129,16 @@ export function resolveFindings(messagePayloadString: string, findings: Finding[
 
 // !!! This seems like a lot of types for what it does - we need to map these more directly the ActionEvent (and associated types) and streamline
 
+/*
+export interface FieldMatch {
+    fieldPath: string;   // JSON path like "params.args[0].apiKey"
+    start: number;       // Start position within the field value
+    end: number;         // End position within the field value
+    action: PolicyActionType;
+    actionText: string;
+}
+*/
+
 // Indiviual field match applied to a field (from an alert)
 export interface AppliedFieldMatch {
     originalStart: number;
@@ -384,7 +394,7 @@ export function applyModificationsToPayload(
                     end: fieldMod.end,
                     action: fieldMod.action,
                     actionText: fieldMod.actionText || '',
-                    alertId: undefined // Not needed for coalescing - !!! Remove this at some point?
+                    //alertId: undefined // Not needed for coalescing - !!! Remove this at some point?
                 };
             });
             

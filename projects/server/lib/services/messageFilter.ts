@@ -144,11 +144,10 @@ export async function applyPolicies(messageData: MessageData, message: JsonRpcMe
     const messageActionModel = await ModelFactory.getInstance().getMessageActionModel();
     for (const policyAction of result.policyActions) {
         let alertId: number | undefined = undefined;
-        // If any action event has a content modification with a conditionInstanceId, correlate to an alert (safe to assume they all correlate to the same alert)
         for (const actionResult of policyAction.actionResults) {
             for (const actionEvent of actionResult.actionEvents) {
-                if (actionEvent.contentModification?.type === 'field') {
-                    actionEvent.alertId = alertMap.get(actionEvent.contentModification.conditionInstanceId)?.alertId;
+                if (actionEvent.conditionInstanceId) {
+                    actionEvent.alertId = alertMap.get(actionEvent.conditionInstanceId)?.alertId;
                 }
             }
             const messageAction = await messageActionModel.create({

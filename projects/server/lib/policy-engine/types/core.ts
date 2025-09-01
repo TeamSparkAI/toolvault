@@ -45,6 +45,10 @@ export interface ActionEvent {
     alertId?: number;  // Correlates to specific alert via conditionInstanceId
 }
 
+export interface ActionEventWithConditionId extends ActionEvent {
+    conditionInstanceId?: string;
+}
+
 export type ContentModification = 
   | FieldModification
   | MessageReplacement;
@@ -56,7 +60,6 @@ export interface FieldModification {
     end: number;
     action: FieldModificationAction;
     actionText?: string;
-    conditionInstanceId: string;
 }
 
 export interface MessageReplacement {

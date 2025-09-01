@@ -1,5 +1,5 @@
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
-import { Finding, ActionEvent } from "../types/core";
+import { Finding, ActionEvent, ActionEventWithConditionId } from "../types/core";
 import { PolicyData } from "@/lib/models/types/policy";
 
 export interface PolicyEngineResult {
@@ -34,13 +34,10 @@ export interface PolicyConditionInstance {
 // A collection of actions results grouped by policy (only used to return actions from policy engine, not stored anywhere)
 export interface PolicyActions {
     policy: PolicyData; // !!! Do we need this, or is policyId sufficient?  What if policy has changed or been deleted?
-    actionResults: ActionResults[];
-}
-
-// A collection of actions resulting from a given policy action
-export interface ActionResults {
-    action: PolicyActionInstance;
-    actionEvents: ActionEvent[];
+    actionResults: {
+        action: PolicyActionInstance;
+        actionEvents: ActionEventWithConditionId[];
+    }[];
 }
 
 // Defines the policy action (the instance on the policy) that triggered the resilts

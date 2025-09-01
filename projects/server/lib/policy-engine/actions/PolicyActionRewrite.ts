@@ -1,5 +1,5 @@
 import { PolicyActionBase } from "./PolicyActionBase";
-import { JsonSchema, ValidationResult, Finding, ActionEvent, FieldModificationAction } from "../types/core";
+import { JsonSchema, ValidationResult, FieldModificationAction, ActionEventWithConditionId } from "../types/core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { PolicyAction } from "@/lib/models/types/policy";
 import { ConditionFindings } from "../core";
@@ -72,8 +72,8 @@ export class PolicyActionRewrite extends PolicyActionBase {
         };
     }
 
-    async applyAction(message: JsonRpcMessageWrapper, conditionFindings: ConditionFindings[], config: any, action: PolicyAction): Promise<ActionEvent[]> {
-        const events: ActionEvent[] = [];
+    async applyAction(message: JsonRpcMessageWrapper, conditionFindings: ConditionFindings[], config: any, action: PolicyAction): Promise<ActionEventWithConditionId[]> {
+        const events: ActionEventWithConditionId[] = [];
 
         const anyFindingsWithMatch = conditionFindings.some(conditionFinding => conditionFinding.findings.some(finding => finding.location));
         if (!anyFindingsWithMatch) {
@@ -94,8 +94,8 @@ export class PolicyActionRewrite extends PolicyActionBase {
                             end: finding.location.end,
                             action: action.params.action as FieldModificationAction,
                             actionText: action.params.actionText,
-                            conditionInstanceId: conditionFinding.condition.instanceId
-                        }
+                        },
+                        conditionInstanceId: conditionFinding.condition.instanceId
                     });
                 }
             }
