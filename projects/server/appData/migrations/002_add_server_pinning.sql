@@ -43,6 +43,7 @@ CREATE TABLE policy_elements (
     configId INTEGER PRIMARY KEY AUTOINCREMENT,
     className TEXT NOT NULL,
     elementType TEXT NOT NULL CHECK (elementType IN ('condition', 'action')),
+    label TEXT,
     config JSON,
     enabled BOOLEAN DEFAULT 1,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

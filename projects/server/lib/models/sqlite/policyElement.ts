@@ -33,10 +33,10 @@ export class SqlitePolicyElementModel extends PolicyElementModel {
         const enabled = data.enabled ?? true;
 
         const result = await this.db.queryOne<PolicyElementData & { config: string }>(
-            `INSERT INTO policy_elements (className, elementType, config, enabled) 
-             VALUES (?, ?, ?, ?) 
+            `INSERT INTO policy_elements (className, elementType, label, config, enabled) 
+             VALUES (?, ?, ?, ?, ?) 
              RETURNING *`,
-            [data.className, data.elementType, configJson, enabled]
+            [data.className, data.elementType, data.label || null, configJson, enabled]
         );
 
         if (!result) {
@@ -53,6 +53,11 @@ export class SqlitePolicyElementModel extends PolicyElementModel {
     async update(configId: number, data: PolicyElementUpdateData): Promise<PolicyElementData> {
         const updates: string[] = [];
         const params: any[] = [];
+
+        if (data.label !== undefined) {
+            updates.push('label = ?');
+            params.push(data.label || null);
+        }
 
         if (data.config !== undefined) {
             updates.push('config = ?');

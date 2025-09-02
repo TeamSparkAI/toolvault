@@ -4,6 +4,7 @@ export interface PolicyElementData {
     configId: number;
     className: string;
     elementType: PolicyElementType;
+    label?: string; // Short label used to distinguish different configurations of the same element type
     config: any; // JSON object or null
     enabled: boolean;
     createdAt: string;
@@ -18,11 +19,13 @@ export interface PolicyElementData {
 export interface PolicyElementCreateData {
     className: string;
     elementType: PolicyElementType;
+    label?: string;
     config?: any;
     enabled?: boolean;
 }
 
 export interface PolicyElementUpdateData {
+    label?: string;
     config?: any;
     enabled?: boolean;
     // Note: className and elementType are immutable
