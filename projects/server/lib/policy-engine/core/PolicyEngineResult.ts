@@ -8,9 +8,9 @@ export interface PolicyEngineResult {
     policyActions: PolicyActions[];
 }
 
-// A collection of findings grouped by policy
+// A collection of findings grouped by policy - only used to return findings from the policy engine, ephemeral (not stored anywhere)
 export interface PolicyFindings {
-    policy: PolicyData; // !!! Do we need this, or is policyId sufficient?  What if policy has changed or been deleted?
+    policy: PolicyData;
     conditionFindings: ConditionFindings[];
 }
 
@@ -31,9 +31,9 @@ export interface PolicyConditionInstance {
     params: any;
 }
 
-// A collection of actions results grouped by policy (only used to return actions from policy engine, not stored anywhere)
+// A collection of actions results grouped by policy - only used to return actions from policy engine, ephemeral (not stored anywhere)
 export interface PolicyActions {
-    policy: PolicyData; // !!! Do we need this, or is policyId sufficient?  What if policy has changed or been deleted?
+    policy: PolicyData;
     actionResults: {
         action: PolicyActionInstance;
         actionEvents: ActionEventWithConditionId[];

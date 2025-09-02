@@ -66,3 +66,25 @@ export interface MessageReplacement {
     type: 'message';
     payload: any;
 }
+
+export const isAppliedFieldModification = (contentModification: ContentModification): contentModification is AppliedFieldModification => {
+    return contentModification.type === 'field' && (contentModification as AppliedFieldModification).applied;
+}
+
+export interface AppliedFieldModification extends FieldModification {
+    applied: boolean;
+    fieldResultStart: number;
+    fieldResultEnd: number;
+    jsonOriginalStart?: number;
+    jsonOriginalEnd?: number;
+    jsonResultStart?: number;
+    jsonResultEnd?: number;
+}
+
+export const isAppliedMessageReplacement = (contentModification: ContentModification): contentModification is AppliedMessageReplacement => {
+    return contentModification.type === 'message' && (contentModification as AppliedMessageReplacement).applied;
+}
+
+export interface AppliedMessageReplacement extends MessageReplacement {
+    applied: boolean;
+}

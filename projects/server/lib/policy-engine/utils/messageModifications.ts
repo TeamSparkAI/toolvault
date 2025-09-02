@@ -1,6 +1,5 @@
-import { FieldMatch } from '@/lib/models/types/alert';
 import { parseTree, ParseError, ParseOptions, applyEdits, modify, findNodeAtLocation, Node } from 'jsonc-parser';
-import { ActionEvent, FieldModification, Finding, MessageReplacement } from '../types/core';
+import { ActionEvent, FieldModification, Finding, AppliedFieldModification, AppliedMessageReplacement } from '../types/core';
 import { MessageActionData } from '@/lib/models/types/messageAction';
 import { MessageOrigin } from '@/lib/jsonrpc';
 
@@ -127,87 +126,65 @@ export function resolveFindings(messagePayloadString: string, findings: Finding[
 // NOTE: Everything below this is about applying modifications to a message payload
 //
 
-// !!! This seems like a lot of types for what it does - we need to map these more directly the ActionEvent (and associated types) and streamline
-
-/*
-export interface FieldMatch {
-    fieldPath: string;   // JSON path like "params.args[0].apiKey"
-    start: number;       // Start position within the field value
-    end: number;         // End position within the field value
-    action: PolicyActionType;
-    actionText: string;
-}
-*/
-
-// Indiviual field match applied to a field (from an alert)
-export interface AppliedFieldMatch {
-    originalStart: number;
-    originalEnd: number;
-    resultStart: number;
-    resultEnd: number;
-    action: string;
-    actionText: string;
-}
-
-// Indiviual field match applied to a field (from an alert)
-export interface AppliedFieldMatchWithAlert extends AppliedFieldMatch {
-    alertId?: number;
-}
-
-export interface AppliedMatchWithAlert extends AppliedFieldMatchWithAlert {
-    fieldPath: string;
-}
-
-export interface AppliedFieldMatches {
-    resultText: string;
-    appliedMatches: AppliedMatchWithAlert[];
-}
-
-export interface AppliedFieldMatchesForField {
-    fieldPath: string;
-    resultText: string;
-    appliedMatches: AppliedFieldMatchWithAlert[];
-}
-
-export interface FieldMatchWithAlertId extends FieldMatch {
-    alertId?: number;
-}
-
-// !!! We should probably export this method and unit test it (with the unit tests serving as the docs).  This is the trickiest part
-//     of the logic of handling overlapping matches (including more than two matches overlapping, all variations of overlap, etc).
-//
-function applyMatchesToField(fieldPath: string, fieldValue: string, matches: FieldMatchWithAlertId[]): AppliedFieldMatchesForField {
+function applyActionEventsToField(fieldPath: string, fieldValue: string, actionEvents: ActionEvent[]) {
+    // Replace contentModification FieldModification objects with AppliedFieldModification objects
     let resultText = fieldValue;
-    const appliedMatches: AppliedFieldMatchWithAlert[] = matches.map(match => ({
-        alertId: match.alertId,
-        originalStart: match.start,
-        originalEnd: match.end,
-        resultStart: match.start,
-        resultEnd: match.end,
-        action: match.action,
-        actionText: match.actionText,
-    }));
-    // Sort the matches by start position
-    appliedMatches.sort((a, b) => a.originalStart - b.originalStart);
-    // Process the redaction matches in order
-    for (const match of appliedMatches) {
-        if (match.action === 'redact') {
+
+    // Filter to only events with field modifications and convert them to AppliedFieldModification
+    const fieldModifications: AppliedFieldModification[] = [];
+    for (const actionEvent of actionEvents) {
+        if (actionEvent.contentModification?.type === 'field') {
+            const fieldMod = actionEvent.contentModification as FieldModification;
+
+            // Validate that the fieldPath matches
+            if (fieldMod.fieldPath !== fieldPath) {
+                console.warn(`Field path mismatch: expected ${fieldPath}, got ${fieldMod.fieldPath} from ActionEvent ${actionEvent.details}`);
+                continue; // Skip this modification
+            }
+
+            const appliedMod: AppliedFieldModification = {
+                ...fieldMod,
+                applied: false,
+                fieldResultStart: fieldMod.start,
+                fieldResultEnd: fieldMod.end,
+            };
+            fieldModifications.push(appliedMod);
+
+            // Replace the contentModification on the ActionEvent
+            actionEvent.contentModification = appliedMod;
+        }
+    }
+
+    if (fieldModifications.length === 0) {
+        return {
+            fieldPath,
+            resultText,
+            appliedModifications: []
+        };
+    }
+
+    // Sort the modifications by start position
+    fieldModifications.sort((a, b) => a.start - b.start);
+
+    // Process the redaction modifications in order
+    for (const mod of fieldModifications) {
+        if (mod.action === 'redact') {
             let redactionStartChar = 'X';
             let redactionFillChar = 'X';
             let redactionEndChar = 'X';
-            if (match.actionText.length === 1) {
-                redactionStartChar = match.actionText[0];
+            if (mod.actionText && mod.actionText.length === 1) {
+                redactionStartChar = mod.actionText[0];
                 redactionFillChar = redactionStartChar;
                 redactionEndChar = redactionStartChar;
-            } else if (match.actionText.length === 3) {
-                redactionStartChar = match.actionText[0];
-                redactionFillChar = match.actionText[1];
-                redactionEndChar = match.actionText[2];
+            } else if (mod.actionText && mod.actionText.length === 3) {
+                redactionStartChar = mod.actionText[0];
+                redactionFillChar = mod.actionText[1];
+                redactionEndChar = mod.actionText[2];
             }
-            const beforeMatch = resultText.substring(0, match.originalStart);
-            const afterMatch = resultText.substring(match.originalEnd);
+            const beforeMatch = resultText.substring(0, mod.start);
+            const afterMatch = resultText.substring(mod.end);
 
-            const matchLength = match.originalEnd - match.originalStart;
+            const matchLength = mod.end - mod.start;
             if (matchLength < 3) {
                 // Replace each char of match with redaction char
                 resultText = beforeMatch + redactionStartChar.repeat(matchLength) + afterMatch;
@@ -215,77 +192,79 @@ function applyMatchesToField(fieldPath: string, fieldValue: string, matches: Fie
                 // Replace each char of match with redaction char
                 resultText = beforeMatch + redactionStartChar + redactionFillChar.repeat(matchLength - 2) + redactionEndChar + afterMatch;
             }
+            mod.applied = true;
         }
     }
-    // Process the remove and replace matches in order to remove the text and adjust the resultStart and resultEnd of all equal or later matches
-    for (const match of appliedMatches) {
-        if (match.action === 'remove' || match.action === 'replace') {
-            const beforeMatch = resultText.substring(0, match.resultStart);
-            const afterMatch = resultText.substring(match.resultEnd);
+
+    // Process the remove and replace modifications in order to remove the text and adjust the resultStart and resultEnd of all equal or later modifications
+    for (const mod of fieldModifications) {
+        if (mod.action === 'remove' || mod.action === 'replace') {
+            const beforeMatch = resultText.substring(0, mod.fieldResultStart);
+            const afterMatch = resultText.substring(mod.fieldResultEnd);
             resultText = beforeMatch + afterMatch;
-            // Update the resultStart and resultEnd of all matches to reflect the removed text
-            const removedTextStart = match.resultStart;
-            const removedTextLength = match.resultEnd - match.resultStart;
-            for (const processMatch of appliedMatches) {
-                if (processMatch.resultStart > removedTextStart) {
-                    processMatch.resultStart = Math.max(processMatch.resultStart - removedTextLength, removedTextStart);
+            // Update the resultStart and resultEnd of all modifications to reflect the removed text
+            const removedTextStart = mod.fieldResultStart;
+            const removedTextLength = mod.fieldResultEnd - mod.fieldResultStart;
+            for (const processMod of fieldModifications) {
+                if (processMod.fieldResultStart > removedTextStart) {
+                    processMod.fieldResultStart = Math.max(processMod.fieldResultStart - removedTextLength, removedTextStart);
                 }
-                if (processMatch.resultEnd > removedTextStart) {
-                    processMatch.resultEnd = Math.max(processMatch.resultEnd - removedTextLength, removedTextStart);
-                }
-            }
-        }
-    }
-    // Process the replace matches in order to insert the replacement text
-    for (const match of appliedMatches) {
-        if (match.action === 'replace') {
-            const beforeMatch = resultText.substring(0, match.resultStart);
-            const afterMatch = resultText.substring(match.resultEnd);
-            resultText = beforeMatch + match.actionText + afterMatch;
-            // Update the resultStart and resultEnd of all matches to reflect the inserted text
-            const insertedTextStart = match.resultStart;
-            const insertedTextLength = match.actionText.length;
-            match.resultEnd = match.resultStart + match.actionText.length;
-            for (const processMatch of appliedMatches) {
-                if (processMatch != match) {
-                    if (processMatch.resultStart >= insertedTextStart) {
-                        processMatch.resultStart += insertedTextLength;
-                    }
-                    if (processMatch.resultEnd >= insertedTextStart) {
-                        processMatch.resultEnd += insertedTextLength;
-                    }
+                if (processMod.fieldResultEnd > removedTextStart) {
+                    processMod.fieldResultEnd = Math.max(processMod.fieldResultEnd - removedTextLength, removedTextStart);
                 }
             }
+            mod.applied = true;
         }
     }
+
+    // Process the replace modifications in order to insert the replacement text
+    for (const mod of fieldModifications) {
+        if (mod.action === 'replace') {
+            const beforeMatch = resultText.substring(0, mod.fieldResultStart);
+            const afterMatch = resultText.substring(mod.fieldResultEnd);
+            resultText = beforeMatch + (mod.actionText || '') + afterMatch;
+            // Update the resultStart and resultEnd of all modifications to reflect the inserted text
+            const insertedTextStart = mod.fieldResultStart;
+            const insertedTextLength = (mod.actionText || '').length;
+            mod.fieldResultEnd = mod.fieldResultStart + insertedTextLength;
+            for (const processMod of fieldModifications) {
+                if (processMod != mod) {
+                    if (processMod.fieldResultStart >= insertedTextStart) {
+                        processMod.fieldResultStart += insertedTextLength;
+                    }
+                    if (processMod.fieldResultEnd >= insertedTextStart) {
+                        processMod.fieldResultEnd += insertedTextLength;
+                    }
+                }
+            }
+            mod.applied = true;
+        }
+    }
+
     return {
         fieldPath,
         resultText,
-        appliedMatches
+        appliedModifications: fieldModifications
     };
 }
 
-// We use this function to apply all field matches to a message payload and get the resulting payload for the message processor output
-//
-// We also use this function to get the resulting text, along with the applied matches for each alert so that we can highlight the original
-// match in the original text and the resulting match in the resulting text in the UI (typically by alert ID, which could be multiple matches)
-//
-// NOTE: The fact that we call this from both the front end and the back end makes logging complicated - we can't use either log (console) or logger (winston).
-//
-export function applyAllFieldMatches(messagePayloadString: string, fieldMatches: FieldMatchWithAlertId[]): AppliedFieldMatches {
+export function applyAllActionEventFieldMatches(messagePayloadString: string, events: ActionEvent[]): string {
+    // Copy logic from below, but using ActionEvents (field matches will be applied in-place using applyActionEventsToField)
+    // Compute json offsets and update them in the contentModification (which will be AppliedFieldModification objects)
 
     const ast = parseJsonToAst(messagePayloadString);
     
-    // Group field matches by field path to avoid duplicate edits
-    const fieldMatchGroups = new Map<string, FieldMatchWithAlertId[]>();
-    for (const fieldMatch of fieldMatches) {
-        if (!fieldMatchGroups.has(fieldMatch.fieldPath)) {
-            fieldMatchGroups.set(fieldMatch.fieldPath, []);
+    // Group alerts by field path
+    const fieldMatchGroups = new Map<string, ActionEvent[]>();
+    for (const actionEvent of events) {
+        if (actionEvent.contentModification?.type === 'field') {
+            if (!fieldMatchGroups.has(actionEvent.contentModification?.fieldPath)) {
+                fieldMatchGroups.set(actionEvent.contentModification?.fieldPath, []);
+            }
+            fieldMatchGroups.get(actionEvent.contentModification?.fieldPath)!.push(actionEvent);
         }
-        fieldMatchGroups.get(fieldMatch.fieldPath)!.push(fieldMatch);
     }
 
-    const allAppliedFieldMatches: AppliedFieldMatchesForField[] = [];
     let processedText = messagePayloadString;
 
     const allFieldPaths = Array.from(fieldMatchGroups.keys());
@@ -303,64 +282,70 @@ export function applyAllFieldMatches(messagePayloadString: string, fieldMatches:
             continue;
         }
         // Apply the matches to the field
-        const appliedFieldMatches = applyMatchesToField(fieldPath, fieldValue, fieldMatchGroups.get(fieldPath)!);
+        const appliedFieldMatches = applyActionEventsToField(fieldPath, fieldValue, fieldMatchGroups.get(fieldPath)!);
         // Replace the field in the message payload using jsonc
         const edits = modify(processedText, fieldPathToJsonPath(fieldPath), appliedFieldMatches.resultText, {});
         processedText = applyEdits(processedText, edits);
-        allAppliedFieldMatches.push(appliedFieldMatches);
     }
 
     const processedAst = parseJsonToAst(processedText);
 
     const processedStringFieldPositions = findStringFieldPositions(processedAst, allFieldPaths);
 
-    // Update match positions to use json object indexes instead of field indexes
-    for (const appliedFieldMatch of allAppliedFieldMatches) {
-        const originalStringField = originalStringFieldPositions.get(appliedFieldMatch.fieldPath);
-        const processedStringField = processedStringFieldPositions.get(appliedFieldMatch.fieldPath);
-        if (originalStringField && processedStringField) {
-            appliedFieldMatch.appliedMatches.forEach(match => {
-                match.originalStart = originalStringField.startOffset + match.originalStart;
-                match.originalEnd = originalStringField.startOffset + match.originalEnd;
-                match.resultStart = processedStringField.startOffset + match.resultStart;
-                match.resultEnd = processedStringField.startOffset + match.resultEnd;
-            });
+    // Update json positions to use json object indexes instead of field indexes
+    for (const event of events) {
+        if (event.contentModification?.type === 'field') {
+            const fieldMod = event.contentModification as AppliedFieldModification;
+            const originalStringField = originalStringFieldPositions.get(fieldMod.fieldPath);
+            const processedStringField = processedStringFieldPositions.get(fieldMod.fieldPath);
+            if (originalStringField && processedStringField) {
+                fieldMod.jsonOriginalStart = originalStringField.startOffset + fieldMod.fieldResultStart;
+                fieldMod.jsonOriginalEnd = originalStringField.startOffset + fieldMod.fieldResultEnd;
+                fieldMod.jsonResultStart = processedStringField.startOffset + fieldMod.fieldResultStart;
+                fieldMod.jsonResultEnd = processedStringField.startOffset + fieldMod.fieldResultEnd;
+            }
         }
     }
 
-    return {
-        resultText: processedText,
-        appliedMatches: allAppliedFieldMatches.flatMap(fieldMatch => 
-            fieldMatch.appliedMatches.map(match => ({
-                fieldPath: fieldMatch.fieldPath,
-                ...match
-            }))
-        )
-    };
+    return processedText;
 }
 
-// New function that applies modifications directly to a payload
 export function applyModificationsToPayload(
     payload: any,
     origin: MessageOrigin,
     messageActions: MessageActionData[]
-): { modifiedPayload: any; appliedMessageReplacement: ActionEvent | null } {
+): { originalPayload: string, modifiedPayload: string | null } {
+    const originalPayload = JSON.stringify(payload, null, 2);
+
+    // Define wrapper type inline to maintain connection to original ActionEvents
+    type ActionEventWrapper = {
+        original: ActionEvent;
+        policySeverity: number;
+        elementClassName: string;
+    };
+
     // Extract all content modifications from message actions
-    const contentModifications: (ActionEvent & { policySeverity: number, elementClassName: string })[] = [];
+    const contentModifications: ActionEventWrapper[] = [];
     
     for (const messageAction of messageActions) {
+        // Collect only actions for appropriate origin
+        if (messageAction.origin !== origin) {
+            continue;
+        }
         // Collect only content modifications for coalescing
         const contentEvents = messageAction.actionEvents.filter(e => e.contentModification);
-        contentModifications.push(...contentEvents.map((e: ActionEvent) => ({ 
-            ...e, 
+        contentModifications.push(...contentEvents.map((actionEvent: ActionEvent) => ({ 
+            original: actionEvent,
             policySeverity: messageAction.severity,
             elementClassName: messageAction.action.elementClassName
         })));
     }
 
-    // Check for message replacement actions (error, replace)
     const messageReplacements = contentModifications.filter(
-        e => e.contentModification?.type === 'message'
+        e => e.original.contentModification?.type === 'message'
+    );
+    const fieldModifications = contentModifications.filter(
+        e => e.original.contentModification?.type === 'field'
     );
 
     if (messageReplacements.length > 0) {
@@ -376,80 +361,18 @@ export function applyModificationsToPayload(
             return highest;
         });
         
-        const messageReplacement = highestPriority.contentModification as MessageReplacement;
-        return { modifiedPayload: messageReplacement.payload, appliedMessageReplacement: highestPriority };
-    } else {
-        // No message replacement, handle field modifications
-        const fieldModifications = contentModifications.filter(
-            e => e.contentModification?.type === 'field'
-        );
-
-        if (fieldModifications.length > 0) {
-            // Convert ActionEvents to the format expected by existing coalescing logic
-            const fieldMatches = fieldModifications.map(event => {
-                const fieldMod = event.contentModification as FieldModification;
-                return {
-                    fieldPath: fieldMod.fieldPath,
-                    start: fieldMod.start,
-                    end: fieldMod.end,
-                    action: fieldMod.action,
-                    actionText: fieldMod.actionText || '',
-                    //alertId: undefined // Not needed for coalescing - !!! Remove this at some point?
-                };
-            });
-            
-            // Use existing coalescing logic
-            const payloadString = JSON.stringify(payload, null, 2);
-            const appliedMatches = applyAllFieldMatches(payloadString, fieldMatches);
-
-            // !!! We're going to have to return appliedMatches (maybe with more context) so that we can highlight the modifications
-            //     in the UX - for context we need to correlate them to an ActionResults (which is much higher level).
-            
-            // Parse the result back to an object
-            const resultPayload = JSON.parse(appliedMatches.resultText);
-            
-            return { modifiedPayload: resultPayload, appliedMessageReplacement: null };
-        }
+        // Need to mark highest priority message replacement as applied
+        highestPriority.original.contentModification = {
+            ...highestPriority.original.contentModification,
+            applied: true
+        } as AppliedMessageReplacement;
+        return { originalPayload, modifiedPayload: JSON.stringify(highestPriority.original.contentModification.payload, null, 2) };
+    } else if (fieldModifications.length > 0) {            
+        // Extract the original ActionEvents for field modifications
+        const originalFieldModifications = fieldModifications.map(wrapper => wrapper.original);
+        return { originalPayload, modifiedPayload: applyAllActionEventFieldMatches(originalPayload, originalFieldModifications) };
     }
 
     // No modifications, return original payload
-    return { modifiedPayload: payload, appliedMessageReplacement: null };
-}
-
-// Backward compatibility with old function
-
-export interface AppliedMatch {
-    originalStart: number;
-    originalEnd: number;
-    finalStart: number;
-    finalEnd: number;
-    action: string;
-    actionText: string;
-    alertId?: number;
-}
-  
-export interface MatchResult {
-    processedText: string;
-    appliedMatches: AppliedMatch[];
-}
-
-export function applyMatchesFromAlerts(
-    messagePayloadString: string,
-    alerts: Array<{ alertId: number; matches: FieldMatch[] | null }>
-): MatchResult {
-    // Convert alerts param to FieldMatchWithAlertId[]
-    const fieldMatches: FieldMatchWithAlertId[] = alerts.flatMap(alert => alert.matches?.map(match => ({
-        ...match,
-        alertId: alert.alertId
-    })) || []);
-    const appliedFieldMatches = applyAllFieldMatches(messagePayloadString, fieldMatches);
-    // Convert appliedFieldMatches to MatchResult
-    return {
-        processedText: appliedFieldMatches.resultText,
-        appliedMatches: appliedFieldMatches.appliedMatches.map(match => ({
-            ...match,
-            finalStart: match.resultStart,
-            finalEnd: match.resultEnd
-        }))
-    };
+    return { originalPayload, modifiedPayload: null };
 }

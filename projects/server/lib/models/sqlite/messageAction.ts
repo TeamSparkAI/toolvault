@@ -97,12 +97,22 @@ export class SqliteMessageActionModel extends MessageActionModel {
     async create(data: Omit<MessageActionData, 'createdAt' | 'messageActionId'>): Promise<MessageActionData> {
         const actionJson = JSON.stringify(data.action);
         const actionEventsJson = JSON.stringify(data.actionEvents);
-        const result = await this.db.query<MessageActionData>(
+        const result = await this.db.execute(
             'INSERT INTO message_actions (messageId, policyId, origin, severity, action, actionEvents, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [data.messageId, data.policyId, data.origin, data.severity, actionJson, actionEventsJson, data.timestamp]
         );
 
+        // Get the last inserted ID
+        const messageActionId = result.lastID;
+        if (typeof messageActionId !== 'number') {
+            throw new Error('Failed to get last inserted ID');
+        }
+
         // After creating, fetch the full record
-        return this.findById(result.rows[0].messageActionId) as Promise<MessageActionData>;
+        const createdRecord = await this.findById(messageActionId);
+        if (!createdRecord) {
+            throw new Error(`Failed to retrieve created message action with ID ${messageActionId}`);
+        }
+        return createdRecord;
     }
 }

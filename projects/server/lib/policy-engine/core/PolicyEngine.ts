@@ -28,19 +28,20 @@ export class PolicyEngine {
                     const conditionClass = ConditionRegistry.getCondition(condition.elementClassName);
                     if (conditionClass) {
                         const findings = await conditionClass.applyCondition(message, null, condition.params);
-
-                        const conditionInstance: PolicyConditionInstance = {
-                            elementClassName: condition.elementClassName,
-                            elementConfigId: condition.elementConfigId,
-                            instanceId: condition.instanceId,
-                            name: condition.name,
-                            params: condition.params
-                        };
-
-                        conditionFindings.push({
-                            condition: conditionInstance,
-                            findings: findings
-                        });
+                        if (findings.length > 0) {
+                            const conditionInstance: PolicyConditionInstance = {
+                                elementClassName: condition.elementClassName,
+                                elementConfigId: condition.elementConfigId,
+                                instanceId: condition.instanceId,
+                                name: condition.name,
+                                params: condition.params
+                            };
+    
+                            conditionFindings.push({
+                                condition: conditionInstance,
+                                findings: findings
+                            });
+                        }
                     }
                 }
             }
@@ -92,14 +93,18 @@ export class PolicyEngine {
     ): JsonRpcMessageWrapper {
         // Apply modifications to the appropriate payload based on message origin
         const origin = originalMessage.origin;
-        const payload = origin === 'client' ? originalMessage.params : originalMessage.result;
+        const startingPayload = origin === 'client' ? originalMessage.params : originalMessage.result;
         
-        const { modifiedPayload } = applyModificationsToPayload(payload, origin, messageActions);
+        const { modifiedPayload } = applyModificationsToPayload(startingPayload, origin, messageActions);
         
-        if (origin === 'client') {
-            return originalMessage.withPayload('params', modifiedPayload);
+        if (modifiedPayload) {
+            if (origin === 'client') {
+                return originalMessage.withPayload('params', modifiedPayload);
+            } else {
+                return originalMessage.withPayload('result', modifiedPayload);
+            }
         } else {
-            return originalMessage.withPayload('result', modifiedPayload);
+            return originalMessage;
         }
     }
 }

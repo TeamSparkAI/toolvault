@@ -358,15 +358,6 @@
                 }
             }
         ],
-        "actions": [
-            {
-                "class": "rewrite",
-                "params": {
-                    "action": "none",
-                    "actionText": ""
-                }
-            }
-        ],
         "severity": 5,
         "enabled": true
     }

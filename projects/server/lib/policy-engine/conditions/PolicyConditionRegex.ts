@@ -156,6 +156,7 @@ export class RegexCondition extends PolicyConditionBase {
                             keywords: params.keywords, // !!! It might be interesting to include the matching keywords in the finding
                             validator: params.validator
                         },
+                        match: true, // This finding is suitable for text replacement/redaction actions
                         location: {
                             fieldPath: stringField.path,
                             start: match.index,

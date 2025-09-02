@@ -10,10 +10,10 @@ import { useDimensions } from '@/app/hooks/useDimensions';
 import { useLayout } from '@/app/contexts/LayoutContext';
 import { useAlerts } from '@/app/contexts/AlertsContext';
 import { getClientIcon } from '@/lib/client-icons';
-import { applyMatchesFromAlerts, applyModificationsToPayload, resolveFindings } from '@/lib/policy-engine/utils/messageModifications';
+import { applyModificationsToPayload, resolveFindings } from '@/lib/policy-engine/utils/messageModifications';
 import { MessageActionsData } from '@/lib/models/types/messageAction';
 import { MessageOrigin } from '@/lib/jsonrpc';
-import { ActionEvent } from '@/lib/policy-engine/types/core';
+import { AppliedFieldModification, isAppliedFieldModification, isAppliedMessageReplacement } from '@/lib/policy-engine/types/core';
 import { getServerIconUrl } from '@/lib/utils/githubImageUrl';
 import { Server } from '@/lib/types/server';
 import { AlertsMenu } from '@/app/components/alerts/AlertsMenu';
@@ -149,39 +149,24 @@ export default function MessageDetailsPage() {
     return dimensions.getLabel('clientId', clientId) || clientId;
   };
 
-  const getModifiedMessage = (origin: MessageOrigin): { modifiedPayload: any | null; appliedMessageReplacement: ActionEvent | null } => {
-    if (!message || !messageActions) {
-      return { modifiedPayload: null, appliedMessageReplacement: null };
-    }
-
-    // Filter actions for the specific origin
-    const originActions = messageActions.actions.filter(action => action.origin === origin);
-    
-    if (originActions.length === 0) {
-      return { modifiedPayload: null, appliedMessageReplacement: null };
-    }
-
-    // Get the payload for the requested origin
-    const originalPayload = origin === 'client' ? message.payloadParams : message.payloadResult;
-    
-    // Apply modifications directly to the payload
-    const { modifiedPayload, appliedMessageReplacement } = applyModificationsToPayload(originalPayload, origin, originActions);
-    
-    return { modifiedPayload, appliedMessageReplacement };
-  };
-
-  // If alert is selectged, the selected context is the MessageActionData correlated to that alert (could be ActionEvents from multiple actions)
-  // If an action is selected, the selected context is the ActionResults (under MessageActionData.actionResults) that are the ActionEvents for a given action (PolicyActionInstance)
+  // The selection context can be an alertId or a messageActionId.  If alertId, we highlight any ActionEvent content modifications for that alertId.
+  // If messageActionId, we highlight any ActionEvent content modifications for that messageActionId.  Right now we only have alerts displayed and
+  // the expected functionality is implemented.  When we add an actions list, we'll need to implement the functionality for that as well (as below).
   //
-  // The "actions" list is going to be the ActionResults from all MessagesActionData message actions (across policies, and including both origins).
+  // !!! If I select an Alert I want to see the alert matches highlighted in the original message, whether or not there were any content mods.  If
+  //     there were content mods related to that alert, I also want to see them highlighted in the modified message [done].
   //
-  // Maybe for selectedAction we pass in an array of ActionResults - either all ActionResults associated with a given alertId when an
-  // alert is selected or the selected action when an action is selected.
+  // !!! If I select a MessageAction I want to see the message action matches (if applicable) highlighted in the original message, whether or not there
+  //     were any content mods.  If there were content mods related to that message action, I want to see them highlighted in the modified message.
   //
-  // NOTE: Right now if we call this with null for the selectedAction, it should display the correct modificed payload, but it won't
-  //       highlight the selected action modifications
+  // !!! We need to highlight both the original payload and the modified payload with the appropriate matches.  The rule is: if an alert is selected,
+  //     we highlight the alert findings in the original message using the highlightMatchedText method, which guarantees that all alert findings will be
+  //     highlighted (whether or not there were any content mods).  And then we use this method to generate the modified payload with any content mods
+  //     highlighted in the modified payload (in this case the UX gets the original payload from the highlightMatchedText method and ignores the original
+  //     payload from this method).  If no alert is selected, we use this method to generate the original and modified payload, and if a messageAction is
+  //     selected, it will also highlight the action event content modifications in the original message and the modified message (still to be implemented).
   //
-  const newGetHighlightedRedactedPayload = (payload: any, origin: MessageOrigin, messageActions: MessageActionsData, selectedAction: ActionEvent | null) => {
+  const getHighlightedRedactedPayload = (payload: any, origin: MessageOrigin, messageActions: MessageActionsData, selectedAlertId: number | null) => {
     const formattedPayload = JSON.stringify(payload, null, 2);
     if (!messageActions) {
       return formattedPayload;
@@ -194,75 +179,61 @@ export default function MessageDetailsPage() {
     }
 
     // Apply modifications to the payload
-    const { modifiedPayload, appliedMessageReplacement } = applyModificationsToPayload(payload, origin, contentModificationMessageActions);
+    const { originalPayload, modifiedPayload } = applyModificationsToPayload(payload, origin, contentModificationMessageActions);
 
-    // !!! We need to get the applied actions back (need to modify applyModificationsToPayload to return the applied actions with appropriate context)
+    // If any mods applied and there is a selection context, highlight the selected content's mods
+    if (modifiedPayload && selectedAlertId != null) {
+      // There will either be a single message replacement, or one or more field modifications
+      const appliedMessageReplacementEvent = contentModificationMessageActions.find(a =>
+        a.actionEvents.some(e => 
+          e.alertId === selectedAlertId && 
+          e.contentModification?.type === 'message' &&
+          isAppliedMessageReplacement(e.contentModification) &&
+          e.contentModification.applied
+        )
+      );
 
-    // Highlight the selectedAction if it exists
-    if (selectedAction) {
-      if (appliedMessageReplacement) {
-        // The message was replaced and the appliedMessageReplacement is the replacement ActionEvent - was it the selectedAction?
-        // !!! The appliedMessageReplacement ActionEvent isn't enough detail to determine if it's the selectedAction (we need more context about it's owner)
-      } else {
-        // !!! The message applied all content modification ActionEvents - we need to get the ones that belong to the selectedAction
-        //     from the applied actions so we can highlight them...
-      }
-    }
+      const appliedFieldModEvents = contentModificationMessageActions.flatMap(a => 
+        a.actionEvents.filter(e => 
+          e.alertId === selectedAlertId && 
+          e.contentModification?.type === 'field' && 
+          isAppliedFieldModification(e.contentModification) && 
+          e.contentModification.applied
+        )
+      );
 
-    return modifiedPayload;
-  };
+      if (appliedMessageReplacementEvent) {
+        // Highlight the message payload (which as been replaced)
+      } else if (appliedFieldModEvents.length > 0) {
+        // Highlight the field modifications
 
-  const getHighlightedRedactedPayload = (payload: any, alerts: AlertReadData[], origin: MessageOrigin, selectedAlert: AlertReadData | null) => {
-    const formattedPayload = JSON.stringify(payload, null, 2);
-    if (!alerts || alerts.length === 0) {
-      return formattedPayload;
-    }
-    
-    const filteredAlerts = alerts.filter(a => a.origin === origin);
-    
-    if (filteredAlerts.length === 0) {
-      return formattedPayload;
-    }
-    
-    const result = applyMatchesFromAlerts(formattedPayload, filteredAlerts);
-    log.info('result', result);
-    
-    try {      
-      // If we have a selected alert, highlight its redactions
-      if (selectedAlert && selectedAlert.origin === origin) {
-        const selectedAlertRedactions = result.appliedMatches.filter(r => r.alertId === selectedAlert.alertId);
+        // Sort redactions by final position in reverse order to avoid position shifts
+        const sortedModifcations = [...appliedFieldModEvents].sort((a, b) => (b.contentModification as AppliedFieldModification).jsonResultStart! - (a.contentModification! as AppliedFieldModification).jsonResultStart!);
+          
+        let highlightedString = modifiedPayload;
+        let offset = 0;
         
-        if (selectedAlertRedactions.length > 0) {
-          // Sort redactions by final position in reverse order to avoid position shifts
-          const sortedRedactions = [...selectedAlertRedactions].sort((a, b) => b.finalStart - a.finalStart);
+        for (const modification of sortedModifcations) {
+          // Find the corresponding position in the formatted JSON
+          const contentModification = modification.contentModification as AppliedFieldModification;
+          let formattedStart = contentModification.jsonResultStart!;
+          let formattedEnd = contentModification.jsonResultEnd!;
           
-          let highlightedString = result.processedText;
-          let offset = 0;
-          
-          for (const redaction of sortedRedactions) {
-            // Find the corresponding position in the formatted JSON
-            let formattedStart = redaction.finalStart;
-            let formattedEnd = redaction.finalEnd;
-            
-            if (formattedStart !== -1 && formattedEnd !== -1) {
-              const before = highlightedString.substring(0, formattedStart + offset);
-              const replacement = highlightedString.substring(formattedStart + offset, formattedEnd + offset);
-              const after = highlightedString.substring(formattedEnd + offset);
-              highlightedString = `${before}<mark class="bg-red-200 text-red-800 px-1 rounded">${replacement}</mark>${after}`;
-              offset += '<mark class="bg-red-200 text-red-800 px-1 rounded"></mark>'.length;
-            }
+          if (formattedStart !== -1 && formattedEnd !== -1) {
+            const before = highlightedString.substring(0, formattedStart + offset);
+            const replacement = highlightedString.substring(formattedStart + offset, formattedEnd + offset);
+            const after = highlightedString.substring(formattedEnd + offset);
+            highlightedString = `${before}<mark class="bg-red-200 text-red-800 px-1 rounded">${replacement}</mark>${after}`;
+            offset += '<mark class="bg-red-200 text-red-800 px-1 rounded"></mark>'.length;
           }
-          
-          log.info('highlightedString', highlightedString);
-          return highlightedString;
         }
+        
+        log.info('highlightedString', highlightedString);
+        return highlightedString;
       }
-      log.info('result.processedText', result.processedText);
-      return result.processedText;
-    } catch (error) {
-      log.error('error', error);
-      return formattedPayload;
     }
+
+    return modifiedPayload || originalPayload;
   };
 
   const highlightMatchedText = (payload: any, alert: AlertReadData | null) => {
@@ -564,13 +535,11 @@ export default function MessageDetailsPage() {
             
             {/* Check if any client-side actions were applied */}
             {(() => {
-              // !!! hasActions needs to look at messageActions, see if it's not null, and if any actions are content modifications
-              // !!! We need to see of the selectedAlert has a corresponding content modification action, and if so, pass that to getHighlightedRedactedPayload
+              // !!! We need to see if the selectedAlert has a corresponding content modification action, and if so, pass that to getHighlightedRedactedPayload
               // !!! There could theoretically be multiple content modification actions for a given alert - LATER
               // !!! We will have a list of actions also, and if one of those is selected, then that's the focussed action (duh)
-              const clientAlerts = alerts.filter(a => a.origin === 'client');
-              const hasActions = clientAlerts.some(alert => 
-                alert.matches && alert.matches.some(match => match.action !== 'none')
+              const hasActions = messageActions && messageActions.actions.some(action => 
+                action.origin === 'client' && action.actionEvents.some(event => event.contentModification)
               );
               
               return (
@@ -611,7 +580,7 @@ export default function MessageDetailsPage() {
                       ) : (
                         <pre className="bg-gray-100 p-4 rounded overflow-x-auto">
                           <div dangerouslySetInnerHTML={{ 
-                            __html: getHighlightedRedactedPayload(message.payloadParams, alerts, 'client', alerts.find(a => a.alertId === selectedAlertId && a.origin === 'client') || null)
+                            __html: getHighlightedRedactedPayload(message.payloadParams, 'client', messageActions!, selectedAlertId)
                           }} />
                         </pre>
                       )}
@@ -632,10 +601,8 @@ export default function MessageDetailsPage() {
               ) : (
                 /* Check if any server-side actions were applied */
                 (() => {
-                  // !!! See hasActions comments above
-                  const serverAlerts = alerts.filter(a => a.origin === 'server');
-                  const hasActions = serverAlerts.some(alert => 
-                    alert.matches && alert.matches.some(match => match.action !== 'none')
+                  const hasActions = messageActions && messageActions.actions.some(action => 
+                    action.origin === 'server' && action.actionEvents.some(event => event.contentModification)
                   );
                   
                   return (
@@ -661,7 +628,7 @@ export default function MessageDetailsPage() {
                           <h4 className="text-sm font-medium text-gray-600 mb-1">Delivered to client (with actions applied)</h4>
                           <pre className="bg-gray-100 p-4 rounded overflow-x-auto">
                             <div dangerouslySetInnerHTML={{ 
-                              __html: getHighlightedRedactedPayload(message.payloadResult, alerts, 'server', alerts.find(a => a.alertId === selectedAlertId && a.origin === 'server') || null)
+                              __html: getHighlightedRedactedPayload(message.payloadResult, 'server', messageActions!, selectedAlertId)
                             }} />
                           </pre>
                         </div>

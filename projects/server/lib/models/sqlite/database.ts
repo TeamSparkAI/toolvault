@@ -76,10 +76,13 @@ export class DatabaseClient {
   /**
    * Execute a query that doesn't return rows
    */
-  async execute(sql: string, params: SqliteParams = {}): Promise<{ changes: number }> {
+  async execute(sql: string, params: SqliteParams = {}): Promise<{ changes: number; lastID?: number }> {
     try {
       const result = await this.db.run(sql, params);
-      return { changes: result.changes || 0 };
+      return { 
+        changes: result.changes || 0,
+        lastID: result.lastID 
+      };
     } catch (error) {
       throw new DatabaseError(`Execute failed: ${sql}`, error as Error);
     }
