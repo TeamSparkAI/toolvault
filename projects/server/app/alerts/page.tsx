@@ -36,8 +36,8 @@ function AlertsPageContent() {
     const clientId = searchParams.get('clientId');
     if (clientId) urlFilters.clientId = parseInt(clientId);
     
-    const filterName = searchParams.get('filterName');
-    if (filterName) urlFilters.filterName = filterName;
+    const conditionName = searchParams.get('conditionName');
+    if (conditionName) urlFilters.conditionName = conditionName;
 
     return urlFilters;
   };
@@ -52,7 +52,7 @@ function AlertsPageContent() {
   const [totalAlerts, setTotalAlerts] = useState<number>(0);
   const [filtersInitialized, setFiltersInitialized] = useState(Object.keys(initialFilters).length > 0);
   const { dimensions, isLoading: dimensionsLoading, error: dimensionsError } = useDimensions({
-    dimensions: ['policyId', 'filterName', 'severity', 'seen', 'serverId', 'clientId']
+    dimensions: ['policyId', 'conditionName', 'severity', 'seen', 'serverId', 'clientId']
   });
 
   // Update filters when searchParams change
@@ -75,7 +75,7 @@ function AlertsPageContent() {
     if (newFilters.seen !== undefined) params.set('seen', newFilters.seen.toString());
     if (newFilters.serverId !== undefined) params.set('serverId', newFilters.serverId.toString());
     if (newFilters.clientId !== undefined) params.set('clientId', newFilters.clientId.toString());
-    if (newFilters.filterName !== undefined) params.set('filterName', newFilters.filterName);
+    if (newFilters.conditionName !== undefined) params.set('conditionName', newFilters.conditionName);
     
     const newURL = params.toString() ? `?${params.toString()}` : '';
     router.replace(`/alerts${newURL}`, { scroll: false });
@@ -94,7 +94,7 @@ function AlertsPageContent() {
       
       // Add filters
       if (filters.policyId !== undefined) queryParams.set('policyId', filters.policyId.toString());
-      if (filters.filterName !== undefined) queryParams.set('filterName', filters.filterName);
+      if (filters.conditionName !== undefined) queryParams.set('conditionName', filters.conditionName);
       if (filters.seen !== undefined) queryParams.set('seen', filters.seen.toString());
       if (filters.severity !== undefined) queryParams.set('severity', filters.severity.toString());
       if (filters.serverId !== undefined) queryParams.set('serverId', filters.serverId.toString());

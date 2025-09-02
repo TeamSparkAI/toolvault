@@ -15,9 +15,6 @@ const emptyPolicy: Omit<PolicyData, 'policyId' | 'createdAt' | 'updatedAt'> = {
   methods: undefined,
   conditions: [],
   actions: [],
-  filters: [],
-  action: 'none',
-  actionText: undefined,
   enabled: true
 };
 

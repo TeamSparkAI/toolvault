@@ -3,12 +3,12 @@ import { JsonResponse } from '@/lib/jsonResponse';
 import { ModelFactory } from '@/lib/models';
 import { logger } from '@/lib/logging/server';
 
-type AlertDimension = 'policyId' | 'filterName' | 'seen' | 'severity' | 'serverId' | 'clientId' | 'clientType';
+type AlertDimension = 'policyId' | 'conditionName' | 'seen' | 'severity' | 'serverId' | 'clientId' | 'clientType';
 
 export interface AlertAggregateParams {
     dimension: AlertDimension;
     policyId?: number;
-    filterName?: string;
+    conditionName?: string;
     seen?: boolean;
     severity?: number;
     startTime?: string;
@@ -33,7 +33,7 @@ export interface AlertAggregatePayload {
         };
         filters?: {
             policyId?: number;
-            filterName?: string;
+            conditionName?: string;
             seen?: boolean;
             severity?: number;
             serverId?: number;
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         const params: AlertAggregateParams = {
             dimension,
             policyId: searchParams.get('policyId') ? parseInt(searchParams.get('policyId')!) : undefined,
-            filterName: searchParams.get('filterName') || undefined,
+            conditionName: searchParams.get('conditionName') || undefined,
             seen: searchParams.get('seen') ? searchParams.get('seen') === 'true' : undefined,
             severity: searchParams.get('severity') ? parseInt(searchParams.get('severity')!) : undefined,
             startTime: searchParams.get('startTime') || undefined,
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
                 } : undefined,
                 filters: {
                     ...(params.policyId && { policyId: params.policyId }),
-                    ...(params.filterName && { filterName: params.filterName }),
+                    ...(params.conditionName && { conditionName: params.conditionName }),
                     ...(params.seen !== undefined && { seen: params.seen }),
                     ...(params.severity !== undefined && { severity: params.severity }),
                     ...(params.serverId && { serverId: params.serverId }),

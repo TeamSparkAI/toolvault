@@ -3,7 +3,7 @@ import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types';
 import { JsonRpcMessageWrapper } from '@/lib/jsonrpc';
 import { ProxyJwtPayload } from '../proxyJwt';
 import { MessageData } from '@/lib/models/types/message';
-import { AlertReadData, FieldMatch } from '@/lib/models/types/alert';
+import { AlertReadData } from '@/lib/models/types/alert';
 import { MessageActionData } from '@/lib/models/types/messageAction';
 import { logger } from '@/lib/logging/server';
 import { PolicyEngine, PolicyContext } from '../policy-engine/core';
@@ -108,32 +108,15 @@ export async function applyPolicies(messageData: MessageData, message: JsonRpcMe
     for (const policyFinding of result.policyFindings) {
         for (const filterFinding of policyFinding.conditionFindings) {
             if (filterFinding.findings.length > 0) {
-                // Convert findings to field matches for alert creation
-                const fieldMatches: FieldMatch[] = filterFinding.findings
-                    .filter(finding => finding.location) // Only findings with text matches
-                    .map(finding => ({
-                        fieldPath: finding.location!.fieldPath,
-                        start: finding.location!.start,
-                        end: finding.location!.end,
-                        action: 'none', // Will be determined by policy actions
-                        actionText: ''
-                    }));
-                
-                if (fieldMatches.length > 0) {
-                    const alert = await alertModel.create({
-                        messageId: messageData.messageId,
-                        timestamp: messageData.timestamp,
-                        policyId: policyFinding.policy.policyId,
-                        origin: message.origin,
-                        // OLD FIELDS:
-                        filterName: filterFinding.condition.name,
-                        matches: fieldMatches,
-                        // NEW FIELDS:
-                        condition: filterFinding.condition,
-                        findings: filterFinding.findings
-                    });
-                    alertMap.set(filterFinding.condition.instanceId, alert);
-                }
+                const alert = await alertModel.create({
+                    messageId: messageData.messageId,
+                    timestamp: messageData.timestamp,
+                    policyId: policyFinding.policy.policyId,
+                    origin: message.origin,
+                    condition: filterFinding.condition,
+                    findings: filterFinding.findings,
+                });
+                alertMap.set(filterFinding.condition.instanceId, alert);
             }
         }
     }

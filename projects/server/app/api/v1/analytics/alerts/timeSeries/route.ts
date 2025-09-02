@@ -4,13 +4,13 @@ import { ModelFactory } from '@/lib/models';
 import { logger } from '@/lib/logging/server';
 
 type TimeUnit = 'hour' | 'day' | 'week' | 'month';
-type Dimension = 'policyId' | 'filterName' | 'seen' | 'severity' | 'serverId' | 'clientId' | 'clientType';
+type Dimension = 'policyId' | 'conditionName' | 'seen' | 'severity' | 'serverId' | 'clientId' | 'clientType';
 
 interface AlertTimeSeriesParams {
     dimension: Dimension;
     timeUnit: TimeUnit;
     policyId?: number;
-    filterName?: string;
+    conditionName?: string;
     seen?: boolean;
     severity?: number;
     startTime?: string;
@@ -36,7 +36,7 @@ export interface AlertTimeSeriesPayload {
     };
     filters?: {
       policyId?: number;
-      filterName?: string;
+      conditionName?: string;
       seen?: boolean;
       severity?: number;
       serverId?: number;
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
             dimension: searchParams.get('dimension') as Dimension,
             timeUnit: searchParams.get('timeUnit') as TimeUnit,
             policyId: searchParams.get('policyId') ? Number(searchParams.get('policyId')) : undefined,
-            filterName: searchParams.get('filterName') || undefined,
+            conditionName: searchParams.get('conditionName') || undefined,
             seen: searchParams.get('seen') === 'true' ? true : searchParams.get('seen') === 'false' ? false : undefined,
             severity: searchParams.get('severity') ? Number(searchParams.get('severity')) : undefined,
             startTime: searchParams.get('startTime') || undefined,
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
               } : undefined,
               filters: {
                 ...(params.policyId && { policyId: params.policyId }),
-                ...(params.filterName && { filterName: params.filterName }),
+                ...(params.conditionName && { conditionName: params.conditionName }),
                 ...(params.seen && { seen: params.seen }),
                 ...(params.severity && { severity: params.severity }),
                 ...(params.serverId && { serverId: params.serverId }),

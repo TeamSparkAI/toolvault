@@ -11,6 +11,18 @@ ALTER TABLE policies ADD COLUMN actions JSON;
 ALTER TABLE alerts ADD COLUMN condition JSON NOT NULL;
 ALTER TABLE alerts ADD COLUMN findings JSON NOT NULL;
 
+-- Add generated column for condition name (for analytics performance)
+ALTER TABLE alerts ADD COLUMN conditionName TEXT GENERATED ALWAYS AS (json_extract(condition, '$.name')) VIRTUAL;
+
+-- Remove old columns that are no longer used
+ALTER TABLE alerts DROP COLUMN filterName;
+ALTER TABLE alerts DROP COLUMN matches;
+
+-- Remove old policy columns that are no longer used
+ALTER TABLE policies DROP COLUMN filters;
+ALTER TABLE policies DROP COLUMN action;
+ALTER TABLE policies DROP COLUMN actionText;
+
 -- Create message_actions table for storing actions taken on messages
 CREATE TABLE message_actions (
     messageActionId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,6 +65,9 @@ CREATE INDEX idx_message_actions_created_at ON message_actions(createdAt);
 CREATE INDEX idx_policy_elements_element_type ON policy_elements(elementType);
 CREATE INDEX idx_policy_elements_class_name ON policy_elements(className);
 CREATE INDEX idx_policy_elements_enabled ON policy_elements(enabled);
+
+-- Create index for alerts condition name (generated column)
+CREATE INDEX idx_alerts_condition_name ON alerts(conditionName);
 
 -- Create trigger for policy_elements updatedAt timestamp
 CREATE TRIGGER update_policy_elements_timestamp 

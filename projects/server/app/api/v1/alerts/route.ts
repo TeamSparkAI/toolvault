@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         const filter = {
             messageId: url.searchParams.get('messageId') ? Number(url.searchParams.get('messageId')) : undefined,
             policyId: url.searchParams.get('policyId') ? Number(url.searchParams.get('policyId')) : undefined,
-            filterName: url.searchParams.get('filterName') || undefined,
+            conditionName: url.searchParams.get('conditionName') || undefined,
             seen: url.searchParams.get('seen') === 'true' ? true : url.searchParams.get('seen') === 'false' ? false : undefined,
             severity: url.searchParams.get('severity') ? Number(url.searchParams.get('severity')) : undefined,
             startTime: url.searchParams.get('startTime') || undefined,

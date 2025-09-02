@@ -62,7 +62,7 @@ export function AlertList({
                 Policy
               </th>
             )}
-            {!('filterName' in initialFilters) && (
+            {!('conditionName' in initialFilters) && (
               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Condition
               </th>
@@ -113,7 +113,7 @@ export function AlertList({
                     {getDimensionLabel('policyId', String(alert.policyId))}
                   </td>
                 )}
-                {!('filterName' in initialFilters) && (
+                {!('conditionName' in initialFilters) && (
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                     {alert.condition.name}
                   </td>
@@ -150,7 +150,7 @@ export function AlertList({
                         <div>
                           <p><span className="font-medium">Message ID:</span> {alert.messageId}</p>
                           <p><span className="font-medium">Policy ID:</span> {alert.policyId}</p>
-                          <p><span className="font-medium">Filter Name:</span> {alert.filterName}</p>
+                          <p><span className="font-medium">Condition:</span> {alert.condition.name}</p>
                         </div>
                         <div>
                           <p><span className="font-medium">Created:</span> {new Date(alert.createdAt).toLocaleString()}</p>

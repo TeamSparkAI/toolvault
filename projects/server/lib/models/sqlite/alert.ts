@@ -11,7 +11,7 @@ export class SqliteAlertModel extends AlertModel {
     }
 
     async findById(alertId: number): Promise<AlertReadData | null> {
-        const result = await this.db.query<AlertReadData & { matches: string; condition: string; findings: string }>(
+        const result = await this.db.query<AlertReadData & { condition: string; findings: string }>(
             `SELECT a.*, p.severity as policySeverity,
                     m.serverId, m.clientId, c.type as clientType
              FROM alerts a 
@@ -27,7 +27,6 @@ export class SqliteAlertModel extends AlertModel {
         const alert = result.rows[0];
         return {
             ...alert,
-            matches: alert.matches ? JSON.parse(alert.matches) : null,
             condition: alert.condition ? JSON.parse(alert.condition) : null,
             findings: alert.findings ? JSON.parse(alert.findings) : null
         };
@@ -45,9 +44,9 @@ export class SqliteAlertModel extends AlertModel {
             conditions.push('a.policyId = ?');
             params.push(filter.policyId);
         }
-        if (filter.filterName) {
-            conditions.push('a.filterName = ?');
-            params.push(filter.filterName);
+        if (filter.conditionName) {
+            conditions.push('a.conditionName = ?');
+            params.push(filter.conditionName);
         }
         if (filter.seen !== undefined) {
             conditions.push(filter.seen ? 'a.seenAt IS NOT NULL' : 'a.seenAt IS NULL');
@@ -90,7 +89,7 @@ export class SqliteAlertModel extends AlertModel {
             pagination.limit
         ];
 
-        const alerts = await this.db.query<AlertReadData & { matches: string; condition: string; findings: string }>(
+        const alerts = await this.db.query<AlertReadData & { condition: string; findings: string }>(
             `SELECT a.*, p.severity as policySeverity,
                     m.serverId, m.clientId, c.type as clientType
              FROM alerts a 
@@ -104,7 +103,6 @@ export class SqliteAlertModel extends AlertModel {
         // Deserialize JSON fields for each alert
         alerts.rows = alerts.rows.map(alert => ({
             ...alert,
-            matches: alert.matches ? JSON.parse(alert.matches) : null,
             condition: alert.condition ? JSON.parse(alert.condition) : null,
             findings: alert.findings ? JSON.parse(alert.findings) : null
         }));
@@ -137,10 +135,10 @@ export class SqliteAlertModel extends AlertModel {
 
     async create(data: Omit<AlertData, 'alertId' | 'createdAt' | 'seenAt'>): Promise<AlertReadData> {
         const result = await this.db.query<AlertData>(
-            `INSERT INTO alerts (messageId, policyId, filterName, origin, matches, condition, findings, timestamp) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
+            `INSERT INTO alerts (messageId, policyId, origin, condition, findings, timestamp) 
+             VALUES (?, ?, ?, ?, ?, ?) 
              RETURNING *`,
-            [data.messageId, data.policyId, data.filterName, data.origin, JSON.stringify(data.matches), JSON.stringify(data.condition), JSON.stringify(data.findings), data.timestamp]
+            [data.messageId, data.policyId, data.origin, JSON.stringify(data.condition), JSON.stringify(data.findings), data.timestamp]
         );
         
         // After creating, fetch the full record with policy data
@@ -175,9 +173,9 @@ export class SqliteAlertModel extends AlertModel {
             conditions.push('a.policyId = ?');
             params.push(filter.policyId);
         }
-        if (filter.filterName) {
-            conditions.push('a.filterName = ?');
-            params.push(filter.filterName);
+        if (filter.conditionName) {
+            conditions.push('a.conditionName = ?');
+            params.push(filter.conditionName);
         }
         if (filter.startTime) {
             conditions.push('a.createdAt >= ?');
@@ -222,7 +220,7 @@ export class SqliteAlertModel extends AlertModel {
         dimension: string;
         timeUnit: 'hour' | 'day' | 'week' | 'month';
         policyId?: number;
-        filterName?: string;
+        conditionName?: string;
         seen?: boolean;
         severity?: number;
         startTime?: string;
@@ -238,9 +236,9 @@ export class SqliteAlertModel extends AlertModel {
             conditions.push('a.policyId = ?');
             queryParams.push(params.policyId);
         }
-        if (params.filterName) {
-            conditions.push('a.filterName = ?');
-            queryParams.push(params.filterName);
+        if (params.conditionName) {
+            conditions.push('a.conditionName = ?');
+            queryParams.push(params.conditionName);
         }
         if (params.seen !== undefined) {
             conditions.push('a.seenAt IS ' + (params.seen ? 'NOT NULL' : 'NULL'));
@@ -285,7 +283,7 @@ export class SqliteAlertModel extends AlertModel {
         let dimensionColumn: string;
         switch (params.dimension) {
             case 'policyId': dimensionColumn = 'a.policyId'; break;
-            case 'filterName': dimensionColumn = 'a.filterName'; break;
+            case 'conditionName': dimensionColumn = 'a.conditionName'; break;
             case 'seen': dimensionColumn = 'CASE WHEN a.seenAt IS NOT NULL THEN 1 ELSE 0 END'; break;
             case 'severity': dimensionColumn = 'p.severity'; break;
             case 'serverId': dimensionColumn = 'm.serverId'; break;
@@ -329,7 +327,7 @@ export class SqliteAlertModel extends AlertModel {
     async aggregate(params: {
         dimension: string;
         policyId?: number;
-        filterName?: string;
+        conditionName?: string;
         seen?: boolean;
         severity?: number;
         startTime?: string;
@@ -345,9 +343,9 @@ export class SqliteAlertModel extends AlertModel {
             conditions.push('a.policyId = ?');
             queryParams.push(params.policyId);
         }
-        if (params.filterName) {
-            conditions.push('a.filterName = ?');
-            queryParams.push(params.filterName);
+        if (params.conditionName) {
+            conditions.push('a.conditionName = ?');
+            queryParams.push(params.conditionName);
         }
         if (params.seen !== undefined) {
             conditions.push('a.seenAt IS ' + (params.seen ? 'NOT NULL' : 'NULL'));
@@ -383,7 +381,7 @@ export class SqliteAlertModel extends AlertModel {
         let dimensionColumn: string;
         switch (params.dimension) {
             case 'policyId': dimensionColumn = 'a.policyId'; break;
-            case 'filterName': dimensionColumn = 'a.filterName'; break;
+            case 'conditionName': dimensionColumn = 'a.conditionName'; break;
             case 'seen': dimensionColumn = 'CASE WHEN a.seenAt IS NOT NULL THEN 1 ELSE 0 END'; break;
             case 'severity': dimensionColumn = 'p.severity'; break;
             case 'serverId': dimensionColumn = 'm.serverId'; break;
@@ -416,7 +414,7 @@ export class SqliteAlertModel extends AlertModel {
     async getDimensionValues(params: {
         dimensions: string[];
         policyId?: number;
-        filterName?: string;
+        conditionName?: string;
         seen?: boolean;
         startTime?: string;
         endTime?: string;
@@ -432,9 +430,9 @@ export class SqliteAlertModel extends AlertModel {
             conditions.push('a.policyId = ?');
             queryParams.push(params.policyId);
         }
-        if (params.filterName) {
-            conditions.push('a.filterName = ?');
-            queryParams.push(params.filterName);
+        if (params.conditionName) {
+            conditions.push('a.conditionName = ?');
+            queryParams.push(params.conditionName);
         }
         if (params.seen !== undefined) {
             conditions.push(params.seen ? 'a.seenAt IS NOT NULL' : 'a.seenAt IS NULL');
@@ -467,7 +465,7 @@ export class SqliteAlertModel extends AlertModel {
 
             switch (dimension) {
                 case 'policyId': dimensionColumn = 'a.policyId'; break;
-                case 'filterName': dimensionColumn = 'a.filterName'; break;
+                case 'conditionName': dimensionColumn = 'a.conditionName'; break;
                 case 'seen': dimensionColumn = 'CASE WHEN a.seenAt IS NOT NULL THEN 1 ELSE 0 END'; break;
                 case 'severity': dimensionColumn = 'p.severity'; break;
                 case 'serverId': dimensionColumn = 'm.serverId'; break;

@@ -264,9 +264,6 @@ export class ModelFactory {
                 methods: policy.methods,
                 conditions,
                 actions,
-                filters: [], // Empty for new format
-                action: 'none', // Default for new format
-                actionText: '', // Default for new format
                 enabled: policy.enabled
             });
         }

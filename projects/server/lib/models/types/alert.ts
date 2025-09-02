@@ -1,26 +1,13 @@
 import { MessageOrigin } from "@/lib/jsonrpc";
 import { ClientType } from "@/lib/types/clientType";
-import { PolicyActionType } from "@/lib/models/types/policy";
 import { PolicyCondition } from "@/lib/models/types/policy";
 import { Finding } from "@/lib/policy-engine/types/core";
-
-export interface FieldMatch {
-    fieldPath: string;   // JSON path like "params.args[0].apiKey"
-    start: number;       // Start position within the field value
-    end: number;         // End position within the field value
-    action: PolicyActionType;
-    actionText: string;
-}
 
 export interface AlertData {
     alertId: number;
     messageId: number;
     policyId: number;
     origin: MessageOrigin;
-    // OLD FIELDS:
-    filterName: string;
-    matches: FieldMatch[] | null;
-    // NEW FIELDS:
     condition: PolicyCondition;  // The condition that triggered this alert
     findings: Finding[];         // The findings from the condition
     timestamp: string;
@@ -38,7 +25,7 @@ export interface AlertReadData extends AlertData {
 export interface AlertFilter {
     messageId?: number;
     policyId?: number;
-    filterName?: string;
+    conditionName?: string;
     seen?: boolean;
     severity?: number;
     startTime?: string;

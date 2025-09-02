@@ -17,7 +17,7 @@ export function AlertsSection({
 }: AlertsSectionProps) {
   const [filters, setFilters] = React.useState<AlertFilter>({
     policyId: undefined,
-    filterName: undefined,
+    conditionName: undefined,
     seen: undefined,
     severity: undefined,
     serverId: undefined,
@@ -36,11 +36,11 @@ export function AlertsSection({
   const [totalAlerts, setTotalAlerts] = React.useState<number>(0);
 
   const dimensions = providedDimensions ?? useDimensions({
-    dimensions: ['policyId', 'filterName', 'severity', 'seen', 'serverId', 'clientId'],
+    dimensions: ['policyId', 'conditionName', 'severity', 'seen', 'serverId', 'clientId'],
     autoFetch: true,
     filters: {
       policyId: initialFilters.policyId,
-      filterName: initialFilters.filterName,
+      conditionName: initialFilters.conditionName,
       severity: initialFilters.severity,
       seen: initialFilters.seen,
       serverId: initialFilters.serverId,
@@ -130,7 +130,7 @@ export function AlertsSection({
     log.debug('Clearing filters');
     const emptyFilters: AlertFilter = {
       policyId: undefined,
-      filterName: undefined,
+      conditionName: undefined,
       seen: undefined,
       severity: undefined,
       serverId: undefined,

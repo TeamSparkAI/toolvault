@@ -59,16 +59,16 @@ export function AlertFilters({
           </div>
         )}
 
-        {!('filterName' in initialFilters) && (
+        {!('conditionName' in initialFilters) && (
           <div className="min-w-[150px] max-w-[250px]">
-            <label className="block text-sm text-gray-600 mb-1">Filter</label>
+            <label className="block text-sm text-gray-600 mb-1">Condition</label>
             <select
-              value={localFilters.filterName || ''}
-              onChange={(e) => handleFilterChange('filterName', e.target.value || undefined)}
+              value={localFilters.conditionName || ''}
+              onChange={(e) => handleFilterChange('conditionName', e.target.value || undefined)}
               className="w-full px-1.5 py-1 text-sm border rounded"
             >
-              <option value="">All Filters</option>
-              {dimensions.getOptions('filterName').map(option => (
+              <option value="">All Conditions</option>
+              {dimensions.getOptions('conditionName').map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

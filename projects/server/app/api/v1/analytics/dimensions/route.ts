@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 // Policy        | Alert  | policyId       | Lookup | policyName
 // Severity      | Alert  | severity       | Static | Map to static severity strings (and values)
 // Seen          | Alert  | seen           | Static | Map to static seen type strings and values (seen/unseen)
-// Filter        | Alert  | filterName     | ID     | filterName
+// Condition     | Alert  | conditionName  | ID     | conditionName
 //
 // Message are filterable by Msg domain filters
 // Alerts are filterable by all Msg and Alert domain filters
@@ -37,7 +37,7 @@ export const dynamic = 'force-dynamic';
 const MESSAGE_DIMENSIONS = ['serverId', 'serverName', 'userId', 'clientId', 'clientType', 'payloadMethod', 'payloadToolName', 'sourceIP', 'sessionId'] as const;
 type MessageDimension = typeof MESSAGE_DIMENSIONS[number];
 
-const ALERT_DIMENSIONS = ['policyId', 'filterName', 'seen', 'severity'] as const;
+const ALERT_DIMENSIONS = ['policyId', 'conditionName', 'seen', 'severity'] as const;
 type AlertDimension = typeof ALERT_DIMENSIONS[number];
 
 export type Dimension = MessageDimension | AlertDimension;
@@ -102,7 +102,7 @@ export interface DimensionsParams {
   sourceIP?: string;
   // Alert filters
   policyId?: number;
-  filterName?: string;
+  conditionName?: string;
   seen?: boolean;
   severity?: number;
   // Common filters
@@ -133,7 +133,7 @@ export interface DimensionsPayload {
       sourceIP?: string;
       // Alert filters
       policyId?: number;
-      filterName?: string;
+      conditionName?: string;
       seen?: boolean;
       severity?: number;
     };
@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
       sourceIP: searchParams.get('sourceIP') || undefined,
       // Alert filters
       policyId: searchParams.get('policyId') ? Number(searchParams.get('policyId')) : undefined,
-      filterName: searchParams.get('filterName') || undefined,
+      conditionName: searchParams.get('conditionName') || undefined,
       seen: searchParams.get('seen') ? searchParams.get('seen') === 'true' : undefined,
       severity: searchParams.get('severity') ? Number(searchParams.get('severity')) : undefined,
       // Common filters
@@ -208,7 +208,7 @@ export async function GET(request: NextRequest) {
       alertDimensions.length > 0 ? alertModel.getDimensionValues({
         dimensions: alertDimensions,
         policyId: params.policyId,
-        filterName: params.filterName,
+        conditionName: params.conditionName,
         seen: params.seen,
         startTime: params.startTime,
         endTime: params.endTime,
@@ -256,7 +256,7 @@ export async function GET(request: NextRequest) {
           : await alertModel.getDimensionValues({ 
               dimensions: [dim],
               policyId: params.policyId,
-              filterName: params.filterName,
+              conditionName: params.conditionName,
               seen: params.seen,
               startTime: params.startTime,
               endTime: params.endTime,
@@ -330,7 +330,7 @@ export async function GET(request: NextRequest) {
           payloadToolName: params.payloadToolName,
           sourceIP: params.sourceIP,
           policyId: params.policyId,
-          filterName: params.filterName,
+          conditionName: params.conditionName,
           seen: params.seen,
           severity: params.severity
         }

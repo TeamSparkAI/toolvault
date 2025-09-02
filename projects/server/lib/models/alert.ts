@@ -11,7 +11,7 @@ export abstract class AlertModel {
         dimension: string;
         timeUnit: 'hour' | 'day' | 'week' | 'month';
         policyId?: number;
-        filterName?: string;
+        conditionName?: string;
         seen?: boolean;
         startTime?: string;
         endTime?: string;
@@ -24,7 +24,7 @@ export abstract class AlertModel {
     abstract aggregate(params: {
         dimension: string;
         policyId?: number;
-        filterName?: string;
+        conditionName?: string;
         seen?: boolean;
         startTime?: string;
         endTime?: string;
@@ -35,7 +35,7 @@ export abstract class AlertModel {
     abstract getDimensionValues(params: {
         dimensions: string[];
         policyId?: number;
-        filterName?: string;
+        conditionName?: string;
         seen?: boolean;
         startTime?: string;
         endTime?: string;

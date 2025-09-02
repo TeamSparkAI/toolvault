@@ -1,5 +1,3 @@
-export type PolicyActionType = 'remove' | 'redact' | 'redactPattern' | 'replace' | 'none';
-
 // How conditions are stored in the policy
 export interface PolicyCondition {
     elementClassName: string;  // e.g., "regex"
@@ -25,20 +23,8 @@ export interface PolicyData {
     severity: number;
     origin: 'client' | 'server' | 'either';
     methods?: string[];
-    // New
     conditions: PolicyCondition[];
     actions: PolicyAction[];
-    // Old
-    filters: Array<{
-        name: string;
-        notes?: string;
-        regex: string;
-        keywords?: string[];
-        validator?: 'none' | 'luhn';
-    }>;
-    action: PolicyActionType;
-    actionText?: string;
-    // End of old
     enabled: boolean;
     createdAt: string;
     updatedAt: string;

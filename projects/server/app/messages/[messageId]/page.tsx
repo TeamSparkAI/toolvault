@@ -427,9 +427,6 @@ export default function MessageDetailsPage() {
                     Condition
                   </th>
                   <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Action
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Matches
                   </th>
                 </tr>
@@ -479,13 +476,6 @@ export default function MessageDetailsPage() {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                       {alert.condition.name}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {alert.matches && alert.matches.length > 0 ? (
-                        getFriendlyActionName(alert.matches[0].action)
-                      ) : (
-                        <span className="text-gray-400">None</span>
-                      )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                       {alert.findings ? alert.findings.length : 0}

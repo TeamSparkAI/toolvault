@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSeverityOptions } from '@/lib/severity';
-import { PolicyActionType, PolicyData, PolicyCondition, PolicyAction } from '@/lib/models/types/policy';
+import { PolicyData, PolicyCondition, PolicyAction } from '@/lib/models/types/policy';
 import { useDialog } from '@/app/hooks/useDialog';
 import { useNavigationGuard } from '@/app/hooks/useNavigationGuard';
 import { MCP_METHODS_BY_CATEGORY, getMcpMethodCategories } from '@/lib/types/mcpMethod';
@@ -9,8 +9,6 @@ import { ConditionEditor } from './ConditionEditor';
 import { ActionEditor } from './ActionEditor';
 import { AddConditionDialog, AddActionDialog } from './AddElementDialog';
 import { validatePolicyElementParams } from '@/app/lib/validation';
-
-type Filter = PolicyData['filters'][0];
 
 interface PolicyDetailsProps {
   policy: Omit<PolicyData, 'policyId' | 'createdAt' | 'updatedAt'>;
@@ -31,23 +29,11 @@ export function PolicyDetails({
 }: PolicyDetailsProps) {
   const router = useRouter();
   const [editedPolicy, setEditedPolicy] = useState(policy);
-  const [editingFilterIndex, setEditingFilterIndex] = useState<number | null>(null);
   const [showValidationAlert, setShowValidationAlert] = useState(false);
   const [showAddConditionDialog, setShowAddConditionDialog] = useState(false);
   const [showAddActionDialog, setShowAddActionDialog] = useState(false);
   const { confirm } = useDialog();
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setEditedPolicy(prev => ({
-      ...prev,
-      filters: prev.filters.map(f => ({
-        ...f,
-        keywords: f.keywords || [],
-        validator: f.validator || 'none'
-      }))
-    }));
-  }, []);
 
   useEffect(() => {
     setEditedPolicy(policy);
@@ -102,52 +88,14 @@ export function PolicyDetails({
 
     try {
       await onEdit(editedPolicy);
-      setEditingFilterIndex(null);
-      setShowValidationAlert(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'Failed to save policy');
     }
   };
 
   const handleCancel = () => {
     setEditedPolicy(policy);
-    setEditingFilterIndex(null);
-  };
-
-  const handleAddFilter = () => {
-    const newFilter: Filter = {
-      name: '',
-      regex: '',
-      keywords: [],
-      validator: 'none'
-    };
-    setEditedPolicy({
-      ...editedPolicy,
-      filters: [...editedPolicy.filters, newFilter]
-    });
-    setEditingFilterIndex(editedPolicy.filters.length);
-  };
-
-  const handleUpdateFilter = (index: number, updatedFilter: Partial<Filter>) => {
-    const newFilters = [...editedPolicy.filters];
-    newFilters[index] = {
-      ...newFilters[index],
-      ...updatedFilter,
-      keywords: updatedFilter.keywords || newFilters[index].keywords || [],
-      validator: updatedFilter.validator || newFilters[index].validator || 'none'
-    };
-    setEditedPolicy({
-      ...editedPolicy,
-      filters: newFilters
-    });
-  };
-
-  const handleRemoveFilter = (index: number) => {
-    const newFilters = editedPolicy.filters.filter((_, i) => i !== index);
-    setEditedPolicy({
-      ...editedPolicy,
-      filters: newFilters
-    });
+    onCancel?.();
   };
 
   const handleAddCondition = (condition: PolicyCondition) => {
@@ -222,19 +170,6 @@ export function PolicyDetails({
                     {!editedPolicy.name.trim() && (
                       <li>Policy name is required</li>
                     )}
-                    {editedPolicy.filters.map((filter, index) => {
-                      const missingFields = [];
-                      if (!filter.name.trim()) missingFields.push('name');
-                      if (!filter.regex.trim()) missingFields.push('regex pattern');
-                      if (missingFields.length > 0) {
-                        return (
-                          <li key={index}>
-                            Filter {index + 1}: Missing {missingFields.join(' and ')}
-                          </li>
-                        );
-                      }
-                      return null;
-                    }).filter(Boolean)}
                     {editedPolicy.conditions.map((condition, index) => {
                       const errors = [];
                       if (!condition.name.trim()) errors.push('name is required');
