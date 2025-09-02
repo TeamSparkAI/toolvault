@@ -1,6 +1,7 @@
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { PolicyElementBase } from "../core/PolicyElementBase";
 import { Finding } from "../types/core";
+import { PolicyContext } from "../core/PolicyContext";
 
 export interface StringFieldValue {
     path: string;
@@ -40,5 +41,10 @@ export abstract class PolicyConditionBase extends PolicyElementBase {
         super('condition', classId, name, description);
     }
 
-    abstract applyCondition(message: JsonRpcMessageWrapper, config: any, params: any): Promise<Finding[]>
+    abstract applyCondition(
+        message: JsonRpcMessageWrapper, 
+        config: any, 
+        params: any, 
+        context: PolicyContext
+    ): Promise<Finding[]>
 }

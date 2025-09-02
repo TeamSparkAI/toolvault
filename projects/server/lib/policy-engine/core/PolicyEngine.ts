@@ -11,7 +11,7 @@ export class PolicyEngine {
     static async processMessage(
         message: JsonRpcMessageWrapper,
         policies: PolicyData[],
-        context?: PolicyContext
+        context: PolicyContext
     ): Promise<PolicyEngineResult> {
 
         const policyFindings: PolicyFindings[] = [];
@@ -27,7 +27,7 @@ export class PolicyEngine {
                 for (const condition of policy.conditions) {
                     const conditionClass = ConditionRegistry.getCondition(condition.elementClassName);
                     if (conditionClass) {
-                        const findings = await conditionClass.applyCondition(message, null, condition.params);
+                        const findings = await conditionClass.applyCondition(message, null, condition.params, context);
                         if (findings.length > 0) {
                             const conditionInstance: PolicyConditionInstance = {
                                 elementClassName: condition.elementClassName,
@@ -57,7 +57,7 @@ export class PolicyEngine {
                     for (const action of policy.actions) {
                         const actionClass = ActionRegistry.getAction(action.elementClassName);
                         if (actionClass) {
-                            const events = await actionClass.applyAction(message, conditionFindings, null, action);
+                            const events = await actionClass.applyAction(message, conditionFindings, null, action.params, context);
     
                             const actionInstance: PolicyActionInstance = {
                                 elementClassName: action.elementClassName,

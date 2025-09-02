@@ -2,6 +2,7 @@ import { PolicyConditionBase, getStringFieldValues } from "./PolicyConditionBase
 import { JsonSchema, ValidationResult, Finding } from "../types/core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { logger } from "@/lib/logging/server";
+import { PolicyContext } from "../core/PolicyContext";
 
 const KEYWORD_WINDOW_SIZE = 100;
 
@@ -112,7 +113,12 @@ export class RegexCondition extends PolicyConditionBase {
         };
     }
 
-    async applyCondition(message: JsonRpcMessageWrapper, config: any, params: any): Promise<Finding[]> {
+    async applyCondition(
+        message: JsonRpcMessageWrapper, 
+        config: any, 
+        params: any, 
+        context: PolicyContext
+    ): Promise<Finding[]> {
         const findings: Finding[] = [];
 
         // Determine payload type

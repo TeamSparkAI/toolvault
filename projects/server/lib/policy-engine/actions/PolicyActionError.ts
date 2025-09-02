@@ -1,6 +1,6 @@
 import { PolicyActionBase } from "./PolicyActionBase";
 import { JsonSchema, ValidationResult, ActionEventWithConditionId } from "../types/core";
-import { ConditionFindings } from "../core";
+import { ConditionFindings, PolicyContext } from "../core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { PolicyAction } from "@/lib/models/types/policy";
 
@@ -53,15 +53,21 @@ export class PolicyActionError extends PolicyActionBase {
         };
     }
 
-    async applyAction(message: JsonRpcMessageWrapper, conditionFindings: ConditionFindings[], config: any, action: PolicyAction): Promise<ActionEventWithConditionId[]> {
+    async applyAction(
+        message: JsonRpcMessageWrapper, 
+        conditionFindings: ConditionFindings[], 
+        config: any, 
+        params: any, 
+        context: PolicyContext
+    ): Promise<ActionEventWithConditionId[]> {
         return [{
-            details: `Policy error: ${action.params.message}`,
+            details: `Policy error: ${params.message}`,
             metadata: {
                 findingsCount: conditionFindings.length // !!! This is really just an example of setting metadata for an action result
             },
             contentModification: {
                 type: 'message',
-                payload: { error: { code: action.params.code, message: action.params.message } }
+                payload: { error: { code: params.code, message: params.message } }
             }
         }];
     }

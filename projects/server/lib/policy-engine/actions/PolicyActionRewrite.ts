@@ -2,7 +2,7 @@ import { PolicyActionBase } from "./PolicyActionBase";
 import { JsonSchema, ValidationResult, FieldModificationAction, ActionEventWithConditionId } from "../types/core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { PolicyAction } from "@/lib/models/types/policy";
-import { ConditionFindings } from "../core";
+import { ConditionFindings, PolicyContext } from "../core";
 
 export class PolicyActionRewrite extends PolicyActionBase {
     constructor() {
@@ -72,7 +72,13 @@ export class PolicyActionRewrite extends PolicyActionBase {
         };
     }
 
-    async applyAction(message: JsonRpcMessageWrapper, conditionFindings: ConditionFindings[], config: any, action: PolicyAction): Promise<ActionEventWithConditionId[]> {
+    async applyAction(
+        message: JsonRpcMessageWrapper, 
+        conditionFindings: ConditionFindings[], 
+        config: any, 
+        params: any, 
+        context: PolicyContext
+    ): Promise<ActionEventWithConditionId[]> {
         const events: ActionEventWithConditionId[] = [];
 
         const anyFindingsWithMatch = conditionFindings.some(conditionFinding => conditionFinding.findings.some(finding => finding.location));
@@ -85,15 +91,15 @@ export class PolicyActionRewrite extends PolicyActionBase {
                 if (finding.match && finding.location) {
                     // We have this to add to our action event content
                     events.push({
-                        details: `Applied ${action.params.action} to: ${finding.details}`,
+                        details: `Applied ${params.action} to: ${finding.details}`,
                         metadata: finding.metadata,
                         contentModification: {
                             type: 'field',
                             fieldPath: finding.location.fieldPath, 
                             start: finding.location.start,
                             end: finding.location.end,
-                            action: action.params.action as FieldModificationAction,
-                            actionText: action.params.actionText,
+                            action: params.action as FieldModificationAction,
+                            actionText: params.actionText,
                         },
                         conditionInstanceId: conditionFinding.condition.instanceId
                     });

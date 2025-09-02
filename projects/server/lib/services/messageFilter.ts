@@ -73,7 +73,7 @@ function getStringFieldValues(obj: any, path: string = ''): StringFieldValue[] {
 
 // New policy engine (get serverId from jwtPayload in caller)
 //
-export async function applyPolicies(messageData: MessageData, message: JsonRpcMessageWrapper, serverId: number): Promise<JsonRpcMessageWrapper> {
+export async function applyPolicies(messageData: MessageData, message: JsonRpcMessageWrapper): Promise<JsonRpcMessageWrapper> {
     const policyModel = await ModelFactory.getInstance().getPolicyModel();
     const policies = await policyModel.list();
 
@@ -92,8 +92,12 @@ export async function applyPolicies(messageData: MessageData, message: JsonRpcMe
     });
 
     // Build context (serverId from message)
-    const context: PolicyContext = { 
-        serverId: serverId
+    const context: PolicyContext = {
+        clientId: messageData.clientId,
+        serverId: messageData.serverId,
+        userId: messageData.userId,
+        sessionId: messageData.sessionId,
+        sourceIP: messageData.sourceIP
     };
     
     // Use new Policy Engine (static method)
@@ -232,7 +236,7 @@ export class MessageFilterService {
                 });
             }
 
-            const filteredMessage = await applyPolicies(messageData, message, jwtPayload.serverId);
+            const filteredMessage = await applyPolicies(messageData, message);
 
             return {
                 success: true,
