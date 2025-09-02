@@ -43,11 +43,9 @@ proper format or message and contents, apply length and range constraints, etc.
 
 For opentelemetry, send every message to opentelemetry (maybe some other mechanism makes more sense, but mabye the policy engine is the right place for this)
 
-## New actions
+## New actions use cases
 
 For any policy match, we might want to take zero, one, or more than one actions
-- The text processing actions should only be available to filters/validators that produce matches
-  - Maybe we don't care - if you have text processing actions and no filters that produce matches, it's a noop (reasonable)
 - Any policy might want to take certain generic actions
   - Return an MCP error (error code and message)
   - Return specific result (result payload as text or JSON)
@@ -63,12 +61,12 @@ For multiple actions, some are mutually exclusive and require prioritization, ot
 - If an error response is specified, that would take precendence over a specific response (or would it be at the same level?)
 - If we have multiple conflicting errors/specific responses, do we use severity as the tiebreaker (and what if that ties too)?
 - The rest of the actions are unrelated to each other and can be executed as specified
-- For things like log/SIEM do we do action for every match, every filter, or just at the policy level (the decision impacts context available)
+- For actions (consider log/SIEM), the action gets all findings and can determine whether to take an action per finding, or one action for all findings
 
 ## Application and instance configuration
 
 Some conditions or actions could require configuration
-- Conditions could require applicaiton-level config (DLP system config, etc)
+- Conditions could require application-level config (DLP system config, etc)
 - Conditions could require condition-instance params (regexes to match, validator function, etc)
 - Actions could require application-level config (SIEM config, etc)
 - Actions could require action-level params (what to send to log/SIEM, etc, examples?)
@@ -79,42 +77,61 @@ Some conditions or actions may need more context than just the text when being c
 - They may need to know the serverId (for pinning validator)
 - They may need access to models/data (pinning validator) or other servies (secrets manager service for secrets condition)
 
-## Module system
+## New Conditions and Actions system
 
-For each policy we have a list of policy conditions and policy actions, with their respective instance confugration
-We apply the policy conditions, which produce alerts, then we send those alers to the configured policy actions
+Policies have a set of conditions and a set of actions.
 
-Policy condition instances will have name/notes (as current)
+These conditions and actions are implemented as Policy Elements, available from a factory, and installable/configurable via API
+- This is an extensible system, where the policy engine logic knows nothing about the specific conditions/actions
 
-All policy conditions will produce alerts
-- Currently alerts contain filterName and array of matches
-- It seems like we will need to add some more context?  Look at examples.
-  - For something like pinning, new tool showed up, tool disappeard, tool description changed, tool schema changed, etc
-  - This would be per match (at least in this specific case)
-- Some conditions may produce alert "matches" with no matching text
-  - Message validator might have a "exceeds maximum message size" alert that doesn't relate to any specific text match
-- Some conditions might want to add metadata to alerts or alert matchs (for example, confident score for a secret or DLP match)
-  - Maybe the matches contain a description, the match data (optional), and then a metadata JSON object (optional)
-  - The metadata will be available to actions
-    - Some actions may know about sepcific metadata
-    - Some actions may allow metadata to be accessed generally (through tokens, for example, like "DLP leak detected with confidence $match.score")
-      - This might imply that the user knows about the metadata
-      - Should alert metadata schema be part of the policy condition definition?
+Policy conditions have name and notes (especially to distinguish between multiple instances of the same policy condition type in generating alerts)
 
-Some of those alerts will be specific text matches (suitable for text replacement action)
+Each policy condition or action instance contains params to determine how it should be applied
+- The UX uses the policly element schema to dynamically generate config to collect/populate params
+- The UX also can call the policy element optional param validator to validate the set of params
 
-Some of the alerts will not reference any text in the message
+When a condition is applied it reports findings (one or more)
+- The findings can indicate details and metatata about the finding
+- The findings can indicate whether the finding is a text match, suitable for individual action (redaction, etc)
+- The findings can indicate a location (field, range)
 
-Some of the alerts might reference text in the message (so that the UX can highlight the matched/offending content), but those matches may not be suitable for replacement actions
-- Let's say message contained invalid JSON element (or out of range, etc) - we might want to indicate the content, but it is not suitable for replacement
-- Let's say pinning validation wants to indicate the values that didn't match the stored elements (like this new method showed up, or this too description changed)
-  - Indication is at the message level, matches might highlight bad content, but it's not suitable for replacement
-- Note: This probably means "Finding" needa a bool for suitable for replacement (or "text match")
+For each policy, all conditions are applied to a message and all findings collected.
+
+If any findings were produced, all policy actions are applied (the set of findings are passed to each action)
+
+Actions produce ActionEvents (one or more)
+- Each ActionEvent may optionally be linked to the condition that produced the finding that generated it
+
+After all policy actions are applied
+- The set of conditions which produced findings are used to generated an Alert for each set of findings (by policy/condition)
+- The set of ActionEvents for each policy are used to generate a MessageAction with all ActionEvents (by policy/action)
+
+The action events from all policies for a message are evaluted to determine which ones modify content
+Those action events are evaluted as a group to determine the final content modification, which is then applied
+- If any action event is a message replacement, the one associated with the highest severity policy wins
+- If no action event is a message replacement, all content modification actions are applied (coalesced)
+
+### Policy conditions findings use cases
+
+Some findings may indicate a text match (regex condition, secrets manager condition, etc)
+- These findings may be handled specially by actions that can operate on matches (specifically the built-in rewrite action)
+Some findings may indicate referenced text that is not a match
+- Example: Pinning condition identified new tool (will indicate tool in payload, but not as a text "match")
+- UX can still highlight referenced text in payload, but match processing actions will not process it
+Some findings may indicate an issue, but no referenced text (location)
+- Example: Message validator - Message too large
+Some conditions might want to add metadata to findings 
+- Example: Confident score for a secret or DLP match (can be set in finding metadata)
+- The metadata will be available to actions
+  - Some actions may know about sepcific metadata
+  - Some actions may allow metadata to be accessed generally (through tokens, for example, like "DLP leak detected with confidence $match.score")
+    - This might imply that the user knows about the metadata
+    - Should alert metadata schema be part of the policy condition definition?
 
 ## Policy condition
 
 A policy condition is a module implementing the PolicyCondition interface
-It will have metadata (name, description, input type: message or text, and output type - produces matches)
+It will have metadata (name, description)
 - In new implementation it takes a message, has base class utility methods to process as fields
 A policy processor can have it's own application-level configuration
 - It has a schema indicating fields, required/optional, default values, etc
@@ -124,12 +141,10 @@ A policy condition may have instance params
 - A schema indicating fields, required/optional, default values, etc
 - It has an optional validator to validte instance params
 
-If we made this general purpose / pluggable, you could imagine the current regex/validator/keywords condition being one of these things
+Condition type: Text matching (regex/validator/keywords):
 - Metadata
   - name: Text Match
   - description: Match regular expressions in message text, with optional keyword and function validators
-  - input: text
-  - producesMatches: true
   - configSchema: null
   - paramsSchema: requires a regex, allows an option validator from a list (containing only Luhn for now) and an optional keywords string value
 - Migration - we could migtrate all existing filters to instances of this Text Match policyCondition fairly directly
@@ -151,25 +166,17 @@ The policy action receives the set of all alerts generate by the conditions and 
 It is up to the policy action to determine how to prioritize or otherwise reconcile multiple alerts/matches (there is no implied priority)
 It is up to the policy action if it wants to generate an action per policy, per alert, or per alert match (this could be static or by instance config)
 
-Action type: text replacement (replace, redact, remove)
-Metadata
-- name: Message modification
-- description: Replace, redact, or remove matched text
-- configSchema: null
-- actionSchema: action [replace, remove, redact], redactionPattern (optional) 
+Action type: Text replacement (replace, redact, remove)
+- Metadata
+  - name: Message modification
+  - description: Replace, redact, or remove matched text
+  - configSchema: null
+  - actionSchema: action [replace, remove, redact], redactionPattern (optional) 
 
 We could allow policy conditions to produce general purpose state that actions could access, or we could put that in actions
 - This way a policy log action could indicate the matching text, confidence score, etc/.
 
 ## Other 
-
-Validators will indicate whether they produce matches (not sure we need this - it's just for UX to know whether to show text replacement action)
-
-If any condition has a validator that produces matches, the match processing actions will be avalable on the policy
-
-Text replacement and error return actions are contradictory
-- If both, message level action wins
-- We could try to prevent the user from indicating both somehow in the UX (maybe later)
 
 Examples:
 - A pinning validator would be a "message" validator that doesn't produce matches
@@ -199,28 +206,6 @@ We have a policy action object and we have an installed/confured instance of the
 
 ### Alert (model)
 
-#### Current:
-
-export interface FieldMatch {
-    fieldPath: string;   // JSON path like "params.args[0].apiKey"
-    start: number;       // Start position within the field value
-    end: number;         // End position within the field value
-    action: PolicyAction;
-    actionText: string;
-}
-
-export interface AlertData {
-    alertId: number;
-    messageId: number;
-    policyId: number;
-    filterName: string; // Should we copy the filter from the policy (it can changed or be removed after this alert is generated)?
-    origin: MessageOrigin;
-    matches: FieldMatch[] | null;
-    timestamp: string;
-    createdAt: string;
-    seenAt: string | null;
-}
-
 #### Future:
 
 // Incident of data relevant to policy condition (replaces FieldMatch in AlertData)
@@ -235,19 +220,6 @@ export interface Finding {
 }
 
 ### Policy Condition (policy model)
-
-#### Current:
-
-export interface PolicyData {
-    ...policy model fields...
-    filters: Array<{
-        name: string;
-        notes?: string;
-        regex: string;
-        keywords?: string[];
-        validator?: 'none' | 'luhn';
-    }>;
-}
 
 #### Future:
 
@@ -275,17 +247,6 @@ PolicyCondition
 
 ### Policy Actions (policy model)
 
-#### Current:
-
-export type PolicyAction = 'remove' | 'redact' | 'redactPattern' | 'replace' | 'none';
-
-export interface PolicyData {
-    ...policy model fields...
-    action: PolicyAction;
-    actionText?: string;
-
-#### Future:
-
 actions: PolicyAction[]
 
 PolicyAction
@@ -307,19 +268,6 @@ PolicyAction
 - type: 'log'
 - instance (id?): points to log action instance with it's own settings:, like: { logfile: 'security.log' }
 - params: { level: 'info', message: 'This is the log message' }
-
-### Policy Actions taken
-
-We currently stick the policy action taken on an alert into the Alert (the Alert.FieldMatch.action)
-- This does allow us to reproduce the final message by processing all alerts
-
-In the new implementation, actions can be taken at the alert or message level.  We need to store the actions taken in another model at the message level.
-
-The content modifying types (rewrite and error) are built-in and have no instance config, so we can apply them to Alerts reliably after the fact to recreated the output message
-
-Policy application accumulates policy actions by message, by policy withing message, and by actions per policy
-
-We'll write this to a new model MessageActions (table: message_actions)
 
 ### Available and Installed Conditions and Actions
 
@@ -358,10 +306,6 @@ We have condition and action classes, configurations, and instances
 - ActionClass: the actual implementation class of the Action (PolicyActionBase)
 - ActionConfiguration: an instance of the class installed on the system, referencing the class, with metadata (name, desc, etc) and configuration
 - ActionInstance: an instace of the action in a policy, referencing the ActionConfiguration by id, and having it's own params
-
-## Migration
-
-Note: Need to update policy import script / data to support new policy model
 
 ### Pass 1 - Prepare new schema (merge into 002)
 
@@ -409,17 +353,11 @@ ALTER TABLE policies REMOVE COLUMN actionText;
 ALTER TABLE alerts REMOVE COLUMN filterName;
 ALTER TABLE alerts REMOVE COLUMN matches;
 
-## Next (we can do this without any migration)
+## TODO
 
-[DONE] Implement the PolicyElement model and CRUD interface
-- Implement config UX (install/uninstall, configure) - LATER (we have existing regex/rewrite pre-installed and usable now)
-[DONE] Implement the MessageAction model and write message actions to it
-
-## Then
-
-Implement the new policy model and types (conditions/actions)
-Implement policy config (condition/action) UX
-At this point conditions/actions will have configId and everything should work end-to-end
+Implement pinning condition
+Implement (validate?) error action
+Implement policy config (condition/action) UX (need a multi-config element for this)
 
 ## Policy/Alert/Action Data relationship
 
@@ -430,72 +368,12 @@ Policy
   - Generates alert on match
     - Polulates alert with condition and findings
 - Actions
-  - Genete ActionEvents when any condition matches
+  - Generate ActionEvents when any condition matches
     - Some action events may be correlated to findings (text modification) - and thus indirectly the alerts/conditions which produced the findings
       - This is the "highlight the redacted text in the final message" functionality
 
-From the UX, if I click an alert that is a text match with a content mod action, and the mod was applied, I want to see it in the output
-Any other alert (finding) doesn't directly drive output.  It is the actions driving the output.  If we wanted to see the reasons for other 
-changes it would be in response to those actions.  One or more contions/alerts caused one or more actions/actionEvents.
+The message details UX currently has a list of alerts
+- When you click one, it highlights the findings in the original message and the modification generated by those fidings in the final message (if any)
 
-Our message details should probably show alerts and actions (we'd want to see if a SIEM event as created, etc).  How/where else would we even
-see action details?
-
-Alert
-- alertId
-- messageId
-- policyId
-- origin
-- condition - PolicyCondition
-- findings - Finding[]
-
-export interface PolicyCondition {
-    elementClassName: string;  // e.g., "regex"
-    elementConfigId: number;   // references policy_elements table
-    instanceId: string;        // instance of condition in policy (random base32 id)
-    name: string;              // display name
-    notes?: string;            // optional description
-    params: any;               // configuration
-}
-
-// Incident of data produced by policy condition
-export interface Finding {
-    details: string;
-    metadata?: any;
-    match?: boolean // suitable for item replacement, redaction, etc
-    location?: {
-        fieldPath: string;
-        start: number;
-        end: number;
-    };
-}
-
-MessageAction
-- messageActionId
-- messageId
-- policyId
-- origin
-- severity
-- action: PolicyActionInstance;
-- actionEvents: ActionEvent[];
-
-// Action event types for policy engine
-export interface ActionEvent {
-    description: string;  // details?
-    metadata?: any;
-    contentModification?: ContentModification; // field or message type - added conditionInstanceId to field modification details for correlation
-}
-
-// A collection of actions resulting from a given policy action
-export interface ActionResults {
-    action: PolicyActionInstance;
-    actionEvents: ActionEvent[];
-}
-
-// Defines the policy action (the instance on the policy) that triggered the resilts
-export interface PolicyActionInstance {
-    elementClassName: string;
-    elementConfigId: number;
-    instanceId: string; // The is the instance of the action in the policy
-    params: any;
-}
+It would be nice to have a list of actions also (there would be no other way to see the actions otherwise)
+- When you click one, it should highlight the fingings in the original message (if any linked by alertId), and the modifications in the final message for the action (if any)
