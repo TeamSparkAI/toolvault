@@ -4,280 +4,167 @@
 
 Server pinning validation is a security mechanism that ensures MCP (Model Context Protocol) servers maintain consistent behavior by validating their responses against previously captured and stored responses. This prevents potential security risks from server updates or malicious modifications.
 
-## Core Concept
+## What is Server Pinning?
 
-When a server is "pinned" to a specific version, the system:
+When you "pin" a server to a specific version, you're essentially creating a security baseline for that server's behavior. The system captures and stores the server's responses to key MCP commands (`initialize` and `tools/list`) at the time of pinning. From that point forward, any deviation from these stored responses triggers a security violation.
 
-1. **Captures** the raw JSONRPC responses from `initialize` and `tools/list` commands
-2. **Stores** these responses along with the package version information
-3. **Validates** future responses against the stored responses during message processing
-4. **Enforces** consistency by overriding responses that don't match the pinned data
+### Why Pin Servers?
 
-## Architecture
+- **Security**: Detect if a server has been compromised or modified
+- **Consistency**: Ensure predictable server behavior across deployments
+- **Compliance**: Meet security requirements for production environments
+- **Audit**: Track when and how server behavior changes
 
-### Data Model
+## How Server Pinning Works
 
-```typescript
-interface ServerPinningInfo {
-  package: {
-    registry: 'npm' | 'pypi';
-    name: string;
-    version: string;
-  };
-  mcpResponses: {
-    initialize: object;  // Raw JSONRPC initialize response
-    toolsList: object;   // Raw JSONRPC tools/list response
-  };
-  pinnedAt: string;     // ISO timestamp
-  pinnedBy?: string;    // Optional: who/what pinned it
-}
-```
+### 1. Pinning Process
+When you pin a server:
+1. **Select a version** from the available package versions
+2. **Validate the server** by testing it against the selected version
+3. **Capture responses** from `initialize` and `tools/list` commands
+4. **Store the baseline** including package info and captured responses
+5. **Activate validation** for all future interactions with that server
 
-### Database Schema
+### 2. Validation During Operation
+Once pinned, every time the server responds to `initialize` or `tools/list`:
+1. The system retrieves the stored baseline responses
+2. Compares the current response with the stored response
+3. If they don't match, a security violation is triggered
+4. The system returns an MCP error instead of the potentially compromised response
 
-```sql
-ALTER TABLE servers ADD COLUMN pinningInfo JSON;
-```
+### 3. What Gets Validated
+- **Initialize responses**: Server metadata, capabilities, and configuration
+- **Tools list responses**: Available tools and their schemas
+- **Package information**: Registry, package name, and version consistency
+
+## User Experience
+
+### Server Pinning Tab
+The pinning functionality is accessible through a dedicated "Pinning" tab on each pinnable server's detail page. This tab provides:
+
+- **Version selection**: Dropdown showing available package versions
+- **Validation testing**: Test a version before pinning
+- **Pinning controls**: Pin to selected version or unpin existing
+- **Status display**: Show current pinning state and information
+
+### Pinnable Servers
+Not all servers can be pinned. A server is pinnable if it:
+- Uses a package manager (npm, pypi)
+- Has a specific version specified in its configuration
+- Is not already pinned to a different version
+
+### Version Management
+- **Current version**: The version currently running
+- **Available versions**: All versions available from the package registry
+- **Pinned version**: The version the server is locked to
+- **Updates**: Notification when newer versions are available
+
+## Security Enforcement
+
+### Built-in Policy
+The system includes a default policy that automatically enforces pinning validation:
+
+- **Scope**: Applies to all pinned servers
+- **Methods**: Monitors `initialize` and `tools/list` responses
+- **Action**: Returns MCP error (code 32000) on validation failure
+- **Severity**: High priority security violation
+
+### Validation Logic
+The pinning condition:
+- Retrieves the server's stored pinning data
+- Compares current responses with baseline responses
+- Uses deep equality checking for comprehensive validation
+- Generates findings when mismatches are detected
+
+### Error Handling
+When validation fails:
+- The system returns a proper MCP error response
+- Security alerts are generated for audit purposes
+- The original response is blocked from reaching the client
+- Clear error messages help with debugging
+
+## Technical Implementation
+
+### Data Storage
+The system stores pinning information in the database including:
+- Package registry, name, and version
+- Raw JSONRPC responses from `initialize` and `tools/list`
+- Timestamp when pinning occurred
+- Optional metadata about who/what performed the pinning
 
 ### Policy System Integration
+Pinning validation is implemented through a modular policy system:
+- **Conditions**: Validate server responses against pinned baselines
+- **Actions**: Enforce security by returning error responses
+- **Registry**: Dynamic registration of validation and enforcement components
 
-The validation is implemented through the existing policy system using a new filter type:
+### Message Processing
+Pinning validation is integrated into the message processing pipeline:
+- Server ID context is available for validation
+- All policies run to completion for comprehensive security
+- Error actions take precedence over content modifications
 
-```typescript
-interface MessageFilter {
-  type: 'message';
-  filter: string; // Required filter implementation name
-}
+## Use Cases
 
-interface TextFilter {
-  type: 'text';
-  regex: string;
-  keywords?: string[];
-  filter?: string;
-}
-```
+### Development Environments
+- Pin servers to specific versions for consistent development
+- Prevent unexpected behavior changes during development cycles
+- Ensure all developers use the same server versions
 
-## Design Decisions
+### Production Deployments
+- Lock servers to known-good versions
+- Detect unauthorized server modifications
+- Maintain predictable service behavior
 
-### 1. Global Policy Approach
-- **Single policy** applies to ALL pinned servers
-- **No server-specific policies** - simpler configuration and management
-- **Automatic application** - any server with pinning data gets validated
+### Security Auditing
+- Track when server behavior changes
+- Identify potential security compromises
+- Maintain compliance with security policies
 
-### 2. Error Action (Simple and Clean)
-- **Continue processing** - all policies run to completion
-- **Error action** - new policy action type that takes code/message
-- **Final check** - if any policy has Error action, return error instead of content
+### CI/CD Pipelines
+- Validate server behavior in automated testing
+- Ensure deployment consistency
+- Detect configuration drift
 
-### 3. Self-Service Validator
-- **Server ID only** - validator gets minimal context
-- **Model access** - uses existing model layer for data access
-- **Encapsulated** - validator handles all pinning logic internally
+## Benefits
 
-### 4. Filter Type Separation
-- **Text filters** - operate on regex matches with optional keywords
-- **Message filters** - operate on entire messages with required filter implementation
-- **Type-based UI** - interface adapts based on filter type
+### Security
+- **Tamper Detection**: Immediately identify modified servers
+- **Baseline Enforcement**: Prevent unauthorized behavior changes
+- **Audit Trail**: Complete record of server modifications
 
-## Implementation Plan
+### Reliability
+- **Predictable Behavior**: Consistent server responses
+- **Version Control**: Lock to known-good versions
+- **Rollback Support**: Easy return to previous versions
 
-### Phase 1: Core Infrastructure ✅ COMPLETED
+### Compliance
+- **Change Management**: Track all server modifications
+- **Security Validation**: Automated compliance checking
+- **Audit Support**: Comprehensive logging and reporting
 
-**Database & Model Layer**
-- [x] Add `pinningInfo` column to servers table
-- [x] Create `ServerPinningInfo` interface
-- [x] Update `ServerModel` and `SqliteServerModel` to handle pinning data
-- [x] Create database migration (002_add_server_pinning.sql)
+## Limitations and Considerations
 
-**API Layer**
-- [x] Update server API endpoints to handle pinning info
-- [x] Add validation logic for pinning data consistency
-- [x] Support clearing pinning data with explicit null
-
-**MCP Client Enhancements**
-- [x] Modify `McpClient` to capture raw JSONRPC responses
-- [x] Implement transport layer interception for response capture
-- [x] Add methods to retrieve captured responses
-- [x] Update `SecurityValidationService` to return raw responses
-
-### Phase 2: Pinning UI ✅ COMPLETED
-
-**Server Pinning Tab**
-- [x] Add pinning tab to server details page
-- [x] Implement version selection and validation
-- [x] Add pin/unpin functionality
-- [x] Cache raw responses from validation for pinning
-- [x] Display pinning status and information
-
-### Phase 3: Policy System Integration
-
-**Filter Infrastructure**
-- [ ] Create filter type system (`text` vs `message`)
-- [ ] Implement filter registry with implementations
-- [ ] Add `MessageFilter` and `TextFilter` interfaces
-- [ ] Update policy configuration schema
-
-**Pinning Validator**
-- [ ] Create `validate-pinning` filter implementation
-- [ ] Implement server lookup and pinning data retrieval
-- [ ] Add response comparison logic
-- [ ] Handle validation errors and edge cases
-
-**Policy Engine Updates**
-- [ ] Support message-level validators in policy engine
-- [ ] Implement error action type
-- [ ] Add final error check after all policies complete
-- [ ] Add server ID injection for validators
-- [ ] Update policy processing pipeline
-
-### Phase 4: Message Processing Integration
-
-**Message Processor Updates**
-- [ ] Integrate pinning validation into message processing
-- [ ] Add server ID context to message processing
-- [ ] Implement error action handling
-- [ ] Handle validation failures gracefully
-
-**Global Pinning Policy**
-- [ ] Create default pinning validation policy
-- [ ] Configure policy for `initialize` and `tools/list` methods
-- [ ] Set up automatic policy application
-- [ ] Add policy management UI
-
-### Phase 5: Security and Alerting
-
-**Security Alerts**
-- [ ] Create alert types for pinning violations
-- [ ] Implement alert generation for validation failures
-- [ ] Add alert UI components
-- [ ] Configure alert notifications
-
-**Validation Workflow**
-- [ ] Design security violation response workflow
-- [ ] Implement validation failure reporting
-- [ ] Add audit logging for pinning violations
-- [ ] Create validation status dashboard
-
-### Phase 6: Testing and Documentation
-
-**Comprehensive Testing**
-- [ ] Unit tests for all components
-- [ ] Integration tests for pinning workflow
-- [ ] End-to-end tests for validation scenarios
-- [ ] Performance testing for validation overhead
-
-**Documentation**
-- [ ] Update API documentation
-- [ ] Create user guide for pinning feature
-- [ ] Document security considerations
-- [ ] Add troubleshooting guide
-
-### Phase 7: Migration and Cleanup
-
-**Existing Server Migration**
-- [ ] Assess existing servers for pinning eligibility
-- [ ] Create migration scripts if needed
-- [ ] Update existing server configurations
-- [ ] Validate migration results
-
-**Performance Optimization**
-- [ ] Optimize database queries for pinning data
-- [ ] Implement caching for frequently accessed pinning info
-- [ ] Optimize validation performance
-- [ ] Monitor and tune system performance
-
-**Code Cleanup**
-- [ ] Remove temporary debugging code
-- [ ] Clean up unused imports and dependencies
-- [ ] Refactor for code quality
-- [ ] Update code comments and documentation
-
-## Security Considerations
-
-### 1. Response Tampering Detection
-- Validates that server responses haven't been modified
-- Prevents malicious server updates from going undetected
-- Ensures consistent server behavior over time
-
-### 2. Package Version Integrity
-- Validates that server package version matches pinned version
-- Prevents server configuration changes that could bypass pinning
-- Maintains package version consistency
-
-### 3. Validation Scope
+### Scope
 - Only validates `initialize` and `tools/list` responses
-- These are the most critical for server identity and capabilities
-- Balances security with performance
+- Requires package-based server configuration
+- Limited to supported package registries (npm, pypi)
 
-### 4. Error Handling
-- Graceful handling of validation failures
-- Clear error messages for debugging
-- Non-blocking validation to prevent system disruption
+### Performance
+- Minimal overhead during normal operation
+- Database lookups for pinning data
+- Deep comparison of response payloads
 
-## Usage Examples
-
-### Pinning a Server
-1. Navigate to server details page
-2. Go to "Pinning" tab
-3. Select target version from dropdown
-4. Click "Validate Version" to test server
-5. Click "Pin to This Version" to lock server
-6. Server is now pinned with stored responses
-
-### Validation During Message Processing
-1. Message arrives for pinned server
-2. Policy system applies pinning validation filter
-3. Validator retrieves stored pinning data
-4. Compares current response with stored response
-5. If mismatch detected, error action is triggered
-6. After all policies complete, error is returned instead of content
-7. Security alert is generated
-
-### Policy Configuration
-```json
-{
-  "name": "Server Pinning Validation",
-  "enabled": true,
-  "conditions": {
-    "methods": ["initialize", "tools/list"],
-    "direction": "server-to-client"
-  },
-  "filters": [
-    {
-      "id": "pinning-validation",
-      "name": "Validate Pinning",
-      "type": "message",
-      "filter": "validate-pinning"
-    }
-  ],
-  "actions": [
-    {
-      "type": "error",
-      "code": 4001,
-      "message": "Server response validation failed - possible security violation"
-    }
-  ]
-}
-```
+### Maintenance
+- Requires manual version updates
+- Need to re-pin after legitimate version changes
+- Potential for false positives during updates
 
 ## Future Enhancements
 
-### 1. Extended Validation
-- Validate additional MCP methods beyond `initialize` and `tools/list`
-- Support for custom validation rules per server
-- Validation of server metadata and capabilities
-
-### 2. Advanced Pinning
-- Support for pinning multiple versions per server
-- Time-based pinning with automatic expiration
-- Conditional pinning based on environment or context
-
-### 3. Monitoring and Analytics
-- Pinning validation statistics and metrics
-- Historical validation failure analysis
-- Performance impact monitoring
-
-### 4. Integration Features
-- Integration with package registries for version verification
-- Support for automated pinning based on CI/CD pipelines
-- Integration with security scanning tools
+The pinning system is designed to be extensible, with potential for:
+- Additional MCP method validation
+- Custom validation rules per server
+- Automated pinning based on CI/CD pipelines
+- Integration with package registry security features
+- Advanced monitoring and alerting capabilities
