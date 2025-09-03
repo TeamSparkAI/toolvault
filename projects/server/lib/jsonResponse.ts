@@ -63,7 +63,7 @@ export class JsonResponseFetch<T> {
         }
         this._meta = jsonResponse.meta;
         this._payload = jsonResponse[payloadKey];
-        if (!this._payload) {
+        if (this._payload === undefined) {
             throw new Error(`Invalid response format: missing ${payloadKey} field, full response: ${JSON.stringify(jsonResponse)}`);
         }
     }
@@ -90,7 +90,7 @@ export class JsonResponseFetch<T> {
         if (this.status !== 200) {
             throw new Error(`Cannot access payload on non-200 response: ${this.status}`);
         }
-        if (!this._payload) {
+        if (this._payload === undefined) {
             throw new Error('No payload available');
         }
         return this._payload;

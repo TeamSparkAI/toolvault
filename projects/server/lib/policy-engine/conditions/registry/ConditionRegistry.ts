@@ -1,4 +1,5 @@
 import { PolicyConditionBase } from "../PolicyConditionBase";
+import { PinningCondition } from "../PolicyConditionPinning";
 import { RegexCondition } from "../PolicyConditionRegex";
 
 export class ConditionRegistry {
@@ -18,10 +19,10 @@ export class ConditionRegistry {
             
             // Register all available condition instances
             ConditionRegistry.instance.register(new RegexCondition());
+            ConditionRegistry.instance.register(new PinningCondition());
             
             // TODO: Add more conditions as they are implemented
             // ConditionRegistry.instance.register(new DlpCondition());
-            // ConditionRegistry.instance.register(new PinningCondition());
             // ConditionRegistry.instance.register(new SecretScannerCondition());
         }
         return ConditionRegistry.instance;

@@ -6,7 +6,7 @@ import { MessageData } from '@/lib/models/types/message';
 import { AlertReadData } from '@/lib/models/types/alert';
 import { MessageActionData } from '@/lib/models/types/messageAction';
 import { logger } from '@/lib/logging/server';
-import { PolicyEngine, PolicyContext } from '../policy-engine/core';
+import { PolicyEngine } from '../policy-engine/core';
 
 export interface MessageFilterResult {
     success: boolean;
@@ -90,18 +90,9 @@ export async function applyPolicies(messageData: MessageData, message: JsonRpcMe
         }
         return true;
     });
-
-    // Build context (serverId from message)
-    const context: PolicyContext = {
-        clientId: messageData.clientId,
-        serverId: messageData.serverId,
-        userId: messageData.userId,
-        sessionId: messageData.sessionId,
-        sourceIP: messageData.sourceIP
-    };
     
     // Use new Policy Engine (static method)
-    const result = await PolicyEngine.processMessage(message, applicablePolicies, context);
+    const result = await PolicyEngine.processMessage(messageData, message, applicablePolicies);
 
     // Create alerts from processMessage results (policy findings)
 
@@ -202,7 +193,7 @@ export class MessageFilterService {
                         clientId: jwtPayload?.clientId || undefined,
                         sourceIP: jwtPayload?.sourceIp ?? 'unknown',
                         serverName: jwtPayload?.serverName || '',
-                        serverId: jwtPayload?.serverId || undefined,
+                        serverId: jwtPayload.serverId,
                         sessionId,
                         payloadMessageId: message.messageId || '',
                         payloadMethod: message.method || '',
@@ -225,7 +216,7 @@ export class MessageFilterService {
                     clientId: jwtPayload?.clientId || undefined,
                     sourceIP: jwtPayload?.sourceIp ?? 'unknown',
                     serverName: jwtPayload?.serverName || '',
-                    serverId: jwtPayload?.serverId || undefined,
+                    serverId: jwtPayload.serverId,
                     sessionId,
                     payloadMessageId: message.messageId || '',
                     payloadMethod: message.method || '',

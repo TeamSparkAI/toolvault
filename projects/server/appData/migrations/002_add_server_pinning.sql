@@ -54,6 +54,7 @@ CREATE TABLE policy_elements (
 INSERT INTO policy_elements (className, elementType)
 VALUES 
     ('regex', 'condition'),
+    ('pinning', 'condition'),
     ('rewrite', 'action'),
     ('error', 'action');
 

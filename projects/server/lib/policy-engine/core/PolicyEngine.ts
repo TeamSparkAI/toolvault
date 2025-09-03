@@ -2,16 +2,16 @@ import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { PolicyData } from "@/lib/models/types/policy";
 import { ConditionRegistry } from "../conditions/registry/ConditionRegistry";
 import { ActionRegistry } from "../actions/registry/ActionRegistry";
-import { PolicyContext } from "./PolicyContext";
 import { PolicyEngineResult, PolicyFindings, ConditionFindings, PolicyActions, PolicyActionInstance, PolicyConditionInstance } from "./PolicyEngineResult";
 import { applyModificationsToPayload } from "../utils/messageModifications";
 import { MessageActionData } from "@/lib/models/types/messageAction";
+import { MessageData } from "@/lib/models/types/message";
 
 export class PolicyEngine {
     static async processMessage(
+        messageData: MessageData,
         message: JsonRpcMessageWrapper,
-        policies: PolicyData[],
-        context: PolicyContext
+        policies: PolicyData[]
     ): Promise<PolicyEngineResult> {
 
         const policyFindings: PolicyFindings[] = [];
@@ -27,7 +27,7 @@ export class PolicyEngine {
                 for (const condition of policy.conditions) {
                     const conditionClass = ConditionRegistry.getCondition(condition.elementClassName);
                     if (conditionClass) {
-                        const findings = await conditionClass.applyCondition(message, null, condition.params, context);
+                        const findings = await conditionClass.applyCondition(messageData, message, null, condition.params);
                         if (findings.length > 0) {
                             const conditionInstance: PolicyConditionInstance = {
                                 elementClassName: condition.elementClassName,
@@ -57,7 +57,7 @@ export class PolicyEngine {
                     for (const action of policy.actions) {
                         const actionClass = ActionRegistry.getAction(action.elementClassName);
                         if (actionClass) {
-                            const events = await actionClass.applyAction(message, conditionFindings, null, action.params, context);
+                            const events = await actionClass.applyAction(messageData, message, conditionFindings, null, action.params);
     
                             const actionInstance: PolicyActionInstance = {
                                 elementClassName: action.elementClassName,

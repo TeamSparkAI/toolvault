@@ -353,12 +353,6 @@ ALTER TABLE policies REMOVE COLUMN actionText;
 ALTER TABLE alerts REMOVE COLUMN filterName;
 ALTER TABLE alerts REMOVE COLUMN matches;
 
-## TODO
-
-Implement pinning condition
-Implement (validate?) error action
-Implement policy config (condition/action) UX (need a multi-config element for this)
-
 ## Policy/Alert/Action Data relationship
 
 Note: Made action event alertId optional, and set it only for actions related to specific conditions (text match condition alerts, and rewrite actions)
@@ -377,3 +371,7 @@ The message details UX currently has a list of alerts
 
 It would be nice to have a list of actions also (there would be no other way to see the actions otherwise)
 - When you click one, it should highlight the fingings in the original message (if any linked by alertId), and the modifications in the final message for the action (if any)
+
+## TODO
+
+Implement policy config (condition/action) UX (need a multi-config element for this)

@@ -1,8 +1,8 @@
 import { PolicyActionBase } from "./PolicyActionBase";
 import { JsonSchema, ValidationResult, FieldModificationAction, ActionEventWithConditionId } from "../types/core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
-import { PolicyAction } from "@/lib/models/types/policy";
-import { ConditionFindings, PolicyContext } from "../core";
+import { ConditionFindings } from "../core";
+import { MessageData } from "@/lib/models/types/message";
 
 export class PolicyActionRewrite extends PolicyActionBase {
     constructor() {
@@ -73,11 +73,11 @@ export class PolicyActionRewrite extends PolicyActionBase {
     }
 
     async applyAction(
+        messageData: MessageData,
         message: JsonRpcMessageWrapper, 
         conditionFindings: ConditionFindings[], 
         config: any, 
-        params: any, 
-        context: PolicyContext
+        params: any
     ): Promise<ActionEventWithConditionId[]> {
         const events: ActionEventWithConditionId[] = [];
 

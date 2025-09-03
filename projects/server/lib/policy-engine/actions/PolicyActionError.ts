@@ -1,8 +1,8 @@
 import { PolicyActionBase } from "./PolicyActionBase";
 import { JsonSchema, ValidationResult, ActionEventWithConditionId } from "../types/core";
-import { ConditionFindings, PolicyContext } from "../core";
+import { ConditionFindings } from "../core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
-import { PolicyAction } from "@/lib/models/types/policy";
+import { MessageData } from "@/lib/models/types/message";
 
 export class PolicyActionError extends PolicyActionBase {
     constructor() {
@@ -54,11 +54,11 @@ export class PolicyActionError extends PolicyActionBase {
     }
 
     async applyAction(
+        messageData: MessageData,
         message: JsonRpcMessageWrapper, 
         conditionFindings: ConditionFindings[], 
         config: any, 
-        params: any, 
-        context: PolicyContext
+        params: any
     ): Promise<ActionEventWithConditionId[]> {
         return [{
             details: `Policy error: ${params.message}`,

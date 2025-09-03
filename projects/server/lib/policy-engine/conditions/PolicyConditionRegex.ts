@@ -2,7 +2,7 @@ import { PolicyConditionBase, getStringFieldValues } from "./PolicyConditionBase
 import { JsonSchema, ValidationResult, Finding } from "../types/core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { logger } from "@/lib/logging/server";
-import { PolicyContext } from "../core/PolicyContext";
+import { MessageData } from "@/lib/models/types/message";
 
 const KEYWORD_WINDOW_SIZE = 100;
 
@@ -114,10 +114,10 @@ export class RegexCondition extends PolicyConditionBase {
     }
 
     async applyCondition(
+        messageData: MessageData,
         message: JsonRpcMessageWrapper, 
         config: any, 
-        params: any, 
-        context: PolicyContext
+        params: any
     ): Promise<Finding[]> {
         const findings: Finding[] = [];
 

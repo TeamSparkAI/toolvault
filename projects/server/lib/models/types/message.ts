@@ -9,7 +9,7 @@ export interface MessageData {
     clientId?: number;
     clientType?: ClientType;
     sourceIP: string;
-    serverId?: number;
+    serverId: number;
     serverName: string;
     sessionId: string;
     origin: MessageOrigin;

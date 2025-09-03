@@ -1,8 +1,8 @@
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { PolicyElementBase } from "../core/PolicyElementBase";
 import { ActionEventWithConditionId } from "../types/core";
-import { ConditionFindings, PolicyContext } from "../core";
-import { PolicyAction } from "@/lib/models/types/policy";
+import { MessageData } from "@/lib/models/types/message";
+import { ConditionFindings } from "../core";
 
 export abstract class PolicyActionBase extends PolicyElementBase {
     constructor(
@@ -14,10 +14,10 @@ export abstract class PolicyActionBase extends PolicyElementBase {
     }
 
     abstract applyAction(
+        messageData: MessageData,
         message: JsonRpcMessageWrapper, 
         conditionFindings: ConditionFindings[], 
         config: any, 
-        params: any, 
-        context: PolicyContext
+        params: any
     ): Promise<ActionEventWithConditionId[]>;
 }

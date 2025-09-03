@@ -2,7 +2,9 @@ import { PolicyConditionBase, getStringFieldValues } from "./PolicyConditionBase
 import { JsonSchema, ValidationResult, Finding } from "../types/core";
 import { JsonRpcMessageWrapper } from "@/lib/jsonrpc";
 import { logger } from "@/lib/logging/server";
-import { PolicyContext } from "../core/PolicyContext";
+import { ModelFactory } from "@/lib/models";
+import { deepEqual } from "@/lib/services/clientSyncService";
+import { MessageData } from "@/lib/models/types/message";
 
 export class PinningCondition extends PolicyConditionBase {
     constructor() {
@@ -42,25 +44,51 @@ export class PinningCondition extends PolicyConditionBase {
         return null;
     }
 
-    // !!! We're gonna need some context here (for things like serverId, probably JWT payload, etc)
     async applyCondition(
+        messageData: MessageData,
         message: JsonRpcMessageWrapper, 
         config: any, 
-        params: any,
-        context: PolicyContext
+        params: any
     ): Promise<Finding[]> {
+        const serverModel = await ModelFactory.getInstance().getServerModel();
         const findings: Finding[] = [];
+        const messagePayload = message['result'];
 
-        // Determine payload type
-        let payloadType: 'params' | 'result' = 'params';
-        if (message.origin === 'server' && message.messageId) {
-            payloadType = 'result';
+        if (messageData.origin === 'server') {
+            if (messageData.payloadMethod === 'initialize' && params.validateMetadata) {
+                const server = await serverModel.findById(messageData.serverId);
+                if (server) {
+                    const pinningInfo = server.pinningInfo;
+                    if (pinningInfo) {
+                        const initializeResponse = pinningInfo.mcpResponses.initialize;
+                        if (initializeResponse) {
+                            if (!deepEqual(messagePayload, initializeResponse)) {
+                                findings.push({
+                                    details: "Initialize response mismatch",
+                                    match: false,
+                                });
+                            }
+                        }
+                    }
+                }
+            } else if (messageData.payloadMethod === 'tools/list' && params.validateTools) {
+                const server = await serverModel.findById(messageData.serverId);
+                if (server) {
+                    const pinningInfo = server.pinningInfo;
+                    if (pinningInfo) {
+                        const toolsListResponse = pinningInfo.mcpResponses.toolsList;
+                        if (toolsListResponse) {
+                            if (!deepEqual(messagePayload, toolsListResponse)) {
+                                findings.push({
+                                    details: "Tools list response mismatch",
+                                    match: false,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
         }
-
-        const messagePayload = message[payloadType];
-
-        // !!! Do the magic here!
-        logger.info(`Pinning condition applied to ${payloadType} message`);
 
         return findings;
     }

@@ -1,5 +1,32 @@
 [
     {
+        "name": "Server Pinning Validation",
+        "description": "Validate that pinned servers respond with pinned metadata and tools",
+        "origin": "server",
+        "methods": ["initialize", "tools/list"],
+        "conditions": [
+            {
+                "class": "pinning",
+                "name": "Pinning Validation",
+                "params": {
+                    "validateMetadata": true,
+                    "validateTools": true
+                }
+            }
+        ],
+        "actions": [
+            {
+                "class": "error",
+                "params": {
+                    "code": 32000,
+                    "message": "Server did not match pinned server"
+                }
+            }
+        ],
+        "severity": 1,
+        "enabled": true
+    },
+    {
         "name": "Cloud Account Secrets",
         "description": "Detect cloud provider access keys and secrets in messages",
         "origin": "either",
