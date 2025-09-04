@@ -43,6 +43,26 @@ proper format or message and contents, apply length and range constraints, etc.
 
 For opentelemetry, send every message to opentelemetry (maybe some other mechanism makes more sense, but mabye the policy engine is the right place for this)
 
+Conditons:
+- Text match (regex, with keywords and validator)
+- Keyword match (from keyword list)
+- Secret detection (using configured secret manager)
+- DLP Analysis (Data Loss Prevention using configured ICAP endpoint)
+- Pinned server validation
+- Message validation (fields, format, range and length, etc) 
+- AI Threat Detection (AI-powered analysis to detect malicious prompt injection and novel attacks in tool responses)
+
+Actions:
+- Rewrite (replace, remove, redact text matches)
+- Error (return error code/message)
+- Response (return specific payload)
+- Log event (to configured log file)
+- Send event to SIEM (to configured SIEM endpoint)
+- Send email (via configured SMTP server)
+- Send message to OpenTelemetry (via configured OLTP endpoint)
+
+Extensible via runtime modules to make it easy to build conditions or actions that integrate with any other system
+
 ## New actions use cases
 
 For any policy match, we might want to take zero, one, or more than one actions
@@ -52,6 +72,8 @@ For any policy match, we might want to take zero, one, or more than one actions
   - Log a security event (local log)
   - Log an event to a SIEM
   - Send message to opentelemetry
+    - If we wanted to do something like this on every message, we'd need for policies with no conditions to apply all actions
+    - This implies that actions should be able to run with no findings
 - "No Action" should always be an option
   - Even with no action, if any filter matches an alert will be generated, and if is a text matcher, the matching text will be identified in the alert for audit/review
 
@@ -374,4 +396,17 @@ It would be nice to have a list of actions also (there would be no other way to 
 
 ## TODO
 
+Short names in new condition/action (use label if present)
+
+Non-migration
+- Move 001 content to 002, rename 002_initial_tables_v2
+- Delete 001 migration
+- If we encounter db schema version 001, we issue apology and exit
+- We create new db using migration 002 (this will just happen)
+
+## TODO LATER
+
+Implement granular pinning findings (highlight new, changed tools, missing tool is finding without location)
+Display policy actions in message details (with new selection/highlighting logic)
 Implement policy config (condition/action) UX (need a multi-config element for this)
+- Start implementing more conditions/actions

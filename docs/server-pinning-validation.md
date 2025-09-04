@@ -168,3 +168,21 @@ The pinning system is designed to be extensible, with potential for:
 - Automated pinning based on CI/CD pipelines
 - Integration with package registry security features
 - Advanced monitoring and alerting capabilities
+
+## Workflow
+
+Compliance/Audit mechanism to alert to unpinned servers
+Server indicates unpinned when inspected
+Server pinning functionality
+- Allows for review and inspection of repo metadata and all version available
+- Allows for review and confirmation of the version to be pinned
+- Allows version to be pinned (records metadata and tools list for later validation)
+Pinning validation applied to all messages
+- If pinned server server responds inappropriately, alert generated, protocol error returned
+
+Attacks (review paper)
+- Server info and tools list are NOT static metadata - they are just data returned by the MCP server code
+  - Meaning a malicious server could change these at any time without you knowing, even within a version that you have pinned
+- Rug pulls 
+- Malicious server or tool description
+  - Demonstrate innocuous fetch endpoint that turns into malicious secret or credit card validator
