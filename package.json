@@ -1,6 +1,6 @@
 {
   "name": "toolvault",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "ToolVault: An Integrated platform for AI agent tool management and security",
   "main": "index.js",
   "types": "index.d.ts",

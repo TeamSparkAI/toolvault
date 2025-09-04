@@ -23,15 +23,15 @@ export class PinningCondition extends PolicyConditionBase {
         return {
             type: 'object',
             properties: {
-                validateMetadata: {
+                validateInitialize: {
                     type: 'boolean',
-                    title: 'Validate Metadata',
-                    description: 'Validate metadata of the server',
+                    title: 'Validate initialize response',
+                    description: 'Validate protocol, capabilities, and server info of the server',
                     default: true
                 },
-                validateTools: {
+                validateToolsList: {
                     type: 'boolean',
-                    title: 'Validate Tools',
+                    title: 'Validate tools/list response',
                     description: 'Validate tool list and descriptions of the server',
                     default: true
                 },
@@ -55,7 +55,7 @@ export class PinningCondition extends PolicyConditionBase {
         const messagePayload = message['result'];
 
         if (messageData.origin === 'server') {
-            if (messageData.payloadMethod === 'initialize' && params.validateMetadata) {
+            if (messageData.payloadMethod === 'initialize' && params.validateInitialize) {
                 const server = await serverModel.findById(messageData.serverId);
                 if (server) {
                     const pinningInfo = server.pinningInfo;
@@ -71,7 +71,7 @@ export class PinningCondition extends PolicyConditionBase {
                         }
                     }
                 }
-            } else if (messageData.payloadMethod === 'tools/list' && params.validateTools) {
+            } else if (messageData.payloadMethod === 'tools/list' && params.validateToolsList) {
                 const server = await serverModel.findById(messageData.serverId);
                 if (server) {
                     const pinningInfo = server.pinningInfo;

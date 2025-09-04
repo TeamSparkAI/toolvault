@@ -329,52 +329,6 @@ We have condition and action classes, configurations, and instances
 - ActionConfiguration: an instance of the class installed on the system, referencing the class, with metadata (name, desc, etc) and configuration
 - ActionInstance: an instace of the action in a policy, referencing the ActionConfiguration by id, and having it's own params
 
-### Pass 1 - Prepare new schema (merge into 002)
-
-ALTER TABLE policies ADD COLUMN actions JSON NOT NULL;
-
-ALTER TABLE alerts ADD COLUMN condition JSON NOT NULL; 
-ALTER TABLE alerts ADD COLUMN findings JSON NOT NULL;
-
-CREATE TABLE message_actions (
-    messageId INTEGER NOT NULL,
-    actions JSON NOT NULL,
-    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE policy_elements (
-    configId INTEGER PRIMARY KEY AUTOINCREMENT,
-    className TEXT NOT NULL,
-    elementType TEXT NOT NULL,
-    config JSON,
-    enabled BOOLEAN DEFAULT 1,
-    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-INSERT INTO policy_elements (className, elementType)
-VALUES 
-    ('regex', 'condition'),
-    ('rewrite', 'action');
-
-### Pass 2 - Convert data
-
-Process policies
-- Update conditions field, converting existing array to new conditions object array (convert existing conditions to new regex conditions)
-
-Process alerts
-- Update filterName to new condition field/object (referencing regex condition config, with params)
-- Convert matches to new findings field/object
-- Generate message_actions using policy action/actionText and matches/findings
-
-### Pass 3 - Clean up schema (003)
-
-ALTER TABLE policies REMOVE COLUMN action;
-ALTER TABLE policies REMOVE COLUMN actionText;
-
-ALTER TABLE alerts REMOVE COLUMN filterName;
-ALTER TABLE alerts REMOVE COLUMN matches;
-
 ## Policy/Alert/Action Data relationship
 
 Note: Made action event alertId optional, and set it only for actions related to specific conditions (text match condition alerts, and rewrite actions)
@@ -393,16 +347,6 @@ The message details UX currently has a list of alerts
 
 It would be nice to have a list of actions also (there would be no other way to see the actions otherwise)
 - When you click one, it should highlight the fingings in the original message (if any linked by alertId), and the modifications in the final message for the action (if any)
-
-## TODO
-
-Short names in new condition/action (use label if present)
-
-Non-migration
-- Move 001 content to 002, rename 002_initial_tables_v2
-- Delete 001 migration
-- If we encounter db schema version 001, we issue apology and exit
-- We create new db using migration 002 (this will just happen)
 
 ## TODO LATER
 

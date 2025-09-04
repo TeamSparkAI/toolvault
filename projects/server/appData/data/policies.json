@@ -9,8 +9,8 @@
                 "class": "pinning",
                 "name": "Pinning Validation",
                 "params": {
-                    "validateMetadata": true,
-                    "validateTools": true
+                    "validateInitialize": true,
+                    "validateToolsList": true
                 }
             }
         ],

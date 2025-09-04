@@ -56,13 +56,41 @@ async function getAppliedMigrations(): Promise<string[]> {
   return result.rows.map(row => row.version);
 }
 
+async function validateSchemaVersion(): Promise<void> {
+  const db = await getDb();
+  
+  // Check if schema_migrations table exists
+  const tableExists = (await db.queryOne<{ count: number }>(
+    "SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name='schema_migrations'"
+  ))?.count === 1;
+
+  if (tableExists) {
+    // Check if version 001 has been applied
+    const version001Exists = (await db.queryOne<{ count: number }>(
+      "SELECT COUNT(*) as count FROM schema_migrations WHERE version = '001'"
+    ))?.count === 1;
+
+    if (version001Exists) {
+      throw new Error(
+        'ToolVault schema version 001 is deprecated and cannot be upgraded.\n\n' +
+        'Please run the following command to uninstall ToolVault (restore your client configurations and delete your existing ToolVault database):\n' +
+        '   toolvault --clean\n' +
+        'Then restart ToolVault to create a new database, at which point you may re-import your clients.'
+      );
+    }
+  }
+}
+
 export async function initializeDatabase(): Promise<boolean> {
   try {
     // Check if database exists
     const dbPath = DB_CONFIG.getPath();
     const dbExists = existsSync(dbPath);
     let isNewDatabase = false;
-    if (!dbExists) {
+    if (dbExists) {
+      logger.debug('Database exists, validating schema version...');
+      await validateSchemaVersion();
+    } else {
       logger.debug('Database does not exist, creating new database...');
       // The database will be created automatically when we first connect to it
       // We just need to ensure the app data directory exists

@@ -76,7 +76,7 @@ export function AddConditionDialog({ isOpen, onClose, onAdd, title }: AddConditi
                 <option value="">Select a condition type...</option>
                 {availableElements.map(element => (
                   <option key={element.configId} value={element.configId}>
-                    {element.name} - {element.description}
+                    {element.name}{element.label ? ` (${element.label})` : ''}
                   </option>
                 ))}
               </select>
@@ -170,7 +170,7 @@ export function AddActionDialog({ isOpen, onClose, onAdd, title }: AddActionDial
                 <option value="">Select an action type...</option>
                 {availableElements.map(element => (
                   <option key={element.configId} value={element.configId}>
-                    {element.name} - {element.description}
+                    {element.name}{element.label ? ` (${element.label})` : ''}
                   </option>
                 ))}
               </select>
