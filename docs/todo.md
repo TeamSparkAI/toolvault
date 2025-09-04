@@ -1,14 +1,5 @@
 # TeamSpark ToolVault
 
-## Pinning
-
-Note: We could pin by just adding @version to package (that has the benefit of supporting update even for servers we didn't actually pin)
-- But what if the user just changes the version (without going through our workflow).  For now that's probably OK, but later when we
-  serialize all server info, that's problematic (in that case, we'd maintin a non-editable pinned version, and disallow the specification
-  of a version in the command/module reference).
-- In that mode, and command with a version would not be considered pinned, so we could still offer a "Pin this server" option to convert it
-  to our pinned model (let them choose specified version or latest?)
-
 ## Misc
 
 Client import/sync API should propagate common errors (config file not found, invalid JSON, no mcpServers or whatever attr the client uses, failed to write file)
@@ -84,8 +75,6 @@ Installer to install both
 ### Policy application
 
 Implement single scan (multi-regex) for perf (currently 750+ msgs/second on laptop with full policy set, perf improvement may not be high priority)
-
-Should we support an option to replace entire field?  Entire response?  Replace message with error message?  Overlaps could be a lot more complex.
 
 ### Retention
 
