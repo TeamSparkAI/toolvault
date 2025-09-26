@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getRegistryService } from '@/lib/services/registryService';
-import { McpRegistryFilters } from '@/types/mcp-registry';
+import { McpRegistryFilters } from '@/types/registry-api';
 import { JsonResponse } from '@/lib/jsonResponse';
 import { logger } from '@/lib/logging/server';
 

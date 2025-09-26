@@ -1,4 +1,5 @@
-import { ServerJSON, ServerListResponse, McpRegistryFilters, McpRegistrySearchResult, ListServersParams } from '@/types/mcp-registry';
+import { ServerJSON, ServerListResponse } from '@/types/mcp-registry';
+import { McpRegistryFilters, McpRegistrySearchResult, ListServersParams } from '@/types/registry-api';
 import { logger } from '@/lib/logging/server';
 import fs from 'fs';
 import path from 'path';
