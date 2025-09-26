@@ -4,6 +4,38 @@ https://github.com/modelcontextprotocol/registry
 
 https://registry.modelcontextprotocol.io/docs
 
+## TODO
+
+Registry item detail - Show all config details in runtimeArguments, packageArguments, and headers
+Guided config UX (default values, types, required, descriptions, etc)
+
+Figure out scheme for ToolVault servers (in db) to both registry servers and catalog servers
+- Consider that in future we could support arbitrary registries via configuration (so it might not just be one registry, or not just the default registry)
+
+Can we make our catalog available via the registry API
+- name wouldn't meet spec (verified reverse DNS) - could we work around this using registry / repo?
+- If we convert our sample config into packageArguments they won't have any real metadata or documentation
+
+When no configuration/env/headers
+- "No configuration information provided, see package registry or repository for details on configuring this server"
+
+## Issues
+
+The notion of versions in the MCP registry is interesting.  Just because a server says it is version x.y doesn't mean that version x.y is the latests version in the package registry (or that it is in the rpackage egistry at all).  The package registry is really the single source of truth for what versions are installable.
+
+Also, I think it is highly likely that people will publish new npm/pypi registry versions of their servers without updating the MCP registry (this will certainly happen some of the time, but may happen most of the time, or at least very often).  At very least there will be some potential lag if the MCP registry is updated at the same time or after the fact (given the periodic polling type of update of MCP registry clients).
+
+This begs the question, when we create a ToolVault server from an MCP registry server, do we link it back to the serverId, the versionId, or both?
+
+Consider also that when pinning, we allow the user to choose any version available from the package registry (which may well not line up with the MCP registry versions available).
+
+When looking up an MCP registry server from a ToolVault server we should get servers by serverId, then:
+- If pinned, get the latest version that is not greater than the pinned version
+- Else get the latest version
+Consider that to be the "best" version to provide metadata and drive configuration
+
+Idea: On new server, see if MPC registry version is available in package registry, and if so, pin to that version, else float
+
 ## Data
 
 See: registry-openapi.yml
