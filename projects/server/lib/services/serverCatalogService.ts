@@ -1,5 +1,8 @@
 import { ServerCatalogEntry, ServerCatalogFilters, ServerCatalogSearchResult } from '@/types/server-catalog';
 import { logger } from '@/lib/logging/server';
+import fs from 'fs';
+import path from 'path';
+import { getAppDataPath } from '../../../shared/utils/paths';
 
 export interface ServerCatalogService {
     getAllServers(): Promise<ServerCatalogEntry[]>;
@@ -18,6 +21,9 @@ export interface ServerCatalogService {
 const CATALOG_BASE_URL = 'https://teamsparkai.github.io/ToolCatalog';
 const CATALOG_SERVERS_JSON_URL = `${CATALOG_BASE_URL}/servers-local.json`;
 
+// Local catalog file path
+const CATALOG_FILE_PATH = path.join(getAppDataPath(), 'server-catalog.json');
+
 export class ServerCatalogServiceImpl implements ServerCatalogService {
     private servers: ServerCatalogEntry[] = [];
     private lastLoadTime: number = 0;
@@ -29,7 +35,11 @@ export class ServerCatalogServiceImpl implements ServerCatalogService {
 
     private async loadCatalogIfNeeded(): Promise<void> {
         const now = Date.now();
-        if (this.servers.length === 0 || (now - this.lastLoadTime) > this.CACHE_DURATION) {
+        
+        // Check if we need to reload based on file timestamp
+        const needsReload = await this.shouldReloadCatalog();
+        
+        if (this.servers.length === 0 || needsReload) {
             // If already loading, wait for the existing load to complete
             if (this.loadingPromise) {
                 await this.loadingPromise;
@@ -46,22 +56,86 @@ export class ServerCatalogServiceImpl implements ServerCatalogService {
         }
     }
 
+    private async shouldReloadCatalog(): Promise<boolean> {
+        try {
+            // Check if file exists
+            if (!fs.existsSync(CATALOG_FILE_PATH)) {
+                return true; // File doesn't exist, need to load
+            }
+
+            // Check file timestamp
+            const stats = fs.statSync(CATALOG_FILE_PATH);
+            const fileAge = Date.now() - stats.mtime.getTime();
+            
+            return fileAge > this.CACHE_DURATION;
+        } catch (error) {
+            logger.debug('Error checking catalog file timestamp:', error);
+            return true; // On error, reload to be safe
+        }
+    }
+
     private async loadCatalog(): Promise<void> {
+        // Try to load from local file first
+        if (await this.loadFromFile()) {
+            logger.debug('Loaded server catalog from local file');
+            this.lastLoadTime = Date.now();
+            return;
+        }
+
+        // Fallback to remote fetch
         logger.debug('Loading server catalog from', CATALOG_SERVERS_JSON_URL);
         try {
             const response = await fetch(CATALOG_SERVERS_JSON_URL);
             const data = await response.json();            
             this.servers = data;
             for (const server of this.servers) {
-                // Udpate the server icons to point to the remote location
+                // Update the server icons to point to the remote location
                 server.icon = server.icon ? `${CATALOG_BASE_URL}${server.icon}` : null;
             }
-            logger.debug('Loaded', this.servers.length, 'servers');
+            logger.debug('Loaded', this.servers.length, 'servers from remote');
             this.lastLoadTime = Date.now();
+            
+            // Save to local file for next time
+            await this.saveToFile();
         } catch (error) {
             logger.error('Error loading server catalog:', error);
             this.servers = [];
             throw new Error('Failed to load server catalog');
+        }
+    }
+
+    private async loadFromFile(): Promise<boolean> {
+        try {
+            if (!fs.existsSync(CATALOG_FILE_PATH)) {
+                return false;
+            }
+
+            const fileContent = fs.readFileSync(CATALOG_FILE_PATH, 'utf8');
+            const data = JSON.parse(fileContent);
+            this.servers = data;
+            
+            return true;
+        } catch (error) {
+            logger.debug('Error loading catalog from file:', error);
+            return false;
+        }
+    }
+
+    private async saveToFile(): Promise<void> {
+        try {
+            // Ensure app data directory exists
+            const appDataPath = getAppDataPath();
+            if (!fs.existsSync(appDataPath)) {
+                fs.mkdirSync(appDataPath, { recursive: true });
+            }
+
+            const jsonContent = JSON.stringify(this.servers, null, 2);
+            fs.writeFileSync(CATALOG_FILE_PATH, jsonContent, 'utf8');
+            
+            logger.debug(`Saved server catalog to ${CATALOG_FILE_PATH}`);
+        } catch (error) {
+            logger.error('Error saving catalog to file:', error);
+            // Don't throw - this is not critical for operation
         }
     }
 

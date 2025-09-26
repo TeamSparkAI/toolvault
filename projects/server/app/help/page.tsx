@@ -99,6 +99,22 @@ const concepts: Concept[] = [
     ]
   },
   {
+    title: 'Server Registry',
+    description: 'Browse servers from the official MCP Registry',
+    path: '/registry',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+      </svg>
+    ),
+    details: [
+      'Access the official MCP Registry',
+      'Browse verified and official servers',
+      'View detailed server configurations',
+      'Install servers with proper package management'
+    ]
+  },
+  {
     title: 'Servers',
     description: 'Manage your MCP servers and their configurations',
     path: '/servers',
