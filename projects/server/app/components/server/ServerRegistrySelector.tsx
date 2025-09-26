@@ -68,35 +68,6 @@ export function ServerRegistrySelector({
     return matchesSearch && matchesFilters;
   }).sort((a, b) => a.name.localeCompare(b.name));
 
-  const convertRegistryEntryToServerConfig = (entry: ServerJSON): McpServerConfig | undefined => {
-    // Try to extract config from packages
-    if (entry.packages && entry.packages.length > 0) {
-      const pkg = entry.packages[0];
-      if (pkg.transport) {
-        if (pkg.transport.type === 'stdio') {
-          return {
-            type: 'stdio',
-            command: pkg.runtimeHint || 'unknown',
-            args: pkg.runtimeArguments?.map(arg => arg.value || '') || []
-          };
-        } else if (pkg.transport.type === 'sse' || pkg.transport.type === 'streamable') {
-          return {
-            type: pkg.transport.type as 'sse' | 'streamable',
-            url: pkg.transport.url || '',
-            headers: pkg.transport.headers?.reduce((acc, header) => {
-              if (header.name && header.value) {
-                acc[header.name] = header.value;
-              }
-              return acc;
-            }, {} as Record<string, string>)
-          };
-        }
-      }
-    }
-    
-    return undefined;
-  };
-
   const getRemotesSummary = (server: ServerJSON): string | null => {
     if (!server.remotes || server.remotes.length === 0) {
       return null;
@@ -110,8 +81,7 @@ export function ServerRegistrySelector({
       return null;
     }
     const packageInfos = server.packages.map(pkg => {
-      const transportType = pkg.transport?.type || 'unknown';
-      return `${pkg.registryType} (${transportType})`;
+      return `${pkg.registryType}`;
     }).join(', ');
     return packageInfos;
   };
@@ -241,7 +211,6 @@ export function ServerRegistrySelector({
               {filteredServers.map((server) => {
                 const remotesSummary = getRemotesSummary(server);
                 const packagesSummary = getPackagesSummary(server);
-                const config = convertRegistryEntryToServerConfig(server);
 
                 return (
                   <div

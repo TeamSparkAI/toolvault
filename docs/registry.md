@@ -39,8 +39,17 @@ Idea: On new server, see if MPC registry version is available in package registr
 ## Data
 
 See: registry-openapi.yml
+Downloaded from: https://registry.modelcontextprotocol.io/openapi.yaml
+As referenced in: registry/docs/reference/api/official-registry-api.md
 
-Get from: https://registry.modelcontextprotocol.io/v0/servers
+Here is a much more detailed (and better structured) OpenAPI yaml file:
+
+https://github.com/modelcontextprotocol/registry/blob/76365a61e3660ba4bb1052bbc1289d9475b50d12/docs/reference/api/openapi.yaml
+Which is referenced from registry/docs/reference/faq.md
+
+Also see: https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/server-json/generic-server-json.md 
+
+GET https://registry.modelcontextprotocol.io/v0/servers
 
 Servers can contain remotes (hosted endpoints) and/or packages (downloadable/runnable/local servers)
 
@@ -110,6 +119,58 @@ packages: [
         ]
     }
 ]
+
+type: positional, named
+format: number, string, boolean
+choices: array[string]
+
+variables (replace values in "value" with tokens from variables)
+{
+    "type": "named",
+    "name": "-e",
+    "description": "API key for the i18n service",
+    "value": "api_key={api_key}",
+    "variables": {
+        "api_key": {
+            "description": "Your API key for the translation service",
+            "isRequired": true,
+            "format": "string",
+            "isSecret": true
+        }
+    }
+},
+
+What we see in the data: 
+
+"headers": [
+    {
+        "name": "Authorization",
+        "description": "Bearer token for authentication",
+        "isRequired": true,
+        "isSecret": true,
+        "value": "Bearer {api_key}"
+    }
+]
+
+Should be:
+
+"headers": [
+    {
+        "name": "Authorization",
+        "description": "Authorization header",
+        "isRequired": true,
+        "value": "Bearer {api_key}",
+        "variables": {
+            "api_key": {
+                "description": "Bearer token for authentication",
+                "isRequired": true,
+                "format": "string",
+                "isSecret": true                
+            }
+        }
+    }
+]
+
 
 ## Absence of configuration data
 

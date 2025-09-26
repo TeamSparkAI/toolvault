@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ServerJSON } from '@/types/mcp-registry';
+import { ServerJSON, Argument } from '@/types/mcp-registry';
 import { Server } from '@/lib/types/server';
 import { McpServerConfig } from '@/lib/types/server';
 import { useLayout } from '@/app/contexts/LayoutContext';
@@ -90,8 +90,8 @@ export default function RegistryDetailsPage() {
         // For each argument, if it has both name and value, include both as separate args
         const runtimeArgs: string[] = [];
         if (pkg.runtimeArguments) {
-          pkg.runtimeArguments.forEach((arg: any) => {
-            if (arg.name) {
+          pkg.runtimeArguments.forEach((arg: Argument) => {
+            if (arg.type === 'named' && arg.name) {
               runtimeArgs.push(arg.name);
             }
             if (arg.value) {
@@ -102,8 +102,8 @@ export default function RegistryDetailsPage() {
         
         const packageArgs: string[] = [];
         if (pkg.packageArguments) {
-          pkg.packageArguments.forEach((arg: any) => {
-            if (arg.name) {
+          pkg.packageArguments.forEach((arg: Argument) => {
+            if (arg.type === 'named' && arg.name) {
               packageArgs.push(arg.name);
             }
             if (arg.value) {
@@ -379,7 +379,7 @@ export default function RegistryDetailsPage() {
                           <label className="text-sm font-medium text-gray-500">Type</label>
                           <p className="text-gray-900 font-mono">{remote.type}</p>
                         </div>
-                        {remote.url && (
+                        {(remote.type === 'streamable-http' || remote.type === 'sse') && remote.url && (
                           <div>
                             <label className="text-sm font-medium text-gray-500">URL</label>
                             <a 
@@ -401,7 +401,7 @@ export default function RegistryDetailsPage() {
                       Add Server
                     </button>
                   </div>
-                  {remote.headers && remote.headers.length > 0 && (
+                  {(remote.type === 'streamable-http' || remote.type === 'sse') && remote.headers && remote.headers.length > 0 && (
                     <div className="mt-4">
                       <label className="text-sm font-medium text-gray-500">Headers</label>
                       <div className="mt-1 space-y-2">
@@ -465,12 +465,6 @@ export default function RegistryDetailsPage() {
                       <label className="text-sm font-medium text-gray-500">Registry Type</label>
                       <p className="text-gray-900">{pkg.registryType}</p>
                     </div>
-                    {pkg.transport && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Transport Type</label>
-                        <p className="text-gray-900 font-mono">{pkg.transport.type}</p>
-                      </div>
-                    )}
                   </div>
                     </div>
                     <button
@@ -481,40 +475,6 @@ export default function RegistryDetailsPage() {
                     </button>
                   </div>
 
-                  {pkg.transport && (
-                    <div className="border-t border-gray-100 pt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Transport Configuration</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {pkg.transport.url && (
-                          <div>
-                            <label className="text-sm font-medium text-gray-500">URL</label>
-                            <a 
-                              href={pkg.transport.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 break-all block"
-                            >
-                              {pkg.transport.url}
-                            </a>
-                          </div>
-                        )}
-                        {pkg.transport.headers && pkg.transport.headers.length > 0 && (
-                          <div className="md:col-span-2">
-                            <label className="text-sm font-medium text-gray-500">Headers</label>
-                            <div className="mt-1 space-y-2">
-                              {pkg.transport.headers.map((header, headerIndex) => (
-                                <div key={headerIndex} className="flex items-center space-x-4 text-sm">
-                                  <span className="font-mono bg-gray-100 px-2 py-1 rounded">{header.name}</span>
-                                  <span className="text-gray-600">:</span>
-                                  <span className="font-mono bg-gray-100 px-2 py-1 rounded">{header.value || '(empty)'}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
                   {pkg.runtimeHint && (
                     <div className="border-t border-gray-100 pt-4 mt-4">
@@ -529,8 +489,12 @@ export default function RegistryDetailsPage() {
                       <div className="mt-1 space-y-2">
                         {pkg.runtimeArguments.map((arg, argIndex) => (
                           <div key={argIndex} className="flex items-center space-x-4 text-sm">
-                            <span className="font-mono bg-gray-100 px-2 py-1 rounded">{arg.name}</span>
-                            <span className="text-gray-600">:</span>
+                            {arg.type === 'named' && arg.name && (
+                              <span className="font-mono bg-gray-100 px-2 py-1 rounded">{arg.name}</span>
+                            )}
+                            {arg.type === 'named' && arg.name && (
+                              <span className="text-gray-600">:</span>
+                            )}
                             <span className="font-mono bg-gray-100 px-2 py-1 rounded">{arg.value || arg.default || '(empty)'}</span>
                           </div>
                         ))}
@@ -544,8 +508,12 @@ export default function RegistryDetailsPage() {
                       <div className="mt-1 space-y-2">
                         {pkg.packageArguments.map((arg, argIndex) => (
                           <div key={argIndex} className="flex items-center space-x-4 text-sm">
-                            <span className="font-mono bg-gray-100 px-2 py-1 rounded">{arg.name}</span>
-                            <span className="text-gray-600">:</span>
+                            {arg.type === 'named' && arg.name && (
+                              <span className="font-mono bg-gray-100 px-2 py-1 rounded">{arg.name}</span>
+                            )}
+                            {arg.type === 'named' && arg.name && (
+                              <span className="text-gray-600">:</span>
+                            )}
                             <span className="font-mono bg-gray-100 px-2 py-1 rounded">{arg.value || arg.default || '(empty)'}</span>
                           </div>
                         ))}

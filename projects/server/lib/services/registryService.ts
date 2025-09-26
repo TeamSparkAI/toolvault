@@ -1,4 +1,4 @@
-import { ServerJSON, ServerListResponse, Metadata, McpRegistryFilters, McpRegistrySearchResult, ListServersParams } from '@/types/mcp-registry';
+import { ServerJSON, ServerListResponse, McpRegistryFilters, McpRegistrySearchResult, ListServersParams } from '@/types/mcp-registry';
 import { logger } from '@/lib/logging/server';
 import fs from 'fs';
 import path from 'path';
@@ -23,7 +23,7 @@ const REGISTRY_FILE_PATH = path.join(getAppDataPath(), 'server-registry.json');
 
 export class RegistryServiceImpl implements RegistryService {
     private servers: ServerJSON[] = [];
-    private metadata: Metadata | null = null;
+    private metadata: { count: number; next_cursor?: string } | null = null;
     private lastLoadTime: number = 0;
     private readonly CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
     private loadingPromise: Promise<void> | null = null;
@@ -110,7 +110,7 @@ export class RegistryServiceImpl implements RegistryService {
             const data: ServerListResponse = JSON.parse(fileContent);
             
             this.servers = data.servers || [];
-            this.metadata = data.metadata;
+            this.metadata = data.metadata || null;
             
             return true;
         } catch (error) {
@@ -119,7 +119,7 @@ export class RegistryServiceImpl implements RegistryService {
         }
     }
 
-    private async fetchAllServers(): Promise<{ servers: ServerJSON[], metadata: Metadata }> {
+    private async fetchAllServers(): Promise<{ servers: ServerJSON[], metadata: { count: number; next_cursor?: string } }> {
         const allServers: ServerJSON[] = [];
         let cursor: string | undefined = undefined;
         const limit = 100; // Maximum per page
@@ -144,10 +144,10 @@ export class RegistryServiceImpl implements RegistryService {
                 allServers.push(...data.servers);
             }
             
-            totalCount = data.metadata.count;
+            totalCount = data.metadata?.count || 0;
             
             // Check if we have more pages
-            if (!data.metadata.next_cursor || data.servers?.length === 0) {
+            if (!data.metadata?.next_cursor || data.servers?.length === 0) {
                 break;
             }
             

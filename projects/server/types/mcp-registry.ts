@@ -1,103 +1,114 @@
-// Types for the official MCP Registry API
-// Based on: registry-openapi.yaml
+// Types for the "generic" MCP Registry API (that the standard MCP Registry API implements also)
+// Based on: registry-api-openapi.yaml (with some tweaks, it was missing package.transport)
 
-export interface Argument {
-  choices?: string[] | null;
-  default?: string;
-  description?: string;
-  format?: string;
-  isRepeated?: boolean;
-  isRequired?: boolean;
-  isSecret?: boolean;
-  name?: string;
-  type: string;
-  value?: string;
-  valueHint?: string;
-  variables?: Record<string, Input>;
-}
-
+// Base input interface with common properties
 export interface Input {
-  choices?: string[] | null;
-  default?: string;
   description?: string;
-  format?: string;
   isRequired?: boolean;
-  isSecret?: boolean;
+  format?: 'string' | 'number' | 'boolean' | 'filepath';
   value?: string;
+  isSecret?: boolean;
+  default?: string;
+  choices?: string[];
 }
 
-export interface KeyValueInput {
-  choices?: string[] | null;
-  default?: string;
-  description?: string;
-  format?: string;
-  isRequired?: boolean;
-  isSecret?: boolean;
-  name: string;
-  value?: string;
+// Input with variable substitution support
+export interface InputWithVariables extends Input {
   variables?: Record<string, Input>;
 }
 
-export interface Metadata {
-  count: number;
-  next_cursor?: string;
+// Positional argument (value inserted verbatim into command line)
+export interface PositionalArgument extends InputWithVariables {
+  type: 'positional';
+  valueHint?: string;
+  isRepeated?: boolean;
 }
 
+// Named argument (command-line --flag={value})
+export interface NamedArgument extends InputWithVariables {
+  type: 'named';
+  name: string;
+  isRepeated?: boolean;
+}
+
+// Union type for all argument types
+export type Argument = PositionalArgument | NamedArgument;
+
+// Key-value input for headers and environment variables
+export interface KeyValueInput extends InputWithVariables {
+  name: string;
+}
+
+export interface TransportLocal {
+  type: 'stdio';
+}
+  
+export interface TransportRemote {
+  type: 'streamable-http' | 'sse';
+  url: string;
+  headers?: KeyValueInput[];
+}
+  
+export type Transport = TransportLocal | TransportRemote;
+  
 export interface Package {
-  environmentVariables?: KeyValueInput[] | null;
-  fileSha256?: string;
-  identifier: string;
-  packageArguments?: Argument[] | null;
-  registryBaseUrl?: string;
   registryType: string;
-  runtimeArguments?: Argument[] | null;
-  runtimeHint?: string;
-  transport?: Transport;
+  registryBaseUrl?: string;
+  identifier: string;
   version: string;
+  fileSha256?: string;
+  transport: Transport;
+  runtimeHint?: string;
+  runtimeArguments?: Argument[];
+  packageArguments?: Argument[];
+  environmentVariables?: KeyValueInput[];
 }
 
-export interface RegistryExtensions {
-  isLatest: boolean;
-  publishedAt: string;
+export interface OfficialRegistryMetadata {
   serverId: string;
-  updatedAt?: string;
   versionId: string;
+  publishedAt: string;
+  updatedAt: string;
+  isLatest: boolean;
 }
 
 export interface Repository {
-  id?: string;
-  source: string;
-  subfolder?: string;
   url: string;
+  source: string;
+  id: string;
+  subfolder?: string;
 }
 
 export interface ServerJSON {
-  $schema?: string;
-  _meta?: ServerMeta;
-  description: string;
   name: string;
-  packages?: Package[] | null;
-  remotes?: Transport[] | null;
+  description: string;
+  status?: 'active' | 'deprecated';
   repository?: Repository;
-  status?: string;
   version: string;
   websiteUrl?: string;
+  $schema?: string;
+  packages?: Package[];
+  remotes?: Transport[];
+  _meta?: ServerMeta;
 }
 
+export interface Metadata {
+    count: number;
+    next_cursor?: string;
+}
+
+// Alias for ServerDetail as used in the API spec
+export type ServerDetail = ServerJSON;
+
 export interface ServerListResponse {
-  metadata: Metadata;
-  servers?: ServerJSON[] | null;
+  servers: ServerJSON[];
+  metadata?: Metadata;
 }
 
 export interface ServerMeta {
-  'io.modelcontextprotocol.registry/official'?: RegistryExtensions;
+  'io.modelcontextprotocol.registry/official'?: OfficialRegistryMetadata;
   'io.modelcontextprotocol.registry/publisher-provided'?: Record<string, any>;
-}
-
-export interface Transport {
-  headers?: KeyValueInput[] | null;
-  type: string;
-  url?: string;
+  [key: string]: any; // Allow additional extension namespaces
 }
 
 export interface ErrorDetail {
@@ -135,7 +146,9 @@ export interface McpRegistryFilters {
 
 export interface McpRegistrySearchResult {
   servers: ServerJSON[];
-  metadata: Metadata & {
+  metadata: {
+    next_cursor?: string;
+    count?: number;
     filtered?: number; // Number of servers after filtering
   };
 }
