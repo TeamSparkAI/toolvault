@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ServerJSON } from '@/types/mcp-registry';
-import { McpServerConfig } from '@/lib/types/server';
-import { JsonResponseFetch } from '@/lib/jsonResponse';
 
 interface ServerRegistrySelectorProps {
   onSelectRegistryServer: (server: ServerJSON) => void;

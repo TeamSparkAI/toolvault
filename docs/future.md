@@ -21,6 +21,7 @@ Other
 
 Is there the idea that you might want to configure and test a server before adding it to the gateway (or edit a tool without impacting the gatewayed tool until you're done)?
 - Right now tool testing is done *through* the bridge - if we didn't do that, we'd need another way to launch the client the same way mcp-link does
+  - New server pinning implemented direct loading of tools - we could use that mechanism to test before installing
 - And then we'd need some kind of deploy/deployed state to differentiate hosted servers with non-hosted (or not-yet-hosted) servers
 - This seems like something to think about later 
 

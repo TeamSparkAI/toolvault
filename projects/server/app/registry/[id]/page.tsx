@@ -18,16 +18,24 @@ export default function RegistryDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const versionId = params.id as string;
+  const identifier = params.id as string;
+  
+  // Parse: last -- is name/version separator, others are / in the name
+  const lastSepIndex = identifier.lastIndexOf('--');
+  const nameEncoded = identifier.substring(0, lastSepIndex);
+  const serverVersion = identifier.substring(lastSepIndex + 2);
+  const serverName = nameEncoded.replace(/--/g, '/');
 
   useEffect(() => {
     loadServerDetails();
-  }, [versionId]);
+  }, [identifier]);
 
   const loadServerDetails = async () => {
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('[RegistryDetails] Looking for:', { serverName, serverVersion });
       
       // Get all servers and find the one matching our ID
       const response = await fetch('/api/v1/server-registry');
@@ -41,13 +49,18 @@ export default function RegistryDetailsPage() {
         throw new Error('Invalid response format');
       }
       
-      // Find server by versionId
+      console.log('[RegistryDetails] Total servers:', data.servers.length);
+      console.log('[RegistryDetails] First server:', data.servers[0]?.name, data.servers[0]?.version);
+      
+      // Find server by name:version
       const targetServer = data.servers.find((s: ServerJSON) => 
-        s._meta?.['io.modelcontextprotocol.registry/official']?.versionId === versionId
+        s.name === serverName && s.version === serverVersion
       );
       
+      console.log('[RegistryDetails] Found server:', !!targetServer);
+      
       if (!targetServer) {
-        throw new Error('Server not found');
+        throw new Error(`Server not found: ${serverName}:${serverVersion}`);
       }
       
       setServer(targetServer);

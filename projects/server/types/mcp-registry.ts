@@ -94,12 +94,24 @@ export interface ServerJSON {
 
 export interface Metadata {
     count: number;
-    next_cursor?: string;
+    nextCursor?: string;
 }
 
 // Alias for ServerDetail as used in the API spec
 export type ServerDetail = ServerJSON;
 
+// Raw API response structure (with nested server object)
+export interface ServerListItemRaw {
+  server: Omit<ServerJSON, '_meta'>;
+  _meta?: ServerMeta;
+}
+
+export interface ServerListResponseRaw {
+  servers: ServerListItemRaw[];
+  metadata?: Metadata;
+}
+
+// Flattened response structure (after unwrapping)
 export interface ServerListResponse {
   servers: ServerJSON[];
   metadata?: Metadata;

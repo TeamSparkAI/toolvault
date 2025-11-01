@@ -17,13 +17,11 @@ export default function RegistryPage() {
   }, [setHeaderTitle]);
 
   const handleSelectRegistryServer = (server: ServerJSON) => {
-    // Navigate to the server details page using versionId for uniqueness
-    const versionId = server._meta?.['io.modelcontextprotocol.registry/official']?.versionId;
-    if (!versionId) {
-      console.error('No versionId found for server:', server.name);
-      return;
-    }
-    router.push(`/registry/${versionId}`);
+    // Navigate to the server details page
+    // Replace / with -- to avoid routing conflicts, use -- as separator too
+    const nameEncoded = server.name.replace(/\//g, '--');
+    const identifier = `${nameEncoded}--${server.version}`;
+    router.push(`/registry/${identifier}`);
   };
 
   return (

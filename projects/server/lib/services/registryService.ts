@@ -1,4 +1,4 @@
-import { ServerJSON, ServerListResponse } from '@/types/mcp-registry';
+import { ServerJSON, ServerListResponse, ServerListResponseRaw } from '@/types/mcp-registry';
 import { McpRegistryFilters, McpRegistrySearchResult, ListServersParams } from '@/types/registry-api';
 import { logger } from '@/lib/logging/server';
 import fs from 'fs';
@@ -35,23 +35,32 @@ export class RegistryServiceImpl implements RegistryService {
     private async loadRegistryIfNeeded(): Promise<void> {
         const now = Date.now();
         
+        logger.info(`[loadRegistryIfNeeded] CALLED - servers.length: ${this.servers.length}`);
+        
         // Check if we need to reload based on file timestamp
         const needsReload = await this.shouldReloadRegistry();
+        
+        logger.info(`[loadRegistryIfNeeded] needsReload: ${needsReload}`);
         
         if (this.servers.length === 0 || needsReload) {
             // If already loading, wait for the existing load to complete
             if (this.loadingPromise) {
+                logger.info(`[loadRegistryIfNeeded] Already loading, waiting...`);
                 await this.loadingPromise;
                 return;
             }
             
+            logger.info(`[loadRegistryIfNeeded] Starting load...`);
             // Start loading and store the promise
             this.loadingPromise = this.loadRegistry();
             try {
                 await this.loadingPromise;
+                logger.info(`[loadRegistryIfNeeded] Load completed, servers.length: ${this.servers.length}`);
             } finally {
                 this.loadingPromise = null;
             }
+        } else {
+            logger.info(`[loadRegistryIfNeeded] Using cached data, servers.length: ${this.servers.length}`);
         }
     }
 
@@ -74,28 +83,34 @@ export class RegistryServiceImpl implements RegistryService {
     }
 
     private async loadRegistry(): Promise<void> {
+        logger.info('[loadRegistry] STARTING - trying to load from file first...');
+        
         // Try to load from local file first
         if (await this.loadFromFile()) {
-            logger.debug('Loaded server registry from local file');
+            logger.info(`[loadRegistry] Loaded ${this.servers.length} servers from local file`);
             this.lastLoadTime = Date.now();
             return;
         }
 
         // Fallback to remote fetch
-        logger.debug('Loading server registry from', MCP_REGISTRY_API_URL);
+        logger.info(`[loadRegistry] No local file, fetching from ${MCP_REGISTRY_API_URL}`);
         try {
-            // Fetch all servers from the registry API
+            // Fetch all servers from the registry API (unwrapping happens in fetchAllServers)
             const result = await this.fetchAllServers();
+            logger.info(`[loadRegistry] fetchAllServers returned ${result.servers.length} servers`);
+            
             this.servers = result.servers;
             this.metadata = result.metadata;
             
-            logger.debug('Loaded', this.servers.length, 'servers from MCP registry');
+            logger.info(`[loadRegistry] Loaded ${this.servers.length} servers from MCP registry`);
             this.lastLoadTime = Date.now();
             
             // Generate the local registry file
+            logger.info('[loadRegistry] Generating local registry file...');
             await this.generateRegistryFile();
+            logger.info('[loadRegistry] Local registry file generated');
         } catch (error) {
-            logger.error('Error loading server registry:', error);
+            logger.error('[loadRegistry] ERROR loading server registry:', error);
             this.servers = [];
             throw new Error('Failed to load server registry');
         }
@@ -120,7 +135,8 @@ export class RegistryServiceImpl implements RegistryService {
         }
     }
 
-    private async fetchAllServers(): Promise<{ servers: ServerJSON[], metadata: { count: number; next_cursor?: string } }> {
+    private async fetchAllServers(): Promise<{ servers: ServerJSON[], metadata: { count: number; nextCursor?: string } }> {
+        logger.info('[fetchAllServers] STARTING fetch from MCP Registry API');
         const allServers: ServerJSON[] = [];
         let cursor: string | undefined = undefined;
         const limit = 100; // Maximum per page
@@ -132,28 +148,40 @@ export class RegistryServiceImpl implements RegistryService {
             params.set('limit', limit.toString());
             
             const url = `${MCP_REGISTRY_API_URL}?${params.toString()}`;
-            logger.debug(`Fetching registry from ${url}`);
+            logger.info(`[fetchAllServers] Fetching from ${url}`);
             
             const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`Failed to fetch registry: ${response.status} ${response.statusText}`);
             }
 
-            const data: ServerListResponse = await response.json();
+            const data: ServerListResponseRaw = await response.json();
+            logger.info(`[fetchAllServers] Got ${data.servers?.length || 0} servers from API`);
             
             if (data.servers) {
-                allServers.push(...data.servers);
+                // Unwrap the nested server structure
+                logger.info(`[fetchAllServers] Before unwrap - first server has 'server' key: ${!!data.servers[0]?.server}`);
+                const unwrappedServers = data.servers.map(item => ({
+                    ...item.server,
+                    _meta: item._meta
+                }));
+                logger.info(`[fetchAllServers] After unwrap - first server name: ${unwrappedServers[0]?.name || 'undefined'}`);
+                allServers.push(...unwrappedServers);
             }
             
             totalCount = data.metadata?.count || 0;
             
+            logger.info(`[fetchAllServers] Metadata count: ${totalCount}, nextCursor: ${data.metadata?.nextCursor || 'none'}`);
+            logger.info(`[fetchAllServers] Total collected so far: ${allServers.length}`);
+            
             // Check if we have more pages
-            if (!data.metadata?.next_cursor || data.servers?.length === 0) {
+            if (!data.metadata?.nextCursor || data.servers?.length === 0) {
+                logger.info(`[fetchAllServers] No more pages. Breaking. nextCursor: ${data.metadata?.nextCursor}, servers.length: ${data.servers?.length}`);
                 break;
             }
             
-            cursor = data.metadata.next_cursor;
-            logger.debug(`Fetched ${data.servers?.length || 0} servers (total so far: ${allServers.length}, total available: ${totalCount})`);
+            cursor = data.metadata.nextCursor;
+            logger.info(`[fetchAllServers] Continuing to next page with cursor: ${cursor}`);
         }
 
         return {
@@ -198,8 +226,11 @@ export class RegistryServiceImpl implements RegistryService {
     }
 
     async searchServers(filters: McpRegistryFilters): Promise<McpRegistrySearchResult> {
+        logger.info('[searchServers] CALLED with filters:', JSON.stringify(filters));
+        
         await this.loadRegistryIfNeeded();
         
+        logger.info(`[searchServers] After load - servers length: ${this.servers.length}, first server name: ${this.servers[0]?.name || 'undefined'}`);
         let filteredServers = [...this.servers];
 
         // Apply search filter (name substring match)
