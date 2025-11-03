@@ -1,3 +1,6 @@
+/* MCP Registry UX Styles - must be before Tailwind */
+@import '@teamsparkai/mcp-registry-ux/input.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
