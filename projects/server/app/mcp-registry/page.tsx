@@ -26,8 +26,27 @@ export default function McpRegistryPage() {
   const loadServerRegistry = async () => {
     try {
       setLoading(true);
-      const response = await client.getServers();
-      setServers(response.servers);
+      const allServers: ServerResponse[] = [];
+      let cursor: string | undefined = undefined;
+      const limit = 100; // Maximum per page
+      
+      // Fetch all pages
+      while (true) {
+        const response = await client.getServers({ cursor, limit });
+        
+        if (response.servers) {
+          allServers.push(...response.servers);
+        }
+        
+        // Check if we have more pages
+        if (!response.metadata?.nextCursor || response.servers?.length === 0) {
+          break;
+        }
+        
+        cursor = response.metadata.nextCursor;
+      }
+      
+      setServers(allServers);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load server registry');
     } finally {
