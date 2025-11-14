@@ -34,7 +34,7 @@ Or we could just say all policies are applied at hub, all messages are routed up
 
 Data/Models
 - ToolVault currently has the concept of a "User" in its models, but it's not really used anywhere.
-- The hub would need to add workstation also (intance of ToolVault)
+- The hub would need to add workstation also (instance of ToolVault)
 - ToolVault workstation models would need to evolve
   - Data (like servers and policies) will need source and permissions (ex: this policy came from upstream, and I can't edit or disable it)
 

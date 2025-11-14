@@ -27,57 +27,6 @@ Another one: [MCP Vulnerabilities Every Developer Should Know](https://composio.
 
 - Policy engine can try to handle some obvious cases, but for novel attacks we may need some AI or other detection
 
-### Server version control ("Pinning")
-
-- Pin app (esp npx/uvx) to current version
-- Alert on new version
-  - Diff serverInfo and tool catalog (tools/descriptions)
-  - Auto-migration (if serverInfo same except version, tool catalog same)
-  - Manual migration
-    - Alert new server available (general info level, non-policy "system alert")
-    - Allow test
-    - Push-button migration (revert?)
-
-- For npx/uvx - implement command to get "latest" (use this for pinning and determining if new version avail)
-  - Introspect new version (run wrapped in container if deployed server is wrapped) to determine what, if anything, has changed
-  - We can't rely on version information in the MCP server (it's not metadata, it's provided over the protocol at runtime and could change for a malicious server)
-
-#### Pinning Workflow
-
-- If a server is unpinned (using @latest), then it essentially has no current version.  So when pinning, we get the @latest version,
-  store it as the pinned version, then on all subsequent invocations we apply the pinned version.  This is the simpllest possible 
-  standalone pinning solution that adds value (though it does not protect against dynamic server/tool description attacks without
-  the workflow below).
-  
-- We need a pinning workflow where we show the latest version info (from package repo), the serverInfo, and tools with descriptions,
-  for the user to review and approve.  On approval we store all of the reviewed info (package version, server info, and all tools/details).  
-  
-- During server usage we review content for compliance to pinned content (we ensure that serverInfo matches on initialize and we ensure
-  that tool data matches on tools/list).
-  
-- We allow the user to check if a new version of a pinned server is available, and if so, they can start the pinned version upgrade from 
-  there.  We could also periodically check the server repo to see if a new version is available and provide an alert of some kind to notify
-  the user (if so, and auto-update enabled, and no signficant changes, we could auto update the pinned version).
-
-- For the upgrade, we analyze the new version (meaning we have to run the server and talk to it somehow) to determine if there are changes
-  that need review (serverInfo or tools/descriptions).
-  - If not, we could auto-update or present a push button pinned version update (essentially, server info and tools unchanged).
-  - If there are any differences, we need to provid an alert and a workflow for the user to review the specific changes and approve/disapprove.
-
-### Malicious tool description
-
-- Covers both serverInfo (initialize response) and tool descriptions (list/tools response)
-  - These are dynamic information provided over the protocol and which could change with a malicious server
-- Policies should be able to handle malicous content reasonably well
-  - How many of the malicious content filters should just apply all server messages?
-- AI-powered detection (looking for semantic inconsistenty, novel tool poisoning)
-- Misleading content is trickier (where attack is to get agent to call server's tools instead of more appropriate tools to capture info)
-  - This is probably better handled by user inspecting tools/tool description on install/upgrade (with pinning and explicit upgrade)
-- Should we record tools/descriptions and compare later executions to see if they match (especially if pinned)
-  - If tools or descriptions change, info level event
-  - If tools or descriptions change for the same serverInfo version, error level event?  Esp if pinned. Other action?
-- This implies a mechanism of system/server level security events not related to policies (should we generalize alerts for this?)
-
 ### Local TSL (shim to gateway)
 
 ### Network isolation

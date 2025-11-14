@@ -36,7 +36,7 @@ When no configuration/env/headers
 
 ## Issues
 
-The notion of versions in the MCP registry is interesting.  Just because a server says it is version x.y doesn't mean that version x.y is the latests version in the package registry (or that it is in the rpackage egistry at all).  The package registry is really the single source of truth for what versions are installable.
+The notion of versions in the MCP registry is interesting.  Just because a server says it is version x.y doesn't mean that version x.y is the latests version in the package registry (or that it is in the package registry at all).  The package registry is really the single source of truth for what versions are installable.
 
 Also, I think it is highly likely that people will publish new npm/pypi registry versions of their servers without updating the MCP registry (this will certainly happen some of the time, but may happen most of the time, or at least very often).  At very least there will be some potential lag if the MCP registry is updated at the same time or after the fact (given the periodic polling type of update of MCP registry clients).
 
@@ -102,6 +102,8 @@ Maybe this is just one json field:
 }
 
 Or "installedRemote"
+
+Note: I think we've alread implemented some of the below (see actual and update doc)
 
 Should we store the server.json objects correlated to installed servers (so we have access to their config)? Or do we just store the entire package/remote, which contains the config?
 

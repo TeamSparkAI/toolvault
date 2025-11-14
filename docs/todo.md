@@ -28,21 +28,6 @@ This will require a new client-server syncState
 
 ====================================================================================================
 
-## Packaging and Distribution (document in README.md)
-
-To run from source:
-- Pre-requisites: Node and Docker
-- Get source repo
-- npm build (verify command)
-- npm install tsh globally
-- Run server
-
-NPM-based install
-- npm install -g toolvault install tsh and toolvault
-- Recommend pm2 for management (auto-run "as service")?
-
-====================================================================================================
-
 ## Post v1.0
 
 Command line --audit mode - do a scan of all tool use a produce a text and/or json report

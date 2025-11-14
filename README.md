@@ -29,7 +29,7 @@ Supported operating systems: MacOS, Windows, and Linux
 
 ## Installation Instructions
 
-Install
+Install (toolvault and tsh)
 
 ```bash
 npm install -g toolvault
